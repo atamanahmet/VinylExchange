@@ -1,28 +1,20 @@
 import { create } from "zustand";
 import axios from "../api/axiosInstance";
 
-export const useSearchStore = create((set, get) => ({
+export const useSearchStore = create((set) => ({
   searchResult: {
     dataType: "",
     items: [],
   },
+  isLoadingSearch: false,
 
-  isLoadingSearch: true,
-
-  clearSearch: () => set({ searchResult: { items: [] } }),
+  clearSearch: () => set({ searchResult: { dataType: "", items: [] } }),
 
   searchMusicBrainz: async (title) => {
-    set({
-      isLoadingSearch: true,
-    });
-
+    set({ isLoadingSearch: true });
     try {
       const res = await axios.get("/api/mb/search", {
-        params: {
-          title: title,
-          limit: 75,
-        },
-        withCredentials: true,
+        params: { title, limit: 75 },
       });
       if (res.status === 200) {
         set({
@@ -35,27 +27,17 @@ export const useSearchStore = create((set, get) => ({
     } catch (e) {
       console.log(e);
     } finally {
-      set({
-        isLoadingSearch: false,
-      });
+      set({ isLoadingSearch: false });
     }
   },
-  searchProducts: async (query) => {
-    set({
-      isLoadingSearch: true,
-    });
 
+  searchProducts: async (query) => {
+    set({ isLoadingSearch: true });
     try {
       const res = await axios.get("/api/listings/search", {
-        params: {
-          query: query,
-          page: 0,
-          size: 75,
-        },
-        withCredentials: true,
+        params: { query, page: 0, size: 75 },
       });
       if (res.status === 200) {
-        console.log("search results: ", res.data);
         set({
           searchResult: {
             dataType: "listing",
@@ -66,9 +48,7 @@ export const useSearchStore = create((set, get) => ({
     } catch (e) {
       console.log(e);
     } finally {
-      set({
-        isLoadingSearch: false,
-      });
+      set({ isLoadingSearch: false });
     }
   },
 }));

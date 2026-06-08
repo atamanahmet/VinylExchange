@@ -3,7 +3,7 @@ import axios from "../api/axiosInstance";
 
 export const useAuthStore = create((set, get) => ({
   user: null,
-  isLoading: true,
+  isLoading: false,
   authResponse: null,
 
   setAuthResponse: (message) => set({ authResponse: message }),
@@ -80,11 +80,7 @@ export const useAuthStore = create((set, get) => ({
       if (res.status === 201) {
         const { username, email } = res.data;
 
-        set({
-          user: { username, email },
-          authResponse: "Account created succesfully. Redirecting...",
-        });
-
+        set({ authResponse: "Account created successfully. Redirecting..." });
         return true;
       }
       console.warn("Unexpected register status:", res.status);

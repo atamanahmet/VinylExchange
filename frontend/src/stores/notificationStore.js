@@ -9,83 +9,73 @@ export const useNotificationStore = create((set, get) => ({
 
   fetchDropdownNotifications: async () => {
     const user = useAuthStore.getState().user;
-
-    if (!user) {
-      set({
-        notifications: [],
-        cartItemCount: 0,
-        isLoading: false,
-      });
-      return;
-    }
-
-    const url = "/api";
+    if (!user) return;
 
     set({ isLoading: true });
     try {
-      const res = await axios.get(url + "/notifications/dropdown", {
-        withCredentials: true,
-      });
-      set({
-        notifications: res.data.notifications,
-        unreadCount: res.data.unreadCount,
-        isLoading: false,
-      });
+      const res = await axios.get("/api/notifications/dropdown");
+      if (res.status === 200) {
+        set({
+          notifications: res.data.notifications,
+          unreadCount: res.data.unreadCount,
+        });
+      }
     } catch (err) {
       console.error("Failed to fetch notifications:", err);
+    } finally {
       set({ isLoading: false });
     }
   },
 
   fetchAllNotifications: async () => {
-    const url = "/api";
-
     set({ isLoading: true });
     try {
-      const res = await axios.get(url + "/notifications", {
-        withCredentials: true,
-      });
-      set({
-        notifications: res.data.notifications,
-        unreadCount: res.data.unreadCount,
-        isLoading: false,
-      });
+      const res = await axios.get("/api/notifications");
+      if (res.status === 200) {
+        set({
+          notifications: res.data.notifications,
+          unreadCount: res.data.unreadCount,
+        });
+      }
     } catch (err) {
       console.error("Failed to fetch all notifications:", err);
+    } finally {
       set({ isLoading: false });
     }
   },
 
   markAsRead: async (notificationId) => {
-    const url = "/api";
-
     try {
-      await axios.post(url + `/notifications/${notificationId}/read`, null, {
-        withCredentials: true,
+      await axios.post(`/api/notifications/${notificationId}/read`, null);
+      set((state) => {
+        const updated = state.notifications.map((n) =>
+          n.id === notificationId ? { ...n, read: true } : n,
+        );
+        return {
+          notifications: updated,
+          unreadCount: updated.filter((n) => !n.read).length,
+        };
       });
-
-      const updated = get().notifications.map((n) =>
-        n.id === notificationId ? { ...n, read: true } : n,
-      );
-      const unread = updated.filter((n) => !n.read).length;
-      set({ notifications: updated, unreadCount: unread });
     } catch (err) {
       console.error("Failed to mark notification as read:", err);
     }
   },
 
+  /**
+   * TODO: replace with single bulk endpoint when available
+   * Sequential to avoid hammering the server
+   */
   markAllAsRead: async () => {
-    const url = "/api";
-
-    const allIds = get().notifications.map((n) => n.id);
-    await Promise.all(
-      allIds.map((id) =>
-        axios.post(url + `/notifications/${id}/read`, null, {
-          withCredentials: true,
-        }),
-      ),
-    );
-
+    const ids = get()
+      .notifications.filter((n) => !n.read)
+      .map((n) => n.id);
+    for (const id of ids) {
+      try {
+        await axios.post(`/api/notifications/${id}/read`, null);
+      } catch (err) {
+        console.error(`Failed to mark ${id} as read:`, err);
+      }
+    }
     set((state) => ({
       notifications: state.notifications.map((n) => ({ ...n, read: true })),
       unreadCount: 0,

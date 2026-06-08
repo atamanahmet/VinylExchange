@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import axios from "../api/axiosInstance";
 
 export const useUIStore = create((set, get) => ({
   openLogin: false,
@@ -18,7 +17,6 @@ export const useUIStore = create((set, get) => ({
 
   resolveLogin: (success) => {
     const { loginResolver } = get();
-
     if (loginResolver) {
       loginResolver(success);
       set({ loginResolver: null });
@@ -27,10 +25,7 @@ export const useUIStore = create((set, get) => ({
 
   waitForLogin: () => {
     return new Promise((resolve) => {
-      set({
-        loginResolver: () => resolve,
-        openLogin: true,
-      });
+      set({ loginResolver: resolve, openLogin: true });
     });
   },
 }));
