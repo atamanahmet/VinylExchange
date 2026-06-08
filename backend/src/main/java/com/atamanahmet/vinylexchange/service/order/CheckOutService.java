@@ -1,94 +1,182 @@
 package com.atamanahmet.vinylexchange.service.order;
 
+import com.atamanahmet.vinylexchange.domain.entity.Cart;
+import com.atamanahmet.vinylexchange.domain.entity.CartItem;
+import com.atamanahmet.vinylexchange.domain.entity.Listing;
+import com.atamanahmet.vinylexchange.domain.entity.Order;
+import com.atamanahmet.vinylexchange.domain.entity.OrderItem;
+import com.atamanahmet.vinylexchange.domain.enums.ErrorType;
+import com.atamanahmet.vinylexchange.domain.enums.IssueType;
+import com.atamanahmet.vinylexchange.domain.enums.OrderStatus;
+import com.atamanahmet.vinylexchange.domain.enums.SaleType;
+import com.atamanahmet.vinylexchange.dto.order.CartValidationIssue;
+import com.atamanahmet.vinylexchange.event.OrderCreatedEvent;
+import com.atamanahmet.vinylexchange.exception.CheckOutProcessingException;
+import com.atamanahmet.vinylexchange.exception.CheckOutValidationException;
+import com.atamanahmet.vinylexchange.service.listing.ListingService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import com.atamanahmet.vinylexchange.domain.enums.ErrorType;
-import com.atamanahmet.vinylexchange.domain.enums.IssueType;
-import com.atamanahmet.vinylexchange.dto.order.CheckOutResult;
-import com.atamanahmet.vinylexchange.event.OrderCreatedEvent;
-import com.atamanahmet.vinylexchange.service.media.FileStorageService;
-import com.atamanahmet.vinylexchange.service.listing.ListingService;
-import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Service;
-
-import com.atamanahmet.vinylexchange.domain.entity.Cart;
-import com.atamanahmet.vinylexchange.domain.entity.CartItem;
-import com.atamanahmet.vinylexchange.dto.order.CartValidationIssue;
-
-import com.atamanahmet.vinylexchange.domain.entity.Listing;
-
-import com.atamanahmet.vinylexchange.domain.entity.Order;
-import com.atamanahmet.vinylexchange.domain.entity.OrderItem;
-import com.atamanahmet.vinylexchange.domain.enums.OrderStatus;
-
-import com.atamanahmet.vinylexchange.exception.CheckOutProcessingException;
-import com.atamanahmet.vinylexchange.exception.CheckOutValidationException;
-
-import jakarta.transaction.Transactional;
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CheckOutService {
 
-    private static final Logger logger = LoggerFactory.getLogger(CheckOutService.class);
-
+    private final CartService cartService;
     private final ListingService listingService;
     private final OrderService orderService;
-    private final CartService cartService;
     private final OrderItemService orderItemService;
-    private final FileStorageService fileStorageService;
     private final ApplicationEventPublisher eventPublisher;
 
-    public CheckOutResult proceedCheckOut(UUID userId) {
+    @Transactional
+    public List<Order> proceedCheckOut(UUID userId) {
 
         Cart cart = cartService.getCart(userId);
 
-        List<UUID> listingIdsInCart = cart.getCartItems()
-                .stream()
+        List<UUID> listingIds = cart.getCartItems().stream()
                 .map(CartItem::getListingId)
                 .collect(Collectors.toList());
 
-        Map<UUID, Listing> listingMap = listingService.getListingsByIdsWithLock(listingIdsInCart)
+        Map<UUID, Listing> listingMap = listingService.getListingsByIdsWithLock(listingIds)
                 .stream()
-                .collect(Collectors.toMap(Listing::getId, listing -> listing));
+                .collect(Collectors.toMap(Listing::getId, l -> l));
 
-        List<CartValidationIssue> validationIssues = validateCartItems(cart.getCartItems(), listingMap);
+        List<CartValidationIssue> issues = validateCartItems(cart.getCartItems(), listingMap);
 
-        if (hasCheckoutCancelErrors(validationIssues)) {
-            throw new CheckOutValidationException(validationIssues);
+        if (hasErrors(issues)) {
+            throw new CheckOutValidationException(issues);
         }
 
         try {
-
-            Order order = createOrder(userId, cart.getCartItems(), listingMap);
-
-            eventPublisher.publishEvent(new OrderCreatedEvent(order));
-
-            CheckOutResult checkOutResult = CheckOutResult.builder()
-                    .success(true)
-                    .order(order)
-                    .message("CheckOut completed successfully")
-                    .build();
-
+            List<Order> orders = createOrdersPerSeller(userId, cart.getCartItems(), listingMap);
             cartService.clearCart(userId);
-
-            return checkOutResult;
-
+            return orders;
         } catch (Exception e) {
-
-            logger.error("Checkout failed for user id: {}", userId, e);
+            log.error("Checkout failed for userId={}", userId, e);
             throw new CheckOutProcessingException();
         }
     }
 
-    private List<CartValidationIssue> validateCartItems(List<CartItem> cartItems, Map<UUID, Listing> listingMap) {
+    /**
+     * Groups cart items by seller and creates one order per seller
+     */
+    private List<Order> createOrdersPerSeller(
+            UUID buyerId,
+            List<CartItem> cartItems,
+            Map<UUID, Listing> listingMap) {
+
+        Map<UUID, List<CartItem>> itemsBySeller = cartItems.stream()
+                .collect(Collectors.groupingBy(
+                        item -> listingMap.get(item.getListingId()).getOwnerId()
+                ));
+
+        List<Order> createdOrders = new ArrayList<>();
+        List<Listing> listingsToUpdate = new ArrayList<>();
+
+        for (Map.Entry<UUID, List<CartItem>> entry : itemsBySeller.entrySet()) {
+
+            UUID sellerId = entry.getKey();
+            List<CartItem> sellerItems = entry.getValue();
+
+            Order order = buildOrder(buyerId, sellerId, sellerItems, listingMap, listingsToUpdate);
+
+            createdOrders.add(order);
+
+            eventPublisher.publishEvent(new OrderCreatedEvent(
+                    order.getId(),
+                    buyerId,
+                    sellerId,
+                    order.getSaleType(),
+                    order.getTotalPrice()
+            ));
+
+            log.info("Order created orderNumber={} seller={} buyer={}",
+                    order.getOrderNumber(), sellerId, buyerId);
+        }
+
+        listingService.saveAllListing(listingsToUpdate);
+
+        return createdOrders;
+    }
+
+    /**
+     * Builds and persists one order with its items for a single seller
+     */
+    private Order buildOrder(
+            UUID buyerId,
+            UUID sellerId,
+            List<CartItem> sellerItems,
+            Map<UUID, Listing> listingMap,
+            List<Listing> listingsToUpdate) {
+
+        SaleType saleType = sellerItems.stream()
+                .map(item -> listingMap.get(item.getListingId()).getSaleType())
+                .anyMatch(t -> t == SaleType.FIXED_PRICE)
+                ? SaleType.FIXED_PRICE
+                : SaleType.TRADE;
+
+        Order order = Order.builder()
+                .orderNumber(orderService.getNextOrderNumber())
+                .buyerId(buyerId)
+                .sellerId(sellerId)
+                .saleType(saleType)
+                .status(OrderStatus.AWAITING_PAYMENT)
+                .orderItems(new ArrayList<>())
+                .build();
+
+        order = orderService.saveOrder(order);
+
+        long totalPrice = 0L;
+
+        for (CartItem item : sellerItems) {
+
+            Listing listing = listingMap.get(item.getListingId());
+
+            String mainImagePath = listing.getMainImageUrl();
+
+            OrderItem orderItem = orderItemService.saveOrderItemAndFlush(
+                    OrderItem.builder()
+                            .order(order)
+                            .listingId(listing.getId())
+                            .listingTitle(listing.getTitle())
+                            .listingMainImageUrl(mainImagePath)
+                            .sellerId(sellerId)
+                            .unitPrice(listing.getPriceKurus())
+                            .quantity(item.getOrderQuantity())
+                            .subTotal(listing.getPriceKurus() * item.getOrderQuantity())
+                            .build()
+            );
+
+            order.getOrderItems().add(orderItem);
+            totalPrice += orderItem.getSubTotal();
+
+            listing.setStockQuantity(listing.getStockQuantity() - item.getOrderQuantity());
+            listingsToUpdate.add(listing);
+        }
+
+        order.setTotalPrice(totalPrice);
+        order.setShippingDeadline(LocalDateTime.now().plusDays(5));
+        order.setPaymentExpiresAt(LocalDateTime.now().plusMinutes(15));
+        order.setExpectedDeliveryDate(LocalDateTime.now().plusDays(7));
+
+        return orderService.saveOrder(order);
+    }
+
+    private List<CartValidationIssue> validateCartItems(
+            List<CartItem> cartItems,
+            Map<UUID, Listing> listingMap) {
 
         List<CartValidationIssue> issues = new ArrayList<>();
 
@@ -97,7 +185,6 @@ public class CheckOutService {
             Listing listing = listingMap.get(cartItem.getListingId());
 
             if (listing == null) {
-
                 issues.add(CartValidationIssue.builder()
                         .cartItemId(cartItem.getCartItemId())
                         .listingId(cartItem.getListingId())
@@ -108,93 +195,32 @@ public class CheckOutService {
                 continue;
             }
 
-            if (!listing.hasEnoughStock(cartItem.getOrderQuantity())) {
-
-                issues.add(CartValidationIssue.builder()
-                        .cartItemId(cartItem.getCartItemId())
-                        .listingId(cartItem.getListingId())
-                        .type(IssueType.INSUFFICIENT_STOCK)
-                        .message("Not enough stock available, adjust quantity")
-                        .errorType(ErrorType.ERROR)
-                        .build());
-                continue;
-            }
-
             if (!listing.isAvailable()) {
-
                 issues.add(CartValidationIssue.builder()
                         .cartItemId(cartItem.getCartItemId())
                         .listingId(cartItem.getListingId())
                         .type(IssueType.SOLD_OUT)
-                        .message(listing.getTitle() + " - " + listing.getArtistName() + " is sold out")
+                        .message(listing.getTitle() + " is no longer available")
                         .errorType(ErrorType.ERROR)
                         .build());
                 continue;
             }
+
+            if (!listing.hasEnoughStock(cartItem.getOrderQuantity())) {
+                issues.add(CartValidationIssue.builder()
+                        .cartItemId(cartItem.getCartItemId())
+                        .listingId(cartItem.getListingId())
+                        .type(IssueType.INSUFFICIENT_STOCK)
+                        .message("Not enough stock for " + listing.getTitle())
+                        .errorType(ErrorType.ERROR)
+                        .build());
+            }
         }
+
         return issues;
     }
 
-    private boolean hasCheckoutCancelErrors(List<CartValidationIssue> validationIssues) {
-
-        return validationIssues.stream()
-                .anyMatch(issue -> issue.getErrorType() == ErrorType.ERROR);
-    }
-
-    @Transactional
-    private Order createOrder(UUID userId, List<CartItem> cartItems, Map<UUID, Listing> listingMap) {
-
-        Order order = Order.builder()
-                .orderNumber(orderService.getNextOrderNumber())
-                .buyerId(userId)
-                .status(OrderStatus.PENDING)
-                .orderItems(new ArrayList<>())
-                .build();
-
-        order = orderService.saveOrder(order);
-
-        Long totalPrice = 0L;
-
-        List<Listing> listingsToUpdate = new ArrayList<>();
-
-        for (CartItem item : cartItems) {
-
-            Listing listing = listingMap.get(item.getListingId());
-
-            String listingMainImagePath = fileStorageService.getMainImagePath(listing.getId());
-
-            OrderItem orderItem = OrderItem.builder()
-                    .order(order)
-                    .listingId(listing.getId())
-                    .listingTitle(listing.getTitle())
-                    .listingMainImageUrl(listingMainImagePath)
-                    .sellerId(listing.getOwnerId())
-                    .unitPrice(listing.getPriceKurus())
-                    .quantity(item.getOrderQuantity())
-                    .subTotal(listing.getPriceKurus() * item.getOrderQuantity())
-                    .build();
-
-            OrderItem savedItem = orderItemService.saveOrderItemAndFlush(orderItem);
-
-            savedItem.setShippingDeadline(savedItem.getCreatedAt().plusDays(5));
-            savedItem.setExpectedDeliveryDate(savedItem.getCreatedAt().plusDays(7));
-
-            order.getOrderItems().add(savedItem);
-
-            totalPrice += savedItem.getSubTotal();
-
-            listing.setStockQuantity(listing.getStockQuantity() - savedItem.getQuantity());
-
-            listingsToUpdate.add(listing);
-        }
-
-        order.setTotalPrice(totalPrice);
-
-        listingService.saveAllListing(listingsToUpdate);
-        orderItemService.saveAllOrderItems(order.getOrderItems());
-
-        logger.info("Order created and populated with orderNumber: {}", order.getOrderNumber());
-
-        return orderService.saveOrder(order);
+    private boolean hasErrors(List<CartValidationIssue> issues) {
+        return issues.stream().anyMatch(i -> i.getErrorType() == ErrorType.ERROR);
     }
 }
