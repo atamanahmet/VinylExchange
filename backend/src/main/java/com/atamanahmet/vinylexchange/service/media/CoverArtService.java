@@ -1,75 +1,48 @@
 package com.atamanahmet.vinylexchange.service.media;
 
-import java.util.UUID;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.atamanahmet.vinylexchange.dto.musicbrainz.CoverArtResponse;
+import com.atamanahmet.vinylexchange.dto.musicbrainz.ImageMeta;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import com.atamanahmet.vinylexchange.dto.musicbrainz.CoverArtResponse;
-import com.atamanahmet.vinylexchange.dto.musicbrainz.ImageMeta;
-import com.atamanahmet.vinylexchange.infrastructure.ImageSource;
+import java.util.UUID;
 
-import lombok.RequiredArgsConstructor;
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@EnableAsync
 public class CoverArtService {
 
-    private final Logger logger = LoggerFactory.getLogger(CoverArtService.class);
     private final WebClient webClient;
-    private final FileStorageService fileStorageService;
 
-    @Async
-    public void fetchAndSaveCoverAsync(UUID listingId, UUID mbId) {
-
-        if(mbId==null){
-            logger.info("MBId is null, coverArt fetch aborted");
-
-            return;
-        }
+    /**
+     * Fetches front cover URL from coverartarchive.org
+     * Returns null if not found, caller decides what to do
+     */
+    public String fetchCoverUrl(UUID mbId) {
+        if (mbId == null) return null;
 
         try {
+            CoverArtResponse response = webClient.get()
+                    .uri("https://coverartarchive.org/release/{id}?fmt=json", mbId)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .bodyToMono(CoverArtResponse.class)
+                    .block();
 
-            String imageUrl = fetchCoverUrl(mbId);
+            if (response == null || response.images() == null) return null;
 
-            if (imageUrl == null)
-                return;
-
-            ImageSource image = fileStorageService.downloadExternalImage(imageUrl);
-            if (image == null)
-                return;
-
-            fileStorageService.savePlaceholderImage(image, mbId);
-
-            logger.info("Cover art saved for listingId: {}, mbId: {}", listingId, mbId);
+            return response.images().stream()
+                    .filter(ImageMeta::front)
+                    .map(ImageMeta::image)
+                    .findFirst()
+                    .orElse(null);
 
         } catch (Exception e) {
-            logger.warn("Cover art fetch failed for listingId: {}, mbId: {}", listingId, mbId, e);
-        }
-    }
-
-    private String fetchCoverUrl(UUID mbId) {
-
-        CoverArtResponse response = webClient.get()
-                .uri("https://coverartarchive.org/release/{id}?fmt=json", mbId)
-                .accept(MediaType.APPLICATION_JSON)
-                .retrieve()
-                .bodyToMono(CoverArtResponse.class)
-                .block();
-
-        if (response == null || response.images() == null)
+            log.warn("CoverArt fetch failed for mbId: {}", mbId);
             return null;
-
-        return response.images().stream()
-                .filter(ImageMeta::front)
-                .map(ImageMeta::image)
-                .findFirst()
-                .orElse(null);
+        }
     }
 }
