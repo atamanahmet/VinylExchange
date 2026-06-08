@@ -13,16 +13,16 @@ import {
 import { useAuthStore } from "../stores/authStore";
 import { useMessagingStore } from "../stores/messagingStore";
 import { useCartStore } from "../stores/cartStore";
-import { useDataStore } from "../stores/dataStore";
+import { useListingStore } from "../stores/listingStore";
 
 export default function ItemPage() {
   const user = useAuthStore((state) => state.user);
 
   const addToCart = useCartStore((state) => state.addToCart);
   const removeFromCart = useCartStore((state) => state.removeFromCart);
-  const data = useDataStore((state) => state.data);
-  const fetchListing = useDataStore((state) => state.fetchListing);
-  const fetchListingsByUser = useDataStore(
+  const data = useListingStore((state) => state.data);
+  const fetchListing = useListingStore((state) => state.fetchListing);
+  const fetchListingsByUser = useListingStore(
     (state) => state.fetchListingsByUser,
   );
 
@@ -65,25 +65,6 @@ export default function ItemPage() {
     addToCart(listing.id);
   }
 
-  // async function getListing() {
-  //   try {
-  //     const res = await axios.get(
-  //       `http://localhost:8080/api/listings/${listingId}`,
-  //       {
-  //         withCredentials: true,
-  //       },
-  //     );
-  //     if (res.status == 200) {
-  //       console.log(res.data);
-  //       setListing(res.data);
-  //     }
-  //   } catch (error) {
-  //     console.log(error);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // }
-
   useEffect(() => {
     if (listingId == null) return;
     fetchListing(listingId);
@@ -96,8 +77,6 @@ export default function ItemPage() {
       setIsOwnerUser(false);
     }
   }, [data.items, user]);
-
-  // const handleUserListingSelection = () => {};
 
   return (
     <>

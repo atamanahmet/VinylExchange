@@ -5,7 +5,7 @@ import { ThemeProvider } from "@material-tailwind/react";
 import Card from "../comps/Card";
 import axios from "axios";
 import ListingItem from "../comps/ListingItem";
-import { useDataStore } from "../stores/dataStore";
+import { useListingStore } from "../stores/listingStore";
 import { useNavigate } from "react-router-dom";
 import { mapListingsToCardItems } from "../adapters/mapListingToCardItems";
 import { useAuthStore } from "../stores/authStore";
@@ -15,30 +15,30 @@ export default function ListingsPage() {
 
   const user = useAuthStore((state) => state.user);
 
-  const data = useDataStore((state) => state.data);
-  const isFetching = useDataStore((state) => state.isFetching);
+  const publicListings = useListingStore((state) => state.publicListings);
+  const isFetching = useListingStore((state) => state.isFetching);
 
-  const fetchMyActiveListings = useDataStore(
+  const fetchMyActiveListings = useListingStore(
     (state) => state.fetchMyActiveListings,
   );
 
-  const fetchListingsByUser = useDataStore(
+  const fetchListingsByUser = useListingStore(
     (state) => state.fetchListingsByUser,
   );
 
-  const deleteListing = useDataStore((state) => state.deleteListing);
+  const deleteListing = useListingStore((state) => state.deleteListing);
 
   useEffect(() => {
     fetchMyActiveListings();
   }, []);
 
   const myListingCards = useMemo(() => {
-    return mapListingsToCardItems(data.items, {
+    return mapListingsToCardItems(publicListings.items, {
       user,
       navigate,
       onDelete: deleteListing,
     });
-  }, [data, user]);
+  }, [publicListings, user]);
 
   return (
     <>
@@ -56,7 +56,7 @@ export default function ListingsPage() {
             <p>Created At</p>
           </div>
           <div className="mt-6">
-            {data.isFetching ? (
+            {publicListings.isFetching ? (
               Array(5)
                 .fill(0)
                 .map((_, i) => <SkeletonListingItem key={i} />)

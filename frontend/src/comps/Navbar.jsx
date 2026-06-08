@@ -4,11 +4,11 @@ import { AuthModal } from "./AuthModal";
 import { useCartStore } from "../stores/cartStore";
 import { useAuthStore } from "../stores/authStore";
 import { useUIStore } from "../stores/uiStore";
-import { useDataStore } from "../stores/dataStore";
 import { useMessagingStore } from "../stores/messagingStore";
 import { useNotificationStore } from "../stores/notificationStore";
 import Notification from "./Notification";
 import { useSearchStore } from "../stores/searchStore";
+import { useListingStore } from "../stores/listingStore";
 
 //TODO: remove, test
 const SkeletonNavbar = () => (
@@ -57,11 +57,12 @@ export default function Navbar() {
   const logOut = useAuthStore((state) => state.logOut);
   const isLoading = useAuthStore((state) => state.isLoading);
 
-  const setSearchQuery = useDataStore((state) => state.setSearchQuery);
-
-  const search = useDataStore((state) => state.search);
-
+  const clearSearch = useSearchStore((state) => state.clearSearch);
   const searchProducts = useSearchStore((state) => state.searchProducts);
+
+  const fetchPublicListings = useListingStore(
+    (state) => state.fetchPublicListings,
+  );
 
   const openLogin = useUIStore((state) => state.openLogin);
   const navbarActive = useUIStore((state) => state.navbarActive);
@@ -91,8 +92,8 @@ export default function Navbar() {
 
   const handleSearch = (e) => {
     if (e) e.preventDefault();
-    navigate("/");
     searchProducts(query);
+    navigate("/");
   };
 
   const handleKeyPress = (e) => {
@@ -115,8 +116,9 @@ export default function Navbar() {
   };
 
   const handleLogoClick = () => {
-    if (location.pathname == "/") {
-      window.location.reload();
+    clearSearch();
+    if (location.pathname === "/") {
+      fetchPublicListings();
     } else {
       navigate("/");
     }
@@ -217,12 +219,20 @@ export default function Navbar() {
                 ></AuthModal>
               </div>
             ) : (
-              <button
-                onClick={() => navigate("/newlisting")}
-                className="hidden sm:flex items-center text-neutral-primary bg-amber-600  rounded-xl hover:bg-amber-700 focus:ring-2 focus:ring-accent-primary font-medium rounded-base text-sm px-4 py-2.5 focus:outline-none"
-              >
-                New Listing
-              </button>
+              <div className="flex flex-row gap-4">
+                <button
+                  onClick={() => navigate("/newlisting")}
+                  className="hidden sm:flex items-center text-neutral-primary bg-amber-600  rounded-xl hover:bg-amber-700 focus:ring-2 focus:ring-accent-primary font-medium rounded-base text-sm px-4 py-2.5 focus:outline-none"
+                >
+                  New Listing
+                </button>
+                <button
+                  onClick={() => navigate("/orders")}
+                  className="hidden sm:flex items-center text-neutral-primary bg-amber-600  rounded-xl hover:bg-amber-700 focus:ring-2 focus:ring-accent-primary font-medium rounded-base text-sm px-4 py-2.5 focus:outline-none"
+                >
+                  Orders
+                </button>
+              </div>
             )}
 
             <div className="flex gap-2">
