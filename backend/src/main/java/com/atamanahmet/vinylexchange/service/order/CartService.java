@@ -294,8 +294,6 @@ public class CartService {
                     .orderQuantity(cartItem.getOrderQuantity())
                     .createdAt(cartItem.getCreatedAt())
                     .itemTotalPriceKurus(listing.getPriceKurus() * cartItem.getOrderQuantity())
-                    .discountPerUnit(listing.getDiscountBP())
-                    .discountedTotalPrice(listing.getDiscountedPriceKurus() * cartItem.getOrderQuantity())
                     .mainImagePath(fileStorageService.getMainImagePath(listing.getId()))
                     .build();
 
