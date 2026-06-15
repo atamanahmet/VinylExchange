@@ -1,7 +1,8 @@
-package com.atamanahmet.vinylexchange.service.listing;
+package com.atamanahmet.vinylexchange.infrastructure.search.service;
 
 import java.io.IOException;
 
+import lombok.extern.slf4j.Slf4j;
 import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.action.index.IndexRequest;
@@ -19,22 +20,28 @@ import com.atamanahmet.vinylexchange.domain.entity.Listing;
 
 import lombok.RequiredArgsConstructor;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
-public class ListingIndexService {
+public class OpenSearchIndexService {
 
-    private final Logger log = LoggerFactory.getLogger(ListingIndexService.class);
 
     private final RestHighLevelClient openSearchClient;
     private final ObjectMapper objectMapper;
-    private final String INDEX_NAME = "listings";
+    private final SearchHealthIndicator searchHealthIndicator;
+
+    private static final String INDEX_NAME = "listings";
 
     @Async
     public void indexListing(Listing listing) {
+
+        if (!searchHealthIndicator.isOpenSearchAvailable()) {
+            log.debug("index_skipped listing_id={} reason=opensearch_unavailable", listing.getId());
+            return;
+        }
+
         try {
-
             ListingDocument listingDocument = convertToDocument(listing);
-
             String documentJson = objectMapper.writeValueAsString(listingDocument);
 
             IndexRequest indexRequest = new IndexRequest(INDEX_NAME)
@@ -43,10 +50,10 @@ public class ListingIndexService {
 
             IndexResponse indexResponse = openSearchClient.index(indexRequest, RequestOptions.DEFAULT);
 
-            log.info("Listing indexed for id {}: result: {}", indexResponse.getId(), indexResponse.getResult());
+            log.info("index_success listing_id={} result={}", indexResponse.getId(), indexResponse.getResult());
 
         } catch (IOException e) {
-            log.error("Failed to index listing {}: {}", listing.getTitle(), e.getMessage(), e);
+            log.error("index_failed listing_id={} reason={}", listing.getId(), e.getMessage(), e);
         }
     }
 
@@ -67,5 +74,4 @@ public class ListingIndexService {
                 .createdAt(listing.getCreatedAt())
                 .build();
     }
-
 }

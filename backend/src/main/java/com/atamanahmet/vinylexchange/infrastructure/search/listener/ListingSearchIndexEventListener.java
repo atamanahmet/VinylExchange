@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-import com.atamanahmet.vinylexchange.service.listing.ListingIndexService;
+import com.atamanahmet.vinylexchange.infrastructure.search.service.OpenSearchIndexService;
 import com.atamanahmet.vinylexchange.event.ListingCreatedEvent;
 import com.atamanahmet.vinylexchange.event.ListingUpdatedEvent;
 
@@ -15,18 +15,18 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ListingSearchIndexEventListener {
 
-    private final ListingIndexService listingIndexService;
+    private final OpenSearchIndexService openSearchIndexService;
 
     @Async
     @TransactionalEventListener(classes = ListingCreatedEvent.class, phase = TransactionPhase.AFTER_COMMIT)
     public void onListingCreated(ListingCreatedEvent creationEvent) {
-        listingIndexService.indexListing(creationEvent.getListing());
+        openSearchIndexService.indexListing(creationEvent.getListing());
     }
 
     @Async
     @TransactionalEventListener(classes = ListingUpdatedEvent.class, phase = TransactionPhase.AFTER_COMMIT)
     public void onListingUpdated(ListingUpdatedEvent updateEvent) {
-        listingIndexService.indexListing(updateEvent.getListing());
+        openSearchIndexService.indexListing(updateEvent.getListing());
     }
 
 }
