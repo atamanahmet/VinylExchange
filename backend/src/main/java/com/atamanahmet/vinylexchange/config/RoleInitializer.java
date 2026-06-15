@@ -2,6 +2,7 @@ package com.atamanahmet.vinylexchange.config;
 
 import java.util.Map;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;
@@ -17,9 +18,14 @@ import com.atamanahmet.vinylexchange.service.user.UserService;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Runs on every startup before demo data init.
+ * Seeds roles into DB if not present. Required for user registration to work.
+ */
 @Component
 @Slf4j
 @Order(1)
+@RequiredArgsConstructor
 public class RoleInitializer implements ApplicationRunner {
 
         private final RoleService roleService;
@@ -30,17 +36,6 @@ public class RoleInitializer implements ApplicationRunner {
                         RoleName.ROLE_USER, "Regular user with basic permissions",
                         RoleName.ROLE_ADMIN, "Administrator with full system access",
                         RoleName.ROLE_MODERATOR, "Moderator with content management permissions");
-
-        public RoleInitializer(
-                        RoleService roleService,
-                        AuthService authService,
-                        UserService userService) {
-
-                this.roleService = roleService;
-                this.authService = authService;
-                this.userService = userService;
-
-        }
 
         @Override
         @Transactional
@@ -56,20 +51,11 @@ public class RoleInitializer implements ApplicationRunner {
                                                 .build();
                                 roleService.saveRole(role);
 
-                                log.info("Role created: " + roleName);
+                            log.info("Role created: {}", roleName);
                         } else {
-                                log.info("Role already exists: " + roleName);
+                            log.info("Role already exists: {}", roleName);
                         }
                 });
                 log.info("Role initialization completed.");
-
-                if (userService.existByUsername("admin")) {
-
-                        System.out.println("Givin admin roles = " +
-                                        authService.giveUserAdminRole("admin"));
-                } else {
-                        System.out.println("no admin");
-                }
-
         }
 }

@@ -102,7 +102,6 @@
 			<scope>test</scope>
 		</dependency>
 
-		<!-- Source: https://mvnrepository.com/artifact/io.github.darkxanter/webp-imageio -->
 		<dependency>
 			<groupId>io.github.darkxanter</groupId>
 			<artifactId>webp-imageio</artifactId>
@@ -110,7 +109,6 @@
 			<scope>compile</scope>
 		</dependency>
 
-		<!-- Source: https://mvnrepository.com/artifact/commons-io/commons-io -->
 		<dependency>
 			<groupId>commons-io</groupId>
 			<artifactId>commons-io</artifactId>
@@ -118,7 +116,6 @@
 			<scope>compile</scope>
 		</dependency>
 
-		<!-- Source: https://mvnrepository.com/artifact/org.mapstruct/mapstruct -->
 		<dependency>
 			<groupId>org.mapstruct</groupId>
 			<artifactId>mapstruct</artifactId>
@@ -126,22 +123,20 @@
 			<scope>compile</scope>
 		</dependency>
 
-		<!-- Source:
-		https://mvnrepository.com/artifact/org.opensearch.client/opensearch-rest-high-level-client -->
 		<dependency>
 			<groupId>org.opensearch.client</groupId>
 			<artifactId>opensearch-rest-high-level-client</artifactId>
 			<version>2.19.4</version>
 			<scope>compile</scope>
 		</dependency>
-		<!-- Source: https://mvnrepository.com/artifact/org.opensearch.client/opensearch-rest-client -->
+
 		<dependency>
 			<groupId>org.opensearch.client</groupId>
 			<artifactId>opensearch-rest-client</artifactId>
 			<version>2.19.4</version>
 			<scope>compile</scope>
 		</dependency>
-		<!-- for .env variables -->
+
 		<dependency>
 			<groupId>io.github.cdimascio</groupId>
 			<artifactId>dotenv-java</artifactId>
@@ -153,11 +148,19 @@
 			<artifactId>cloudinary-http5</artifactId>
 			<version>2.0.0</version>
 		</dependency>
+
 		<dependency>
 			<groupId>com.cloudinary</groupId>
 			<artifactId>cloudinary-taglib</artifactId>
 			<version>2.0.0</version>
 		</dependency>
+
+		<dependency>
+			<groupId>com.github.loki4j</groupId>
+			<artifactId>loki-logback-appender</artifactId>
+			<version>1.5.1</version>
+		</dependency>
+
 		<!-- <dependency>
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-core</artifactId>

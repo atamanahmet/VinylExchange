@@ -1,0 +1,27 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+server:
+  error:
+    include-message: always
+    include-binding-errors: always
+
+payment:
+  provider: mock
+  iyzico:
+    api-key: mock
+    secret-key: mock
+    base-url: mock
+    callback-url: mock
+
+opensearch:
+  password: ${OPENSEARCH_PASSWORD}
+# payment:
+#   provider: iyzico
+#   iyzico:
+#     api-key: ${IYZICO_API_KEY}
+#     secret-key: ${IYZICO_SECRET_KEY}
+#     base-url: ${IYZICO_BASE_URL}
+#     callback-url: ${IYZICO_CALLBACK_URL}

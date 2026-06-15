@@ -1,5 +1,15 @@
-HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+uploads/
 .env
+src/main/resources/application.yml
+.mvn/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
 
 ### STS ###
 .apt_generated
@@ -10,12 +20,6 @@ HELP.md
 .springBeans
 .sts4-cache
 
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
@@ -23,8 +27,4 @@ HELP.md
 /nbdist/
 /.nb-gradle/
 build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
-.vscode/
+EOF
