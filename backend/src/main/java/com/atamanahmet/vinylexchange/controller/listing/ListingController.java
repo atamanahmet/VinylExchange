@@ -1,18 +1,16 @@
 package com.atamanahmet.vinylexchange.controller.listing;
 
-import java.math.BigDecimal;
-
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import com.atamanahmet.vinylexchange.dto.*;
-import com.atamanahmet.vinylexchange.dto.listing.CreateListingRequest;
-import com.atamanahmet.vinylexchange.dto.listing.ListingDTO;
-import com.atamanahmet.vinylexchange.dto.listing.PromoteRequest;
-import com.atamanahmet.vinylexchange.dto.listing.UpdateListingRequest;
-import com.atamanahmet.vinylexchange.dto.order.PricePreviewRequest;
+import com.atamanahmet.vinylexchange.dto.listing.*;
+import com.atamanahmet.vinylexchange.dto.order.CartItemDTO;
 import com.atamanahmet.vinylexchange.service.listing.ListingService;
-import com.atamanahmet.vinylexchange.service.order.PricePreviewService;
+import com.atamanahmet.vinylexchange.service.order.CartService;
+import com.atamanahmet.vinylexchange.service.listing.PricePreviewService;
 import com.atamanahmet.vinylexchange.session.UserUtil;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -47,6 +45,7 @@ public class ListingController {
 
         private final ListingService listingService;
         private final PricePreviewService pricePreviewService;
+        private final CartService cartService;
 
         @GetMapping
         public ResponseEntity<?> getPublicListings(
@@ -72,6 +71,7 @@ public class ListingController {
         }
 
         // for admin actions only, promote, freeze, remove etc
+        // TODO: separate admin controller wip
         @PreAuthorize("hasRole('ADMIN')")
         @GetMapping("/all")
         public ResponseEntity<?> getAllListings() {
@@ -85,13 +85,18 @@ public class ListingController {
 
         @GetMapping("/promote")
         public ResponseEntity<?> getPromotedListingsForUser() {
-                User user = UserUtil.getCurrentUser();
 
-                List<ListingDTO> promoteListings = listingService.getFilteredPromotedListingDTOs(UserUtil.getCurrentUserId());
+                UUID userId = UserUtil.getCurrentUserId();
 
-                return ResponseEntity
-                                .status(HttpStatus.OK)
-                                .body(promoteListings);
+                Set<UUID> cartListingIds = cartService.getCartDTO(userId)
+                        .getItems()
+                        .stream()
+                        .map(CartItemDTO::getListingId)
+                        .collect(Collectors.toSet());
+
+                List<ListingDTO> promoted = listingService.getPromotedListingDTOs(cartListingIds);
+
+                return ResponseEntity.status(HttpStatus.OK).body(promoted);
         }
 
         @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -123,15 +128,13 @@ public class ListingController {
 
                 return ResponseEntity
                         .status(HttpStatus.OK)
-                        .build();
+                        .body(updatedListing);
         }
 
         @GetMapping("/{listingId}")
         public ResponseEntity<?> getListing(@PathVariable(name = "listingId", required = true) UUID listingId) {
 
                 ListingDTO listingDTO = listingService.getListingDTOById(listingId);
-
-                System.out.println(listingDTO.getStatus());
 
                 return ResponseEntity
                                 .status(HttpStatus.OK)
@@ -153,20 +156,12 @@ public class ListingController {
         }
 
         @PostMapping("/price/preview")
-        public ResponseEntity<BigDecimal> previewPrice(
-                        @RequestBody PricePreviewRequest pricePreviewRequestDTO) {
+        public ResponseEntity<ListingPriceResultDTO> previewPrice(
+                @RequestBody @Valid PricePreviewRequest request) {
 
-                BigDecimal previewPrice = new BigDecimal(0);
-
-                if (pricePreviewRequestDTO.priceTL() != null) {
-                        previewPrice = pricePreviewService.previewDiscountedPrice(
-                                        pricePreviewRequestDTO.priceTL(),
-                                        pricePreviewRequestDTO.discountPercent());
-                }
                 return ResponseEntity
-                                .status(HttpStatus.OK)
-                                .body(previewPrice);
-
+                        .status(HttpStatus.OK)
+                        .body(pricePreviewService.preview(request));
         }
 
         // admin

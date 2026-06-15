@@ -1,427 +1,300 @@
 package com.atamanahmet.vinylexchange.service.listing;
 
-import java.io.IOException;
-import java.time.LocalDateTime;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
+import com.atamanahmet.vinylexchange.common.money.ListingPriceCalculator;
 import com.atamanahmet.vinylexchange.domain.entity.Listing;
+import com.atamanahmet.vinylexchange.domain.entity.ListingImage;
+import com.atamanahmet.vinylexchange.domain.enums.ListingStatus;
 import com.atamanahmet.vinylexchange.dto.listing.CreateListingRequest;
 import com.atamanahmet.vinylexchange.dto.listing.ListingDTO;
 import com.atamanahmet.vinylexchange.dto.listing.UpdateListingRequest;
-import com.atamanahmet.vinylexchange.dto.order.CartItemDTO;
-import com.atamanahmet.vinylexchange.dto.user.TradePreferenceDTO;
-import com.atamanahmet.vinylexchange.exception.*;
+import com.atamanahmet.vinylexchange.event.ListingCreatedEvent;
+import com.atamanahmet.vinylexchange.event.ListingUpdatedEvent;
+import com.atamanahmet.vinylexchange.exception.InsufficientStockException;
+import com.atamanahmet.vinylexchange.exception.InvalidOrderOperationException;
+import com.atamanahmet.vinylexchange.exception.ListingCreationException;
+import com.atamanahmet.vinylexchange.exception.ListingNotFoundException;
+import com.atamanahmet.vinylexchange.exception.UnauthorizedActionException;
+import com.atamanahmet.vinylexchange.infrastructure.ImageSource;
+import com.atamanahmet.vinylexchange.infrastructure.ImageUploadResult;
 import com.atamanahmet.vinylexchange.mapper.ListingMapper;
 import com.atamanahmet.vinylexchange.repository.listing.ListingRepository;
-import com.atamanahmet.vinylexchange.service.order.CartService;
+import com.atamanahmet.vinylexchange.security.principal.UserDetailsImpl;
 import com.atamanahmet.vinylexchange.service.media.CoverArtService;
-import com.atamanahmet.vinylexchange.service.media.FileStorageService;
+import com.atamanahmet.vinylexchange.service.media.ImageStorageRouter;
+import com.atamanahmet.vinylexchange.service.order.OrderAccessService;
 import com.atamanahmet.vinylexchange.session.UserUtil;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.reactive.function.client.WebClient;
 
-import com.atamanahmet.vinylexchange.domain.enums.ListingStatus;
-import com.atamanahmet.vinylexchange.event.ListingCreatedEvent;
-import com.atamanahmet.vinylexchange.event.ListingUpdatedEvent;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
-import com.atamanahmet.vinylexchange.domain.entity.User;
-import com.atamanahmet.vinylexchange.security.principal.UserDetailsImpl;
-
-import com.atamanahmet.vinylexchange.infrastructure.ImageSource;
-import com.atamanahmet.vinylexchange.domain.entity.TradePreference;
-
-import jakarta.transaction.Transactional;
-
+@Slf4j
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class ListingService {
 
-    private final Logger logger = LoggerFactory.getLogger(ListingService.class);
-
     private final ListingRepository listingRepository;
-    private final FileStorageService fileStorageService;
-    private final CartService cartService;
-    private final CoverArtService coverArtService;
-
-    // publish event to wishlist check -> send notification
-    private final ApplicationEventPublisher eventPublisher;
-
     private final ListingMapper listingMapper;
+    private final ListingPriceHistoryService listingPriceHistoryService;
+    private final OrderAccessService orderAccessService;
+    private final ImageStorageRouter imageStorageRouter;
+    private final CoverArtService coverArtService;
+    private final ApplicationEventPublisher eventPublisher;
+    private final ListingPriceCalculator priceCalculator;
 
-    public ListingService(
-            ListingRepository listingRepository,
-            FileStorageService fileStorageService,
-            @Lazy CartService cartService,
-            WebClient webClient,
-            CoverArtService coverArtService,
-            ApplicationEventPublisher eventPublisher,
-            ListingMapper listingMapper) {
-
-        this.listingRepository = listingRepository;
-        this.fileStorageService = fileStorageService;
-        this.cartService = cartService;
-        this.coverArtService = coverArtService;
-        this.eventPublisher = eventPublisher;
-        this.listingMapper = listingMapper;
-    }
-
-    public List<Listing> getAllListings() {
-
-        return listingRepository.findAll();
-    }
-
-    public Page<Listing> getAllListingsPageable(Pageable pageable) {
-
-        return listingRepository.findAll(pageable);
-    }
-
-    public Page<ListingDTO> getAllAvailableListings(Pageable pageable) {
-
-        Page<Listing> listingsPage = listingRepository.findAllWithStatus(ListingStatus.AVAILABLE, pageable);
-
-        return listingsPage.map(this::toDTO);
+    public Page<ListingDTO> getPublicListings(Pageable pageable) {
+        return listingRepository.findAllWithStatus(ListingStatus.AVAILABLE, pageable)
+                .map(listingMapper::toDTO);
     }
 
     public Page<ListingDTO> getAllAvailableListingsByUser(String username, Pageable pageable) {
-
-        Page<Listing> listingsPage = listingRepository.findAllWithStatusAndUsername(ListingStatus.AVAILABLE, username, pageable);
-
-        return listingsPage.map(this::toDTO);
+        return listingRepository.findAllWithStatusAndUsername(ListingStatus.AVAILABLE, username, pageable)
+                .map(listingMapper::toDTO);
     }
 
-    public Page<ListingDTO> getPublicListings(Pageable pageable) {
-
-        Page<Listing> listingsPage = listingRepository.findAllWithStatus(ListingStatus.AVAILABLE, pageable);
-
-        return listingsPage.map(this::toDTO);
+    /**
+     * Detail page, full images via join fetch
+     */
+    public ListingDTO getListingDTOById(UUID listingId) {
+        Listing listing = listingRepository.findByIdWithImages(listingId)
+                .orElseThrow(ListingNotFoundException::new);
+        Integer discountPercent = priceCalculator.discountPercent(
+                listing.getOriginalPriceKurus(),
+                listing.getPriceKurus(),
+                listing.getPriceLastChangedAt()).orElse(null);
+        return listingMapper.toDTOWithImages(listing, discountPercent);
     }
 
-    public List<Listing> getPromotedListings() {
-
-        return listingRepository.findByPromoteTrue();
-    }
-
-    public List<ListingDTO> getFilteredPromotedListingDTOs(UUID userId) {
-
-        Set<UUID> cartListingIds = cartService
-                .getCartDTO(userId)
-                .getItems()
+    /**
+     * Returns promoted listings excluding ones already in cart
+     */
+    public List<ListingDTO> getPromotedListingDTOs(Set<UUID> excludeListingIds) {
+        return listingRepository.findByPromoteTrue()
                 .stream()
-                .map(CartItemDTO::getListingId).collect(Collectors.toSet());
+                .filter(listing -> !excludeListingIds.contains(listing.getId()))
+                .limit(5)
+                .map(listingMapper::toDTO)
+                .toList();
+    }
 
-        if (cartListingIds.isEmpty()) {
-            return List.of();
+    @Transactional
+    public void createNewListing(
+            CreateListingRequest request,
+            List<MultipartFile> images,
+            com.atamanahmet.vinylexchange.domain.entity.User owner) {
+
+        try {
+            Listing listing = listingMapper.toEntity(request);
+            listing.setOwner(owner);
+
+            Listing savedListing = listingRepository.save(listing);
+            listingPriceHistoryService.recordCreation(savedListing, owner.getId().toString());
+
+            if (images != null && !images.isEmpty()) {
+                List<ImageUploadResult> results = imageStorageRouter.upload(
+                        toImageSources(images), savedListing.getId());
+                attachImages(savedListing, results);
+                listingRepository.save(savedListing);
+            }
+
+            eventPublisher.publishEvent(
+                    ListingCreatedEvent.builder().listing(savedListing).build());
+
+        } catch (Exception e) {
+            log.error("Listing creation failed for user {}: {}", owner.getUsername(), e.getMessage());
+            throw new ListingCreationException("Listing creation failed for user: ", owner.getUsername());
+        }
+    }
+
+    @Transactional
+    public ListingDTO updateListing(
+            UUID listingId,
+            UpdateListingRequest request,
+            List<MultipartFile> newImages,
+            UUID userId) {
+
+        Listing existingListing = listingRepository.findByIdWithImages(listingId)
+                .orElseThrow(ListingNotFoundException::new);
+
+        if (!existingListing.getOwner().getId().equals(userId)) {
+            throw new UnauthorizedActionException("Listing update unauthorized for userId: " + userId);
         }
 
-        List<Listing> promotedListings = listingRepository.findByPromoteTrue();
+        boolean isPriceUpdate = request.getPriceKurus() != null || request.getSellerEarningsKurus() != null;
 
-        // only first 3 item to fit in cartPage
-        List<Listing> filteredPromotedList = promotedListings.stream()
-                .filter(listing -> !cartListingIds.contains(listing.getId()))
-                .limit(5)
+        if (isPriceUpdate && orderAccessService.hasActiveOrderForListing(listingId)) {
+            throw new InvalidOrderOperationException(
+                    "Cannot update listing price while an active order exists for listingId: " + listingId);
+        }
+
+        try {
+            handleImageUpdates(existingListing, request.getImagePaths(), newImages);
+
+            long oldPrice = existingListing.getPriceKurus();
+            long oldSellerEarnings = existingListing.getSellerEarningsKurus();
+            long oldPlatformCut = existingListing.getPlatformCutKurus();
+
+            listingMapper.updateEntityFromRequest(existingListing, request);
+            if (isPriceUpdate) {
+                existingListing.setPriceLastChangedAt(LocalDateTime.now());
+            }
+            Listing savedListing = listingRepository.save(existingListing);
+
+            if (isPriceUpdate) {
+                listingPriceHistoryService.recordUpdate(
+                        savedListing, oldPrice, oldSellerEarnings, oldPlatformCut, userId.toString());
+            }
+
+            eventPublisher.publishEvent(
+                    ListingUpdatedEvent.builder().listing(savedListing).build());
+
+            Integer discountPercent = priceCalculator.discountPercent(
+                    savedListing.getOriginalPriceKurus(),
+                    savedListing.getPriceKurus(),
+                    savedListing.getPriceLastChangedAt()).orElse(null);
+            return listingMapper.toDTOWithImages(savedListing, discountPercent);
+
+        } catch (Exception e) {
+            log.error("Error updating listing {}: {}", listingId, e.getMessage());
+            throw new ListingCreationException("Listing update failed for listingId: ", listingId.toString());
+        }
+    }
+
+    public void deleteListing(UUID listingId) {
+        UUID userId = UserUtil.getCurrentUserId();
+
+        Listing existingListing = listingRepository.findByIdWithImages(listingId)
+                .orElseThrow(ListingNotFoundException::new);
+
+        if (!existingListing.getOwner().getId().equals(userId)) {
+            log.warn("Unauthorized delete attempt by userId: {}", userId);
+            throw new UnauthorizedActionException("Users can only delete their own listings.");
+        }
+
+        imageStorageRouter.deleteAll(existingListing.getImages());
+        listingRepository.delete(existingListing);
+    }
+
+    /**
+     * Deletes removed images from storage, uploads new ones
+     * Removes images not in keptUrls, keeps mainImageUrl in sync
+     */
+    private void handleImageUpdates(
+            Listing listing,
+            List<String> keptUrls,
+            List<MultipartFile> newImages) throws IOException {
+
+        List<ListingImage> toDelete = listing.getImages().stream()
+                .filter(img -> keptUrls == null || !keptUrls.contains(img.getSecureUrl()))
                 .toList();
 
-        return filteredPromotedList.stream()
-                .map(this::toDTO)
-                .toList();
+        toDelete.forEach(img -> {
+            imageStorageRouter.delete(img);
+            listing.getImages().remove(img);
+        });
+
+        if (newImages != null && !newImages.isEmpty()) {
+            int nextPosition = listing.getImages().size();
+            List<ImageUploadResult> results = imageStorageRouter.upload(
+                    toImageSources(newImages), listing.getId());
+
+            for (ImageUploadResult result : results) {
+                listing.getImages().add(ListingImage.builder()
+                        .publicId(result.getPublicId())
+                        .secureUrl(result.getSecureUrl())
+                        .position(nextPosition++)
+                        .provider(result.getProvider())
+                        .uploadedAt(LocalDateTime.now())
+                        .listing(listing)
+                        .build());
+            }
+        }
+
+        listing.setMainImageUrl(listing.getImages().isEmpty()
+                ? null
+                : listing.getImages().get(0).getSecureUrl());
+    }
+
+    /**
+     * Attaches uploaded results to listing, sets mainImageUrl from first image
+     */
+    private void attachImages(Listing listing, List<ImageUploadResult> results) {
+        for (ImageUploadResult result : results) {
+            listing.getImages().add(ListingImage.builder()
+                    .publicId(result.getPublicId())
+                    .secureUrl(result.getSecureUrl())
+                    .position(result.getPosition())
+                    .provider(result.getProvider())
+                    .uploadedAt(LocalDateTime.now())
+                    .listing(listing)
+                    .build());
+        }
+
+        if (!listing.getImages().isEmpty()) {
+            listing.setMainImageUrl(listing.getImages().get(0).getSecureUrl());
+        }
+    }
+
+    private List<ImageSource> toImageSources(List<MultipartFile> files) {
+        return files.stream().map(file -> {
+            try {
+                return new ImageSource(
+                        file.getInputStream(),
+                        file.getOriginalFilename(),
+                        file.getContentType(),
+                        file.getSize());
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to read uploaded file: " + e.getMessage());
+            }
+        }).toList();
+    }
+
+    public Listing findListingById(UUID listingId) {
+        return listingRepository.findById(listingId)
+                .orElseThrow(ListingNotFoundException::new);
+    }
+
+    public List<Listing> getListingsByIdsWithLock(List<UUID> listingIds) {
+        return listingRepository.findByIdInWithLock(listingIds);
+    }
+
+    public List<Listing> getListingsByIds(List<UUID> listingIds) {
+        return listingRepository.findAllByIdIn(listingIds);
+    }
+
+    public List<ListingDTO> getListingDTOsWithIds(List<UUID> listingIdList) {
+        return listingRepository.findAllByIdIn(listingIdList)
+                .stream().map(listingMapper::toDTO).toList();
+    }
+
+    public List<ListingDTO> getUserListingsWithStatus(UUID ownerId, ListingStatus status) {
+        return listingRepository.findAllByOwner_IdAndStatus(ownerId, status)
+                .stream().map(listingMapper::toDTO).toList();
     }
 
     public void saveAllListing(List<Listing> listingList) {
         listingRepository.saveAll(listingList);
     }
 
-    public List<Listing> getListingsByIds(List<UUID> listingIds) {
-
-        return listingRepository.findAllByIdIn(listingIds);
-    }
-
-    public List<Listing> getListingsByIdsWithLock(List<UUID> listingIds) {
-
-        return listingRepository.findAllByIdIn(listingIds);
-    }
-
-    public List<ListingDTO> getListingDTOsWithIds(List<UUID> listingIdList) {
-
-        List<Listing> resultListings = listingRepository.findAllByIdIn(listingIdList);
-
-        return toDTOList(resultListings);
-    }
-
-    // Admin only, maybe unnecessary
-    // TODO: check again
-    public List<ListingDTO> getAllListingsDTOs() {
-
-        List<Listing> allListings = listingRepository.findAll();
-
-        return toDTOList(allListings);
-    }
-
     public Listing saveListing(Listing listing) {
-
         return listingRepository.save(listing);
-    }
-
-    public void deleteListing(UUID listingId) {
-
-        UUID userId = UserUtil.getCurrentUserId();
-
-        Listing existingListing = listingRepository.findById(listingId).orElseThrow(ListingNotFoundException::new);
-
-
-        if (!existingListing.getOwner().getId().equals(userId)) {
-
-            logger.warn("Listing delete unauthorized, action caused by userId: " + userId);
-
-            throw new UnauthorizedActionException("Users only delete their own listings.");
-        }
-
-        listingRepository.delete(existingListing);
-
-        try{
-            fileStorageService.deleteListingImages(listingId);
-
-        } catch (Exception e) {
-            logger.error("Listing files deletion failed for id: {} ", listingId);
-            throw new RuntimeException(e);
-        }
-
-    }
-
-    public Listing findListingById(UUID listingId) {
-
-        return listingRepository
-                .findById(listingId)
-                .orElseThrow(ListingNotFoundException::new);
     }
 
     public long totalCount() {
         return listingRepository.count();
-    }
-
-    // TODO: refactor
-    @Transactional
-    public void createNewListing(
-            CreateListingRequest request,
-            List<MultipartFile> images,
-            User owner) {
-
-        try {
-
-            Listing listing = listingMapper.toEntity(request);
-
-            listing.setOwner(owner);
-
-
-            Listing savedListing = listingRepository.save(listing);
-
-            if (images != null && !images.isEmpty()) {
-                handleImageUpload(savedListing.getId(), images);
-            }
-
-            if (listing.getMbId() != null) {
-                coverArtService.fetchAndSaveCoverAsync(
-                        savedListing.getId(),
-                        listing.getMbId());
-            }
-
-            eventPublisher.publishEvent(
-                    ListingCreatedEvent.builder()
-                            .listing(savedListing).build());
-
-        } catch (Exception e) {
-            throw new ListingCreationException("Listing creation failed for user: ", owner.getUsername());
-        }
-    }
-
-    private void handleImageUpload(UUID listingId, List<MultipartFile> images) {
-        try {
-            List<ImageSource> imageSources = images.stream()
-                    .map(this::convertToImageSource)
-                    .toList();
-
-            fileStorageService.saveImages(imageSources, listingId);
-
-        } catch (IOException e) {
-            logger.error("Failed to upload images for listing {}", listingId, e);
-            throw new ImageUploadException("Failed to upload images");
-        }
-    }
-
-    // for exception catch, constructor wont catch
-    public ImageSource convertToImageSource(MultipartFile image) {
-        try {
-            return new ImageSource(
-                    image.getInputStream(),
-                    image.getOriginalFilename(),
-                    image.getContentType(),
-                    image.getSize());
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to read uploaded image to ImageSource: " + e.getMessage());
-        }
-    }
-
-    public List<ImageSource> getImageSourceList(List<MultipartFile> images) {
-        List<ImageSource> imageSources = new ArrayList<>();
-
-        for (MultipartFile image : images) {
-            imageSources.add(
-                    convertToImageSource(image));
-        }
-
-        return imageSources;
-    }
-
-    @Transactional
-    public ListingDTO updateListing(UUID listingId, UpdateListingRequest request, List<MultipartFile> newImages, UUID userId) {
-
-        Listing existingListing = listingRepository.findById(listingId)
-                .orElseThrow(ListingNotFoundException::new);
-
-        // Security check
-        if (!existingListing.getOwner().getId().equals(userId)) {
-            throw new UnauthorizedActionException("Listing update unauthorized, action caused by userId: " + userId);
-        }
-
-        try {
-            handleImageUpdates(listingId, request.getImagePaths(), newImages);
-
-            listingMapper.updateEntityFromRequest(existingListing, request);
-
-            Listing savedListing = listingRepository.save(existingListing);
-
-            eventPublisher.publishEvent(
-                    ListingUpdatedEvent.builder().listing(savedListing).build()
-            );
-
-            return toDTO(savedListing);
-
-        } catch (Exception e) {
-            System.out.println("Error updating listing: " + e.getMessage());
-            throw new RuntimeException(e);
-        }
-    }
-
-    /// gets old images, check deleted, add new images
-    private void handleImageUpdates(UUID listingId, List<String> keptImageUrls, List<MultipartFile> newImages) {
-
-        try {
-
-            List<String> currentImageUrls = fileStorageService.getListingImagePaths(listingId);
-
-            List<String> imagesToDelete = currentImageUrls.stream()
-                    .filter(url -> keptImageUrls == null || !keptImageUrls.contains(url))
-                    .toList();
-
-            for (String urlToDelete : imagesToDelete) {
-                String filename = urlToDelete.substring(urlToDelete.lastIndexOf("/") + 1);
-                try {
-                    fileStorageService.deleteImage(listingId, filename);
-                } catch (Exception e) {
-                    System.out.println("Failed to delete image: " + filename);
-                }
-            }
-
-            if (newImages != null && !newImages.isEmpty()) {
-                List<ImageSource> imageSources = getImageSourceList(newImages);
-                fileStorageService.saveImages(imageSources, listingId);
-            }
-        } catch (Exception e) {
-            System.out.println("Error handling image updates: " + e.getMessage());
-            throw new RuntimeException(e);
-        }
-    }
-
-    // clear old, put new
-    private void updateTradePreferences(Listing existingListing, List<TradePreferenceDTO> tradePreferenceDTOs) {
-        existingListing.getTradePreferences().clear();
-
-        if (tradePreferenceDTOs != null && !tradePreferenceDTOs.isEmpty()) {
-            tradePreferenceDTOs.forEach(prefDTO -> {
-                TradePreference pref = new TradePreference();
-                pref.setDesiredItem(prefDTO.getDesiredItem());
-                pref.setExtraAmount(prefDTO.getExtraAmount());
-                pref.setPaymentDirection(prefDTO.getPaymentDirection());
-                pref.setListing(existingListing);
-                existingListing.getTradePreferences().add(pref);
-            });
-        }
-    }
-
-    public List<ListingDTO> getUserListingsWithStatus(UUID ownerId, ListingStatus status) {
-
-        List<Listing> userListings = listingRepository.findAllByOwner_IdAndStatus(ownerId, status);
-
-        if (userListings == null || userListings.isEmpty())
-            return List.of();
-
-        return userListings.stream()
-                .map(this::toDTO)
-                .toList();
-    }
-
-    public ListingDTO getListingDTOById(UUID listingId) {
-
-        Listing listing = listingRepository
-                .findById(listingId)
-                .orElseThrow(ListingNotFoundException::new);
-
-        return toDTO(listing);
-    }
-
-
-    // TODO: remove, admin panel
-    public void promoteListing(UUID listingId, Boolean action, UserDetailsImpl currentUser) {
-
-        Listing listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> new ListingNotFoundException("Listing not found to promote"));
-
-        listing.setPromote(action);
-        listing.setPromotedBy(currentUser.getUsername());
-        listing.setPromotedById(currentUser.getId());
-        listing.setPromotedAt(LocalDateTime.now());
-
-        listingRepository.save(listing);
-    }
-
-    public void freezeListing(UUID listingId, Boolean action, UserDetailsImpl currentUser) {
-
-        Listing listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> new ListingNotFoundException("Listing not found to freeze"));
-
-        listing.setOnHold(action);
-        // listing.setPromotedBy(currentUser.getUsername());
-        // listing.setPromotedById(currentUser.getId());
-        // listing.setPromotedAt(LocalDateTime.now());
-
-        listingRepository.save(listing);
-    }
-
-    public void decreaseItemQuantity(UUID listingId, int quantity) {
-
-        Listing listing = listingRepository.findById(listingId)
-                .orElseThrow(ListingNotFoundException::new);
-
-        if (!listing.hasEnoughStock(quantity)) {
-            throw new InsufficientStockException();
-        }
-
-        listing.setStockQuantity(listing.getStockQuantity() - quantity);
-
-        listingRepository.save(listing);
-
     }
 
     public boolean isExistByTitle(String title) {
@@ -433,79 +306,49 @@ public class ListingService {
     }
 
     public String getOwnerUsernameByListingId(UUID listingId) {
+        return findListingById(listingId).getOwner().getUsername();
+    }
 
+    public void decreaseItemQuantity(UUID listingId, int quantity) {
+        Listing listing = findListingById(listingId);
+        if (!listing.hasEnoughStock(quantity)) throw new InsufficientStockException();
+        listing.setStockQuantity(listing.getStockQuantity() - quantity);
+        listingRepository.save(listing);
+    }
+
+    public void restoreStock(UUID listingId, int quantity) {
         Listing listing = listingRepository.findById(listingId)
-                .orElseThrow(ListingNotFoundException::new);
+                .orElseThrow(() -> new ListingNotFoundException("Listing not found for restock"));
+        listing.setStockQuantity(listing.getStockQuantity() + quantity);
+        listingRepository.save(listing);
+    }
 
-        return listing.getOwner().getUsername();
+    public void promoteListing(UUID listingId, Boolean action, UserDetailsImpl currentUser) {
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new ListingNotFoundException("Listing not found to promote"));
+        listing.setPromote(action);
+        listing.setPromotedBy(currentUser.getUsername());
+        listing.setPromotedById(currentUser.getId());
+        listing.setPromotedAt(LocalDateTime.now());
+        listingRepository.save(listing);
+    }
+
+    public void freezeListing(UUID listingId, Boolean action, UserDetailsImpl currentUser) {
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new ListingNotFoundException("Listing not found to freeze"));
+        listing.setOnHold(action);
+        listingRepository.save(listing);
+    }
+
+    public List<Listing> getPromotedListings() {
+        return listingRepository.findByPromoteTrue();
     }
 
     public List<ListingDTO> getAllListingDTOs() {
-
-        List<Listing> listings = getAllListings();
-
-        return listings.stream()
-                .map(this::toDTO)
-                .toList();
+        return listingRepository.findAll().stream().map(listingMapper::toDTO).toList();
     }
 
-    public List<String> getImagePaths(UUID listingId){
-        return fileStorageService.getListingImagePaths(listingId);
+    public Page<Listing> getAllListingsPageable(Pageable pageable) {
+        return listingRepository.findAll(pageable);
     }
-
-
-    public void restoreStock(UUID listingId, int quantity) {
-
-        Listing listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> new ListingNotFoundException("Listing not found for restock"));
-
-        listing.setStockQuantity(listing.getStockQuantity() + quantity);
-
-        listingRepository.save(listing);
-
-    }
-
-    /**
-     * Private helper: fetches images and converts to DTO
-     * Centralizes the repetitive pattern
-     */
-    private ListingDTO toDTO(Listing listing) {
-
-        List<String> imagePaths = getImagePaths(listing);
-
-        if(imagePaths.isEmpty()){
-            imagePaths= getPlaceholderImagePath(listing.getMbId());
-        }
-        return listingMapper.toDTO(listing, imagePaths);
-    }
-
-    /**
-     * Private helper: if user didnt provide images, fetch placeholder image from mbId
-     */
-    private List<String> getPlaceholderImagePath(UUID mbId){
-        return fileStorageService.getPlaceholderImagePaths(mbId);
-    }
-
-    /**
-     * Private helper: batch conversion
-     */
-    private List<ListingDTO> toDTOList(List<Listing> listings) {
-        return listings.stream()
-                .map(this::toDTO)
-                .toList();
-    }
-
-    /**
-     * Private helper: fetch image paths with fallback epmty list
-     */
-    private List<String> getImagePaths(Listing listing) {
-        List<String> imagePaths = fileStorageService.getListingImagePaths(listing.getId());
-
-        if ((imagePaths == null || imagePaths.isEmpty()) && listing.getMbId() != null) {
-            imagePaths = fileStorageService.getListingImagePaths(listing.getMbId());
-        }
-
-        return imagePaths != null ? imagePaths : List.of();
-    }
-
 }

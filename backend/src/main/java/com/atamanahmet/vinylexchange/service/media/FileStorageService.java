@@ -20,6 +20,7 @@ import java.util.stream.Stream;
 
 import com.atamanahmet.vinylexchange.infrastructure.CompressedImage;
 import com.atamanahmet.vinylexchange.infrastructure.ImageSource;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.tomcat.util.http.fileupload.FileUtils;
 
 import org.slf4j.Logger;
@@ -33,6 +34,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import lombok.RequiredArgsConstructor;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class FileStorageService {
 
@@ -45,15 +47,14 @@ public class FileStorageService {
     @Value("${app.base-url}")
     private String BASE_URL;
 
-    private final Logger logger = LoggerFactory.getLogger(FileStorageService.class);
 
     private final ImageCompressionService imageCompressionService;
     private final WebClient webClient;
 
-    // *
-    // For users that didnt upload any image,
-    // coverart-archive placeholder downloader
-    // */
+    /**
+    * For users that didnt upload any image,
+    * coverart-archive placeholder downloader
+    */
     public List<String> saveImageFromUrl(String imageUrl, UUID listingId) throws IOException {
 
         if (imageUrl == null) {
@@ -64,9 +65,6 @@ public class FileStorageService {
 
         List<CompressedImage> compressedImages = imageCompressionService.compressImages(List.of(imageSource));
 
-//        if (imageSource == null) {
-//            return List.of();
-//        }
 
         return saveCompressedImages(compressedImages, listingId);
 
@@ -108,7 +106,7 @@ public class FileStorageService {
                 savedPaths.add(fullPath);
 
             } catch (IOException e) {
-                System.out.println("Directory creating or file write exception: " + e.getMessage());
+                log.error("Directory create or file write failed: {}", e.getMessage());
                 throw new RuntimeException("COmpressed images save failed: " + e.getMessage());
             }
         }
@@ -120,7 +118,7 @@ public class FileStorageService {
         Path listingFolder = Paths.get(UPLOAD_LISTING_DIR).resolve(listingId.toString()).toAbsolutePath();
 
         if (!Files.exists(listingFolder)) {
-            logger.debug("No image folder found for listing: {}", listingId);
+            log.debug("No image folder found for listing: {}", listingId);
             return Collections.emptyList();
         }
 
@@ -137,7 +135,7 @@ public class FileStorageService {
 
                     .collect(Collectors.toList());
         } catch (IOException e) {
-            logger.error("Failed to read images for listing {}: {}", listingId, e.getMessage());
+            log.error("Failed to read images for listing {}: {}", listingId, e.getMessage());
             return Collections.emptyList();
         }
     }
@@ -153,7 +151,7 @@ public class FileStorageService {
         }
 
         Files.deleteIfExists(imagePath);
-        logger.info("Deleted image {} for listing {}", filename, listingId);
+        log.info("Deleted image {} for listing {}", filename, listingId);
     }
 
     public List<CompressedImage> compressImages(List<ImageSource> images) {
@@ -161,7 +159,7 @@ public class FileStorageService {
             return imageCompressionService.compressImages(images);
 
         } catch (IOException e) {
-            logger.error("Error while compressing images: " + e.getMessage());
+            log.error("Error while compressing images: " + e.getMessage());
             throw new RuntimeException("Image compression failed;");
         }
     }
@@ -176,27 +174,20 @@ public class FileStorageService {
     }
 
     public void deleteListingImages(UUID listingId) {
-
-        Path listingFolder = Paths.get(UPLOAD_LISTING_DIR).resolve(listingId.toString()).toAbsolutePath();
+        Path listingFolder = Paths.get(UPLOAD_LISTING_DIR)
+                .resolve(listingId.toString())
+                .toAbsolutePath();
 
         if (!Files.exists(listingFolder)) {
-            logger.debug("No images to delete for listing: {}", listingId);
+            log.debug("No images to delete for listing: {}", listingId);
             return;
         }
 
-        try (Stream<Path> paths = Files.walk(listingFolder)) {
-            paths.sorted(Comparator.reverseOrder()) // deepest first
-                    .forEach(path -> {
-                        try {
-                            FileUtils.deleteDirectory(listingFolder.toFile());
-                            logger.info("Force deleted all images for listing: {}", listingId);
-                        } catch (IOException e) {
-                            logger.warn("Failed to force delete images for listing {}: {}", listingId, e.getMessage());
-                        }
-                    });
-            logger.info("Deleted all images for listing: {}", listingId);
+        try {
+            FileUtils.deleteDirectory(listingFolder.toFile());
+            log.info("Deleted all images for listing: {}", listingId);
         } catch (IOException e) {
-            logger.error("Failed to walk directory for listing {}: {}", listingId, e.getMessage());
+            log.error("Failed to delete images for listing {}: {}", listingId, e.getMessage());
         }
     }
 
@@ -205,7 +196,7 @@ public class FileStorageService {
         Path listingFolder = Paths.get(UPLOAD_LISTING_DIR).resolve(listingId.toString()).toAbsolutePath();
 
         if (!Files.exists(listingFolder)) {
-            logger.debug("No image folder found for listing: {}", listingId);
+            log.debug("No image folder found for listing: {}", listingId);
             return null;
         }
 
@@ -218,7 +209,7 @@ public class FileStorageService {
                     .map(path -> BASE_URL + "/uploads/listings/" + listingId + "/" + path.getFileName().toString())
                     .orElse(null); // null if no images found
         } catch (IOException e) {
-            logger.error("read eror for main image {}: {}", listingId, e.getMessage());
+            log.error("read eror for main image {}: {}", listingId, e.getMessage());
             return null;
         }
     }
@@ -257,38 +248,26 @@ public class FileStorageService {
                     bytes.length);
 
         } catch (Exception e) {
-            logger.warn("Image download failed: {}", imageUrl);
+            log.warn("Image download failed: {}", imageUrl);
             return null;
         }
     }
 
     public void savePlaceholderImage(ImageSource imageSource, UUID mbId) throws IOException {
-
-        if (imageSource == null) {
-            return;
-        }
+        if (imageSource == null) return;
 
         Path placeholderFolder = Paths.get(UPLOAD_PLACEHOLDER_DIR)
                 .resolve(mbId.toString())
                 .toAbsolutePath();
 
-        if (Files.exists(placeholderFolder)) {
-            return;
-        }
+        if (Files.exists(placeholderFolder)) return;
 
         Files.createDirectories(placeholderFolder);
 
-        String filename = imageSource.getOriginalFilename();
-
-        Path filePath = placeholderFolder.resolve(filename);
-
+        Path filePath = placeholderFolder.resolve(imageSource.getOriginalFilename());
         Files.copy(imageSource.getInputStream(), filePath);
 
-        String fullPath = BASE_URL + "/uploads/placeholders/"
-                + mbId + "/" + filename;
-
-        logger.info("Placeholder coverArt downloaded for mb id: {}", mbId);
-
+        log.info("Placeholder coverArt saved for mbId: {}", mbId);
     }
 
     public List<String> getPlaceholderImagePaths(UUID mbId) {
@@ -317,7 +296,7 @@ public class FileStorageService {
                     .collect(Collectors.toList());
 
         } catch (IOException e) {
-            logger.error("Failed to read placeholder images for mbId {}: {}", mbId, e.getMessage());
+            log.error("Failed to read placeholder images for mbId {}: {}", mbId, e.getMessage());
             return Collections.emptyList();
         }
     }

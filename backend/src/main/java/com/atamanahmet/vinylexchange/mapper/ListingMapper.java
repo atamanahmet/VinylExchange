@@ -1,13 +1,15 @@
 package com.atamanahmet.vinylexchange.mapper;
 
+import com.atamanahmet.vinylexchange.common.money.ListingPriceCalculator;
+import com.atamanahmet.vinylexchange.common.money.ListingPriceResult;
 import com.atamanahmet.vinylexchange.domain.entity.Listing;
+import com.atamanahmet.vinylexchange.domain.entity.ListingImage;
 import com.atamanahmet.vinylexchange.domain.entity.TradePreference;
 import com.atamanahmet.vinylexchange.dto.listing.CreateListingRequest;
 import com.atamanahmet.vinylexchange.dto.listing.ListingDTO;
 import com.atamanahmet.vinylexchange.dto.listing.UpdateListingRequest;
 import com.atamanahmet.vinylexchange.dto.user.TradePreferenceDTO;
 import com.atamanahmet.vinylexchange.dto.user.TradePreferenceRequest;
-import com.atamanahmet.vinylexchange.service.media.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -18,20 +20,26 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ListingMapper {
 
-    private final FileStorageService fileStorageService;
+    private final ListingPriceCalculator priceCalculator;
 
     /**
      * Converts CreateListingRequest to Listing entity
-     * Handles null trade preferences
+     * All three price fields and originalPriceKurus set from calculator
      */
     public Listing toEntity(CreateListingRequest request) {
+        ListingPriceResult price = request.getSellerEarningsKurus() != null
+                ? priceCalculator.fromSellerEarnings(request.getSellerEarningsKurus())
+                : priceCalculator.fromBuyerPrice(request.getPriceKurus());
 
         Listing listing = Listing.builder()
                 .title(request.getTitle())
                 .artistName(request.getArtistName())
                 .description(request.getDescription())
-                .priceKurus(request.getPriceKurus())
-                .discountBP(request.getDiscountBP())
+                .priceKurus(price.priceKurus())
+                .sellerEarningsKurus(price.sellerEarningsKurus())
+                .platformCutKurus(price.platformCutKurus())
+                .platformFeeBP(price.feeBP())
+                .originalPriceKurus(price.priceKurus())
                 .tradeable(request.getTradeable())
                 .tradeValue(request.getTradeValue())
                 .format(request.getFormat())
@@ -45,18 +53,15 @@ public class ListingMapper {
                 .mbId(request.getMbId())
                 .trackCount(request.getTrackCount())
                 .stockQuantity(request.getStockQuantity())
-                .tradePreferences(new ArrayList<>())  // Initialize with empty list
+                .tradePreferences(new ArrayList<>())
                 .build();
 
-        // Only add trade preferences if they exist
         if (request.getTradePreferences() != null && !request.getTradePreferences().isEmpty()) {
-
             request.getTradePreferences().forEach(prefRequest -> {
                 TradePreference pref = new TradePreference();
                 pref.setDesiredItem(prefRequest.getDesiredItem());
                 pref.setExtraAmount(prefRequest.getExtraAmount());
                 pref.setPaymentDirection(prefRequest.getPaymentDirection());
-
                 listing.addTradePreference(pref);
             });
         }
@@ -64,71 +69,64 @@ public class ListingMapper {
         return listing;
     }
 
+    /**
+     * Applies partial update from request onto existing entity
+     * Price fields delegated to calculator when either price input is present
+     */
     public void updateEntityFromRequest(Listing listing, UpdateListingRequest request) {
-        if (request.getTitle() != null) {
-            listing.setTitle(request.getTitle());
-        }
-        if (request.getArtistName() != null) {
-            listing.setArtistName(request.getArtistName());
-        }
-        if (request.getDescription() != null) {
-            listing.setDescription(request.getDescription());
-        }
-        if (request.getPriceKurus() != null) {
-            listing.setPriceKurus(request.getPriceKurus());
-        }
-        if (request.getDiscountBP() != null) {
-            listing.setDiscountBP(request.getDiscountBP());
-        }
-        if (request.getTradeable() != null) {
-            listing.setTradeable(request.getTradeable());
-        }
-        if (request.getTradeValue() != null) {
-            listing.setTradeValue(request.getTradeValue());
-        }
-        if (request.getFormat() != null) {
-            listing.setFormat(request.getFormat());
-        }
-        if (request.getCondition() != null) {
-            listing.setCondition(request.getCondition());
-        }
-        if (request.getPackaging() != null) {
-            listing.setPackaging(request.getPackaging());
-        }
-        if (request.getYear() != null) {
-            listing.setYear(request.getYear());
-        }
-        if (request.getCountry() != null) {
-            listing.setCountry(request.getCountry());
-        }
-        if (request.getBarcode() != null) {
-            listing.setBarcode(request.getBarcode());
-        }
-        if (request.getLabelName() != null) {
-            listing.setLabelName(request.getLabelName());
-        }
-        if (request.getTrackCount() != null) {
-            listing.setTrackCount(request.getTrackCount());
-        }
-        if (request.getMbId() != null) {
-            listing.setMbId(request.getMbId());
-        }
-        if (request.getStockQuantity() !=listing.getStockQuantity()) {
-            listing.setStockQuantity(request.getStockQuantity());
+        if (request.getTitle() != null) listing.setTitle(request.getTitle());
+        if (request.getArtistName() != null) listing.setArtistName(request.getArtistName());
+        if (request.getDescription() != null) listing.setDescription(request.getDescription());
+        if (request.getTradeable() != null) listing.setTradeable(request.getTradeable());
+        if (request.getTradeValue() != null) listing.setTradeValue(request.getTradeValue());
+        if (request.getFormat() != null) listing.setFormat(request.getFormat());
+        if (request.getCondition() != null) listing.setCondition(request.getCondition());
+        if (request.getPackaging() != null) listing.setPackaging(request.getPackaging());
+        if (request.getYear() != null) listing.setYear(request.getYear());
+        if (request.getCountry() != null) listing.setCountry(request.getCountry());
+        if (request.getBarcode() != null) listing.setBarcode(request.getBarcode());
+        if (request.getLabelName() != null) listing.setLabelName(request.getLabelName());
+        if (request.getTrackCount() != null) listing.setTrackCount(request.getTrackCount());
+        if (request.getMbId() != null) listing.setMbId(request.getMbId());
+        if (request.getStockQuantity() != null) listing.setStockQuantity(request.getStockQuantity());
+
+        if (request.getSellerEarningsKurus() != null || request.getPriceKurus() != null) {
+            ListingPriceResult price = request.getSellerEarningsKurus() != null
+                    ? priceCalculator.fromSellerEarnings(request.getSellerEarningsKurus())
+                    : priceCalculator.fromBuyerPrice(request.getPriceKurus());
+            listing.setPriceKurus(price.priceKurus());
+            listing.setSellerEarningsKurus(price.sellerEarningsKurus());
+            listing.setPlatformCutKurus(price.platformCutKurus());
+            listing.setPlatformFeeBP(price.feeBP());
         }
 
-        // Update trade preferences
         if (request.getTradePreferences() != null) {
             listing.getTradePreferences().clear();
-            request.getTradePreferences().forEach(prefRequest -> {
-                listing.addTradePreference(toTradePreferenceEntity(prefRequest));
-            });
+            request.getTradePreferences().forEach(prefRequest ->
+                    listing.addTradePreference(toTradePreferenceEntity(prefRequest)));
         }
     }
 
     /**
-     * Convert TradePreferenceRequest to TradePreference entity
+     * Card/list view, uses mainImageUrl only, no discount calculation
      */
+    public ListingDTO toDTO(Listing listing) {
+        List<String> imagePaths = listing.getMainImageUrl() != null
+                ? List.of(listing.getMainImageUrl())
+                : List.of();
+        return new ListingDTO(listing, imagePaths, null);
+    }
+
+    /**
+     * Detail view, full images, discount percent passed in from service
+     */
+    public ListingDTO toDTOWithImages(Listing listing, Integer discountPercent) {
+        List<String> imagePaths = listing.getImages().stream()
+                .map(ListingImage::getSecureUrl)
+                .toList();
+        return new ListingDTO(listing, imagePaths, discountPercent);
+    }
+
     private TradePreference toTradePreferenceEntity(TradePreferenceRequest request) {
         TradePreference pref = new TradePreference();
         pref.setDesiredItem(request.getDesiredItem());
@@ -137,9 +135,6 @@ public class ListingMapper {
         return pref;
     }
 
-    /**
-     * Convert TradePreference entity to TradePreferenceDTO
-     */
     private TradePreferenceDTO toTradePreferenceDTO(TradePreference entity) {
         return new TradePreferenceDTO(
                 entity.getId(),
@@ -148,13 +143,4 @@ public class ListingMapper {
                 entity.getPaymentDirection()
         );
     }
-
-    /**
-     * Convert Listing entity to ListingDTO
-     */
-    public ListingDTO toDTO(Listing listing, List<String> imagePaths) {
-
-        return new ListingDTO(listing, imagePaths);
-    }
-
 }

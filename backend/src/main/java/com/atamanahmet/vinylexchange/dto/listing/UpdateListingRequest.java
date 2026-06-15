@@ -1,6 +1,7 @@
 package com.atamanahmet.vinylexchange.dto.listing;
 
 import com.atamanahmet.vinylexchange.dto.user.TradePreferenceRequest;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -38,6 +39,11 @@ public class UpdateListingRequest {
     @JsonDeserialize(using = PriceKurusDeserializer.class)
     private Long priceKurus;
 
+    @Min(value = 0, message = "Seller earnings cannot be negative")
+    @JsonProperty("sellerEarnings")
+    @JsonDeserialize(using = PriceKurusDeserializer.class)
+    private Long sellerEarningsKurus;
+
     @JsonProperty("discount")
     @JsonDeserialize(using = DiscountDeserializer.class)
     @Min(0)
@@ -56,7 +62,7 @@ public class UpdateListingRequest {
 
     private UUID mbId;
 
-    private int stockQuantity;
+    private Integer stockQuantity;
     private String condition;
     private String packaging;
     private Integer year;
@@ -67,4 +73,15 @@ public class UpdateListingRequest {
 
     // For image handling
     private List<String> imagePaths;
+
+    /**
+     * Both null = no price change on this update (allowed)
+     * Exactly one non-null = price change, backend calculates the other (allowed)
+     * Both non-null = error
+     */
+    @AssertTrue(message = "Provide at most one of price or sellerEarnings, not both")
+    @JsonIgnore
+    public boolean isPriceInputValid() {
+        return priceKurus == null || sellerEarningsKurus == null;
+    }
 }

@@ -1,6 +1,7 @@
 package com.atamanahmet.vinylexchange.dto.listing;
 
 import com.atamanahmet.vinylexchange.dto.user.TradePreferenceRequest;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -35,11 +36,15 @@ public class CreateListingRequest {
     @Size(max = 500, message = "Description too long")
     private String description;
 
-    @NotNull(message = "Price is required")
     @Min(value = 0, message = "Price cannot be negative")
     @JsonProperty("price")
     @JsonDeserialize(using = PriceKurusDeserializer.class)
     private Long priceKurus;
+
+    @Min(value = 0, message = "Seller earnings cannot be negative")
+    @JsonProperty("sellerEarnings")
+    @JsonDeserialize(using = PriceKurusDeserializer.class)
+    private Long sellerEarningsKurus;
 
     @JsonProperty("discount")
     @JsonDeserialize(using = DiscountDeserializer.class)
@@ -78,4 +83,14 @@ public class CreateListingRequest {
 
     @Min(value = 1, message = "Stock must be at least 1")
     private Integer stockQuantity = 1;
+
+    /**
+     * Exactly one of priceKurus or sellerEarningsKurus must be provided
+     * Backend derives the other from the one given
+     */
+    @AssertTrue(message = "Provide exactly one of price or sellerEarnings, not both and not none")
+    @JsonIgnore
+    public boolean isPriceInputValid() {
+        return (priceKurus != null) != (sellerEarningsKurus != null);
+    }
 }
