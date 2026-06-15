@@ -58,8 +58,8 @@ public class PaymentTransaction extends BaseEntity {
     /**
      * Provider-generated payment reference, mock ID or real iyzico paymentId
      */
-    @Column(name = "provider_payment_id")
-    private String providerPaymentId;
+    @Column(name = "provider_checkout_token")
+    private String providerCheckoutToken;
 
     /**
      * Provider-generated payout reference, set when payout is approved

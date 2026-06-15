@@ -22,8 +22,6 @@ import com.atamanahmet.vinylexchange.repository.payment.PaymentTransactionReposi
 import com.atamanahmet.vinylexchange.service.order.OrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -82,7 +80,7 @@ public class PaymentService {
                 payment, paymentProperties.getCallbackUrl());
 
         if (response.success()) {
-            payment.setProviderPaymentId(response.providerPaymentId());
+            payment.setProviderCheckoutToken(response.providerPaymentId());
             paymentTransactionRepository.save(payment);
         }
 
@@ -102,7 +100,15 @@ public class PaymentService {
             return false;
         }
 
-        paymentTransactionRepository.findByProviderPaymentId(token).ifPresent(payment -> {
+        Optional<PaymentTransaction> paymentTransaction = paymentTransactionRepository
+                .findByProviderCheckoutToken(token);
+
+        if (paymentTransaction.isEmpty()) {
+            log.warn("Verified payment token has no matching transaction token={}", token);
+            return true;
+        }
+
+        paymentTransaction.ifPresent(payment -> {
 
             payment.setProviderInternalPaymentId(result.providerInternalPaymentId());
             payment.setAuthCode(result.authCode());

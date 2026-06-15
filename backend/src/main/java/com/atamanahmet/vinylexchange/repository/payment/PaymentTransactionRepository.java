@@ -21,5 +21,5 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
             LocalDateTime deadline
     );
 
-    Optional<PaymentTransaction> findByProviderPaymentId(String providerPaymentId);
+    Optional<PaymentTransaction> findByProviderCheckoutToken(String providerPaymentId);
 }
