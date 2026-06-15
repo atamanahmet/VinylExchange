@@ -142,7 +142,7 @@ public class CartService {
         cartRepository.save(cart);
     }
 
-    public CartDTO updateCartItem(UUID userId, UUID cartItemId, UpdateCartItemRequest request) {
+    public CartDTO updateCartItemQuantity(UUID userId, UUID cartItemId, UpdateCartItemRequest request) {
 
         Cart cart = getOrCreateCart(userId);
 

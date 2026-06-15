@@ -5,5 +5,6 @@ public enum NotificationType {
     WARNING,
     ALERT,
     LISTING_SOLD,
-    WISHLIST_ITEM_AVAILABLE
+    WISHLIST_ITEM_AVAILABLE,
+    ORDER
 }

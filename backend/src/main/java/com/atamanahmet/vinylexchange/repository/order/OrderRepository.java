@@ -2,6 +2,7 @@ package com.atamanahmet.vinylexchange.repository.order;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import com.atamanahmet.vinylexchange.domain.entity.Order;
@@ -21,4 +22,6 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     List<Order> findAllBySellerId(UUID sellerId);
 
     List<Order> findAllByStatusAndPaymentExpiresAtBefore(OrderStatus status, LocalDateTime dateTime);
+
+    boolean existsByOrderItems_Listing_IdAndStatusIn(UUID listingId, Set<OrderStatus> statuses);
 }

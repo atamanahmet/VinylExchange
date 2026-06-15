@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import com.atamanahmet.vinylexchange.domain.enums.CancelRequestStatus;
-import com.atamanahmet.vinylexchange.domain.enums.OrderItemStatus;
+import com.atamanahmet.vinylexchange.domain.enums.DisputeReason;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -36,20 +36,26 @@ public class CancelRequest extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    /** One cancel request per order */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_item_id", nullable = false)
-    private OrderItem orderItem;
+    @JoinColumn(name = "order_id", nullable = false)
+    private Order order;
 
     private UUID requestedBy;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private CancelRequestStatus status;
 
+    /** Structured reason, required for disputes */
     @Enumerated(EnumType.STRING)
-    private OrderItemStatus previousOrderStatus;
+    private DisputeReason disputeReason;
 
     @Column(length = 500)
     private String reason;
+
+    /** 14 days from order.deliveredAt, Turkish law */
+    private LocalDateTime disputeWindowDeadline;
 
     private LocalDateTime requestedAt;
 

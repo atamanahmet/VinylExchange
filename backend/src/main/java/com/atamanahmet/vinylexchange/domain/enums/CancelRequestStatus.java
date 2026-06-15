@@ -1,9 +1,16 @@
 package com.atamanahmet.vinylexchange.domain.enums;
 
 public enum CancelRequestStatus {
+
+    /** Waiting for seller or admin response */
     PENDING,
+
+    /** Approved by seller or admin */
     APPROVED,
+
+    /** Rejected by seller or admin */
     REJECTED,
-    AUTO_APPROVED,
-    CANCELLED // request itself
+
+    /** Buyer withdrew the request */
+    WITHDRAWN
 }

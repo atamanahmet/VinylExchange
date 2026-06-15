@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.atamanahmet.vinylexchange.domain.entity.CancelRequest;
-import com.atamanahmet.vinylexchange.domain.entity.OrderItem;
+import com.atamanahmet.vinylexchange.domain.entity.Order;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,13 +15,13 @@ import com.atamanahmet.vinylexchange.domain.enums.CancelRequestStatus;
 @Repository
 public interface CancelRequestRepository extends JpaRepository<CancelRequest, UUID> {
 
-    boolean existsByOrderItemAndStatus(OrderItem orderItem, CancelRequestStatus status);
+    boolean existsByOrderAndStatus(Order order, CancelRequestStatus status);
 
+    /** Find all pending requests where the seller is the reviewer */
     @Query("SELECT cr FROM CancelRequest cr " +
-            "JOIN cr.orderItem oi " +
-            "WHERE oi.sellerId = :sellerId " +
+            "WHERE cr.order.sellerId = :sellerId " +
             "AND cr.status = 'PENDING'")
     List<CancelRequest> findPendingRequestsForSeller(@Param("sellerId") UUID sellerId);
 
-    List<CancelRequest> findByOrderItemId(UUID orderItemId);
+    List<CancelRequest> findByOrderId(UUID orderId);
 }
