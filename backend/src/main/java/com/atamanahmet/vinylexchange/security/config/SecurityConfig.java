@@ -79,6 +79,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/api/me",
                                 "/register",
                                 "/api/mb/search/**",
+                                "/api/payment/callback",
                                 "/api/cms/**",
                                 "/listing/**",
                                 "/api/listings/**",
@@ -104,7 +105,12 @@ public class SecurityConfig implements WebMvcConfigurer {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173","http://localhost"));
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://localhost",
+                "https://sandbox-api.iyzipay.com",
+                "https://api.iyzipay.com"
+        ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

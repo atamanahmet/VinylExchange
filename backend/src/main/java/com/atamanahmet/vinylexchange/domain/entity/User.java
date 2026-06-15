@@ -25,17 +25,15 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Entity
-@Table(name = "users")
 @Getter
 @Setter
-@AllArgsConstructor
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor
+@Table(name = "users")
 public class User extends BaseEntity {
 
     @Id
@@ -52,23 +50,25 @@ public class User extends BaseEntity {
     private String password;
 
     @Column(nullable = false)
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     private UserStatus status = UserStatus.PENDING;
 
-    // TODO: list? equals and hashcode with id?
     @JsonIgnore
     @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Listing> listings;
 
     @JsonIgnore
+    @Builder.Default
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<WishlistItem> wishlist = new ArrayList<>();
 
     @JsonIgnore
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
+    @Builder.Default
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     private Set<Role> roles = new HashSet<>();
 
     @Column(name = "activated_at")
@@ -85,6 +85,17 @@ public class User extends BaseEntity {
 
     @Column(name = "banned_at")
     private LocalDateTime bannedAt;
+
+    /** IBAN for payout when order completes */
+    private String ibanForPayout;
+
+    /** Legal name for payout records */
+    private String legalName;
+
+    /** Set to true after admin verifies payout info */
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean payoutInfoVerified = false;
 
     private void updateStatusTimeStamps(UserStatus userStatus) {
 

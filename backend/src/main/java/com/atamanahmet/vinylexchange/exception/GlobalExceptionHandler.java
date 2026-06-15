@@ -22,184 +22,169 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    // dto validation
+    /**
+     * DTO field validation errors, returns map of field -> message
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleMethodArgumentNotValidException(MethodArgumentNotValidException exception) {
-
         Map<String, String> errors = new HashMap<>();
-
         exception.getFieldErrors()
                 .forEach(err -> errors.put(err.getField(), err.getDefaultMessage()));
-
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(errors);
-
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
     }
 
-    // service level validation
+    /**
+     * Registration business rule violations (duplicate email, username etc)
+     */
     @ExceptionHandler(RegistrationValidationException.class)
     public ResponseEntity<?> handleRegistrationValidationException(RegistrationValidationException exception) {
-
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(exception.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
     }
 
     @ExceptionHandler({ MaxUploadSizeExceededException.class, FileSizeLimitExceededException.class })
-    public ResponseEntity<?> handleMaxUploadSizeExceededException(Exception exception, HttpServletRequest request,
+    public ResponseEntity<?> handleMaxUploadSizeExceededException(
+            Exception exception,
+            HttpServletRequest request,
             HttpServletResponse response) {
-
-        return ResponseEntity
-                .status(HttpStatus.PAYLOAD_TOO_LARGE)
-                .body("Max file size exceeded");
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body("Max file size exceeded");
     }
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<?> handleWrongCredentialsException(BadCredentialsException exception) {
-
-        return ResponseEntity
-                .status(HttpStatus.UNAUTHORIZED)
-                .body(exception.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(exception.getMessage());
     }
 
     @ExceptionHandler(PageNotFoundException.class)
     public ResponseEntity<?> handlePageNotFoundException(PageNotFoundException exception) {
-        logger.warn(exception.getMessage());
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(exception.getMessage());
+        logger.warn("Page not found: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
     }
 
+    /**
+     * Generic resource not found, logs warn only, no body needed
+     */
     @ExceptionHandler(ResourceNotFoundException.class)
-    public void handleResourceNotFoundException(ResourceNotFoundException exception) {
-        logger.warn(exception.getMessage());
+    public ResponseEntity<?> handleResourceNotFoundException(ResourceNotFoundException exception) {
+        logger.warn("Resource not found: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
     }
 
     @ExceptionHandler(TokenExpireException.class)
-    public void handleTokenExpiredException(TokenExpireException exception) {
-
+    public ResponseEntity<?> handleTokenExpiredException(TokenExpireException exception) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Session expired, please log in again");
     }
 
     @ExceptionHandler(UnauthorizedActionException.class)
     public ResponseEntity<?> handleUnauthorizedActionException(UnauthorizedActionException exception) {
-
-        return ResponseEntity
-                .status(HttpStatus.UNAUTHORIZED)
-                .body(exception.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(exception.getMessage());
     }
 
+    /**
+     * No authenticated user found in security context
+     */
     @ExceptionHandler(NoCurrentUserException.class)
-    public void handleNoCurrentUserException(NoCurrentUserException exception) {
-        System.out.println("No user");
+    public ResponseEntity<?> handleNoCurrentUserException(NoCurrentUserException exception) {
+        logger.warn("Unauthenticated access attempt");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Authentication required");
     }
-
 
     @ExceptionHandler(ImageUploadException.class)
-    public void handleImageUploadException(ImageUploadException exception) {
-        logger.error(exception.getMessage());
+    public ResponseEntity<?> handleImageUploadException(ImageUploadException exception) {
+        logger.error("Image upload failed: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Image upload failed");
     }
 
     @ExceptionHandler(ListingCreationException.class)
-    public void handleListingCreationException(ListingCreationException exception, String username) {
-        logger.error(exception.getMessage(), username);
+    public ResponseEntity<?> handleListingCreationException(ListingCreationException exception) {
+        logger.error("Listing creation failed: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Listing creation failed");
+    }
+
+    @ExceptionHandler(ListingUpdateException.class)
+    public ResponseEntity<?> handleListingUpdateException(ListingUpdateException exception) {
+        logger.error("Listing update failed: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Listing update failed");
     }
 
     @ExceptionHandler(ConversationNotFoundException.class)
-    public void handleConversationNotFoundException(ConversationNotFoundException exception) {
-        System.out.println(exception.getMessage());
+    public ResponseEntity<?> handleConversationNotFoundException(ConversationNotFoundException exception) {
+        logger.warn("Conversation not found: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
     }
 
     @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<HttpStatus> handleUserNotFoundException(UserNotFoundException exception) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    public ResponseEntity<?> handleUserNotFoundException(UserNotFoundException exception) {
+        logger.warn("User not found: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
     }
 
     @ExceptionHandler(UsernameNotFoundException.class)
     public ResponseEntity<?> handleUsernameNotFoundException(UsernameNotFoundException exception) {
-
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(exception.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
     }
 
     @ExceptionHandler(InvalidOrderOperationException.class)
     public ResponseEntity<?> handleInvalidOrderOperationException(InvalidOrderOperationException exception) {
-
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(exception.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
     }
 
     @ExceptionHandler(ListingNotFoundException.class)
     public ResponseEntity<?> handleListingNotFoundException(ListingNotFoundException exception) {
-
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(exception.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
     }
 
     @ExceptionHandler(CartItemNotFoundException.class)
     public ResponseEntity<?> handleCartItemNotFoundException(CartItemNotFoundException exception) {
-
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(exception.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
     }
 
     @ExceptionHandler(InsufficientStockException.class)
     public ResponseEntity<?> handleInsufficientStockException(InsufficientStockException exception) {
-
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(exception.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
     }
 
     @ExceptionHandler(GenreNotFoundException.class)
-    public void handleGenreNotFoundException(GenreNotFoundException exception) {
-
-        logger.warn(exception.getMessage());
+    public ResponseEntity<?> handleGenreNotFoundException(GenreNotFoundException exception) {
+        logger.warn("Genre not found: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
     }
 
     @ExceptionHandler(RoleNotFoundException.class)
     public ResponseEntity<?> handleRoleNotFoundException(RoleNotFoundException exception) {
-
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(exception.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
     }
 
+    /**
+     * Invalid state machine transition, e.g. DELIVERED -> PENDING
+     */
     @ExceptionHandler(InvalidStatusTransitionException.class)
-    public void handleInvalidStatusTransitionException(InvalidStatusTransitionException exception) {
-        System.out.println(exception.getMessage());
+    public ResponseEntity<?> handleInvalidStatusTransitionException(InvalidStatusTransitionException exception) {
+        logger.warn("Invalid status transition: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(exception.getMessage());
     }
 
     @ExceptionHandler(OrderNotFoundException.class)
-    public void handleOrderNotFoundException(OrderNotFoundException exception) {
-        System.out.println(exception.getMessage());
+    public ResponseEntity<?> handleOrderNotFoundException(OrderNotFoundException exception) {
+        logger.warn("Order not found: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exception.getMessage());
     }
 
     @ExceptionHandler(EmptyCartException.class)
-    public void handleEmptyCartException(EmptyCartException exception) {
-        System.out.println(exception.getMessage());
+    public ResponseEntity<?> handleEmptyCartException(EmptyCartException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(exception.getMessage());
     }
 
     @ExceptionHandler(CheckOutValidationException.class)
     public ResponseEntity<?> handleCheckOutValidationException(CheckOutValidationException exception) {
-        System.out.println(exception.getMessage());
-
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(exception.getMessage());
+        logger.warn("Checkout validation failed: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(exception.getMessage());
     }
 
     @ExceptionHandler(CheckOutProcessingException.class)
-    public void handleCheckOutProcessingException(CheckOutProcessingException exception) {
-
-        System.out.println(exception.getMessage());
-
+    public ResponseEntity<?> handleCheckOutProcessingException(CheckOutProcessingException exception) {
+        logger.error("Checkout processing failed: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Checkout processing failed");
     }
-
 }

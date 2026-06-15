@@ -7,7 +7,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import org.springframework.stereotype.Controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,8 +23,9 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 
 import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.RestController;
 
-@Controller
+@RestController
 @RequiredArgsConstructor
 public class AuthController {
 
@@ -33,7 +33,7 @@ public class AuthController {
     private final JwtCookieUtil jwtCookieUtil;
 
     @PostMapping("/register")
-    public ResponseEntity<HttpStatus> register(
+    public ResponseEntity<Void> register(
             @Valid @RequestBody RegisterRequest registerRequest,
             HttpServletResponse response) {
 
@@ -65,12 +65,12 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<HttpStatus> logOut(HttpServletResponse response) {
+    public ResponseEntity<Void> logOut(HttpServletResponse response) {
 
         jwtCookieUtil.revokeJwtCookie(response);
 
         return ResponseEntity
-                .noContent()
+                .status(HttpStatus.NO_CONTENT)
                 .build();
     }
 
