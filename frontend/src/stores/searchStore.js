@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import axios from "../api/axiosInstance";
 
+export const MB_SEARCH_SCOPES = {
+  TITLE: "title",
+  ARTIST: "artist",
+  BOTH: "both",
+};
+
 export const useSearchStore = create((set) => ({
   searchResult: {
     dataType: "",
@@ -10,11 +16,11 @@ export const useSearchStore = create((set) => ({
 
   clearSearch: () => set({ searchResult: { dataType: "", items: [] } }),
 
-  searchMusicBrainz: async (title) => {
+  searchMusicBrainz: async (query, scope = MB_SEARCH_SCOPES.TITLE) => {
     set({ isLoadingSearch: true });
     try {
       const res = await axios.get("/api/mb/search", {
-        params: { title, limit: 75 },
+        params: { query, scope, limit: 75 },
       });
       if (res.status === 200) {
         set({

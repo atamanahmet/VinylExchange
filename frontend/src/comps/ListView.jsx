@@ -1,141 +1,295 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
-import { useMessagingStore } from "../stores/messagingStore";
-import { useCartStore } from "../stores/cartStore";
-import { useAuthStore } from "../stores/authStore";
+
+
+
+import { cn } from "@/lib/utils";
+
+
+
+import CardActionButtons from "./CardActionButtons";
+
 import CardImage from "./CardImage";
-import ModularButton from "./Buttons/ModularButton";
+
+
 
 export default function ListView({ item }) {
-  const cart = useCartStore((state) => state.cart);
-  const addToCart = useCartStore((state) => state.addtoCart);
-  const decreaseFromCart = useCartStore((state) => state.decreaseFromCart);
-  const removeFromCart = useCartStore((state) => state.removeFromCart);
-
-  const user = useAuthStore((state) => state.user);
-  const startConversation = useMessagingStore(
-    (state) => state.startConversation,
-  );
-
-  const [image, setImage] = useState("");
-
-  const [isOwnerUser, setIsOwnerUser] = useState();
-
-  useEffect(() => {
-    if (item && user && item.ownerUsername === user.username) {
-      setIsOwnerUser(true);
-    } else {
-      setIsOwnerUser(false);
-    }
-  }, [item, user]);
 
   const navigate = useNavigate();
 
+
+
+  const linkToListing = !item.disableLink;
+
+  const listingPath = `/listing/${item.id}`;
+
+
+
   const navigateItemWithId = () => {
-    navigate(`/listing/${item.id}`);
-  };
-  const navigateEditItemWithId = () => {
-    navigate(`/edit/${item.id}`);
-  };
-  const navigateMessagingWithItemId = () => {
-    startConversation(item.id);
+
+    if (linkToListing) {
+
+      navigate(listingPath);
+
+    }
+
   };
 
-  const inCart = cart
-    ? cart.items.some((element) => element.listingId === item.id)
-    : false;
+
 
   const imageSrc = item.imageUrl || item.externalCoverUrl;
 
-  return (
-    <>
-      <div className="bg-neutral-primary-soft grid grid-cols-7 border-b   items-center">
-        <div className="scale-65 -ml-6 -my-5">
-          <Link to={`/listing/${item.id}`} className="cursor-pointer">
-            <CardImage src={imageSrc} alt={item.title} />
-          </Link>
-        </div>
-        <button
-          onClick={() => {
-            navigateItemWithId();
-          }}
-        >
-          <p
-            scope="row"
-            className="px-6 py-4 font-medium text-heading flex flex-col overflow-auto "
-          >
-            {item.title}
-          </p>
-        </button>
-        <button>
-          <p
-            scope="row"
-            className="px-6 py-4 text-amber-400 font-medium text-heading flex flex-col overflow-auto "
-          >
-            {item.artist}
-          </p>
-        </button>
+  const hasActions = Boolean(item.primaryAction || item.secondaryAction);
 
-        <p className="px-6 py-4">{item.year || item.date} </p>
-        <p className="">{item.format} </p>
-        <div className="">
-          {item.price && (
-            <p
-              className={`px-6 ${
-                item.discount > 0
-                  ? "text-base font-bold text-gray-900 dark:text-white line-through"
-                  : "text-base font-bold text-gray-900 dark:text-white"
-              }`}
-            >
-              {item.price + " ₺"}
-            </p>
-          )}
-          <p
-            className={`px-6 ${
-              item.discount > 0
-                ? "text-base font-bold text-green-900 dark:text-green-400"
-                : "text-base font-bold text-green-900 dark:text-green-400"
-            }`}
-          >
-            {item.discount > 0 ? item.discountedPrice + " ₺" : null}
-          </p>
-        </div>
-        {/* <p className="px-6 py-4">{item.price}</p> */}
+  const showPrice = item.price != null;
 
-        <div className="px-6 py-4 text-right">
-          {!isOwnerUser && (
-            <div className="flex flex-col justify-center items-center -mt-5">
-              {item.primaryAction && (
-                <ModularButton
-                  listingId={item.id}
-                  onClickFunction={item.primaryAction.onClick}
-                  text={item.primaryAction.label}
-                />
-              )}
+  const displayPrice = item.discount > 0 ? item.discountedPrice : item.price;
 
-              {item.secondaryAction && (
-                <ModularButton
-                  listingId={item.id}
-                  onClickFunction={item.secondaryAction.onClick}
-                  text={item.secondaryAction.label}
-                />
-              )}
-            </div>
-          )}
-          {isOwnerUser && (
-            <div className="flex flex-col justify-center items-center -mt-5">
-              <a
-                onClick={() => navigateEditItemWithId()}
-                className={`mt-5 rounded-xl  border   focus:ring-4  shadow-xs font-medium leading-5  text-sm  py-2.5 focus:outline-none text-center px-4.5 cursor-pointer min-w-30  hover:text-red-700
-             `}
-              >
-                Edit
-              </a>
-            </div>
-          )}
-        </div>
-      </div>
-    </>
+
+
+  const desktopColumnClass = cn(
+
+    "hidden items-center border-b border-surface-3 bg-surface-1 lg:grid",
+
+    hasActions
+
+      ? showPrice
+
+        ? "lg:grid-cols-7"
+
+        : "lg:grid-cols-6"
+
+      : showPrice
+
+        ? "lg:grid-cols-6"
+
+        : "lg:grid-cols-5",
+
   );
+
+
+
+  const coverCell = linkToListing ? (
+
+    <Link to={listingPath} className="size-24 shrink-0 overflow-hidden rounded-md">
+
+      <CardImage src={imageSrc} alt={item.title} />
+
+    </Link>
+
+  ) : (
+
+    <div className="size-24 shrink-0 overflow-hidden rounded-md">
+
+      <CardImage src={imageSrc} alt={item.title} />
+
+    </div>
+
+  );
+
+
+
+  const mobileCoverCell = linkToListing ? (
+
+    <Link to={listingPath} className="size-20 shrink-0 overflow-hidden rounded-md">
+
+      <CardImage src={imageSrc} alt={item.title} />
+
+    </Link>
+
+  ) : (
+
+    <div className="size-20 shrink-0 overflow-hidden rounded-md">
+
+      <CardImage src={imageSrc} alt={item.title} />
+
+    </div>
+
+  );
+
+
+
+  const titleCell = linkToListing ? (
+
+    <button type="button" onClick={navigateItemWithId} className="min-w-0 px-3 text-left">
+
+      <p className="line-clamp-2 font-medium text-on-surface">{item.title}</p>
+
+    </button>
+
+  ) : (
+
+    <div className="min-w-0 px-3 text-left">
+
+      <p className="line-clamp-2 font-medium text-on-surface">{item.title}</p>
+
+    </div>
+
+  );
+
+
+
+  const mobileTitleCell = linkToListing ? (
+
+    <button
+
+      type="button"
+
+      onClick={navigateItemWithId}
+
+      className="line-clamp-2 text-left font-medium text-on-surface hover:text-brand-fg"
+
+    >
+
+      {item.title}
+
+    </button>
+
+  ) : (
+
+    <p className="line-clamp-2 text-left font-medium text-on-surface">{item.title}</p>
+
+  );
+
+
+
+  return (
+
+    <>
+
+      <article className="border-b border-surface-3 bg-surface-1 p-4 lg:hidden">
+
+        <div className="flex gap-3">
+
+          {mobileCoverCell}
+
+
+
+          <div className="min-w-0 flex-1 space-y-1 text-left">
+
+            {mobileTitleCell}
+
+            <p className="truncate text-sm text-accent-text">{item.artist}</p>
+
+            <p className="text-xs text-on-surface-muted">
+
+              {[item.year || item.date, item.format].filter(Boolean).join(" · ")}
+
+            </p>
+
+            {displayPrice != null && (
+
+              <p className="text-sm font-semibold text-success-fg">
+
+                {displayPrice.toLocaleString("tr-TR")} ₺
+
+              </p>
+
+            )}
+
+          </div>
+
+        </div>
+
+
+
+        {hasActions && (
+
+          <div className="mt-3 w-full min-w-0">
+
+            <CardActionButtons
+
+              layout="list"
+
+              primaryAction={item.primaryAction}
+
+              secondaryAction={item.secondaryAction}
+
+              stackActions={item.stackActions}
+
+            />
+
+          </div>
+
+        )}
+
+      </article>
+
+
+
+      <article className={desktopColumnClass}>
+
+        <div className="flex justify-center py-3 pl-2">{coverCell}</div>
+
+
+
+        {titleCell}
+
+
+
+        <p className="min-w-0 truncate px-3 text-accent-text">{item.artist}</p>
+
+        <p className="px-3 text-on-surface-dim">{item.year || item.date}</p>
+
+        <p className="min-w-0 truncate px-3 text-on-surface-dim">{item.format}</p>
+
+
+
+        {showPrice && (
+
+          <div className="px-3">
+
+            {item.discount > 0 && (
+
+              <p className="text-sm text-on-surface-muted line-through">
+
+                {item.price.toLocaleString("tr-TR")} ₺
+
+              </p>
+
+            )}
+
+            {displayPrice != null && (
+
+              <p className="font-semibold text-success-fg">
+
+                {displayPrice.toLocaleString("tr-TR")} ₺
+
+              </p>
+
+            )}
+
+          </div>
+
+        )}
+
+
+
+        {hasActions && (
+
+          <div className="w-full min-w-0 px-2 py-3">
+
+            <CardActionButtons
+
+              layout="list"
+
+              primaryAction={item.primaryAction}
+
+              secondaryAction={item.secondaryAction}
+
+              stackActions={item.stackActions}
+
+            />
+
+          </div>
+
+        )}
+
+      </article>
+
+    </>
+
+  );
+
 }
+
+
