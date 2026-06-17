@@ -55,7 +55,7 @@ public class OrderAccessService {
      * Used by ListingService to block price updates
      */
     public boolean hasActiveOrderForListing(UUID listingId) {
-        return orderRepository.existsByOrderItems_Listing_IdAndStatusIn(
+        return orderRepository.existsByOrderItems_ListingIdAndStatusIn(
                 listingId, ACTIVE_ORDER_STATUSES);
     }
 }

@@ -4,7 +4,6 @@ import com.atamanahmet.vinylexchange.dto.order.CancelRequest;
 import com.atamanahmet.vinylexchange.dto.payment.DisputeRequest;
 import com.atamanahmet.vinylexchange.dto.payment.DisputeResolveRequest;
 import com.atamanahmet.vinylexchange.dto.order.OrderDTO;
-import com.atamanahmet.vinylexchange.mapper.OrderMapper;
 import com.atamanahmet.vinylexchange.service.order.CancelService;
 import com.atamanahmet.vinylexchange.service.order.OrderAccessService;
 import com.atamanahmet.vinylexchange.service.order.OrderService;
@@ -34,35 +33,27 @@ public class OrderController {
     @GetMapping("/{orderId}")
     public ResponseEntity<OrderDTO> getOrder(@PathVariable UUID orderId) {
         orderAccessService.assertCanView(orderId, UserUtil.getCurrentUserId());
-        return ResponseEntity.ok(OrderMapper.toDTO(orderService.getOrderById(orderId)));
+        return ResponseEntity.ok(orderService.getOrderDto(orderId));
     }
 
     @GetMapping("/my/purchases")
     public ResponseEntity<List<OrderDTO>> getMyPurchases() {
-        return ResponseEntity.ok(orderService.getOrdersByBuyerId(UserUtil.getCurrentUserId())
-                .stream()
-                .map(OrderMapper::toDTO)
-                .toList());
+        return ResponseEntity.ok(orderService.getOrderDtosByBuyerId(UserUtil.getCurrentUserId()));
     }
 
     @GetMapping("/my/sales")
     public ResponseEntity<List<OrderDTO>> getMySales() {
-        return ResponseEntity.ok(orderService.getOrdersBySellerId(UserUtil.getCurrentUserId())
-                .stream()
-                .map(OrderMapper::toDTO)
-                .toList());
+        return ResponseEntity.ok(orderService.getOrderDtosBySellerId(UserUtil.getCurrentUserId()));
     }
 
     @PostMapping("/{orderId}/ship")
     public ResponseEntity<OrderDTO> shipOrder(@PathVariable UUID orderId) {
-        return ResponseEntity.ok(OrderMapper.toDTO(
-                orderService.shipOrder(orderId, UserUtil.getCurrentUserId())));
+        return ResponseEntity.ok(orderService.shipOrder(orderId, UserUtil.getCurrentUserId()));
     }
 
     @PostMapping("/{orderId}/confirm-delivery")
     public ResponseEntity<OrderDTO> confirmDelivery(@PathVariable UUID orderId) {
-        return ResponseEntity.ok(OrderMapper.toDTO(
-                orderService.confirmDelivery(orderId, UserUtil.getCurrentUserId())));
+        return ResponseEntity.ok(orderService.confirmDelivery(orderId, UserUtil.getCurrentUserId()));
     }
 
     @PostMapping("/{orderId}/cancel")

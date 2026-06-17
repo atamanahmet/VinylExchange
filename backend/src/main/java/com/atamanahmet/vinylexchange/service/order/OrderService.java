@@ -8,9 +8,11 @@ import com.atamanahmet.vinylexchange.event.DisputeOpenedEvent;
 import com.atamanahmet.vinylexchange.event.OrderCancelledEvent;
 import com.atamanahmet.vinylexchange.event.OrderDeliveredEvent;
 import com.atamanahmet.vinylexchange.event.OrderShippedEvent;
+import com.atamanahmet.vinylexchange.dto.order.OrderDTO;
 import com.atamanahmet.vinylexchange.exception.InvalidOrderOperationException;
 import com.atamanahmet.vinylexchange.exception.InvalidStatusTransitionException;
 import com.atamanahmet.vinylexchange.exception.UnauthorizedActionException;
+import com.atamanahmet.vinylexchange.mapper.OrderMapper;
 import com.atamanahmet.vinylexchange.repository.order.OrderRepository;
 import com.atamanahmet.vinylexchange.repository.order.OrderStatusHistoryRepository;
 import lombok.RequiredArgsConstructor;
@@ -37,12 +39,28 @@ public class OrderService {
                 .orElseThrow(() -> new InvalidOrderOperationException("Order not found: " + orderId));
     }
 
-    public List<Order> getOrdersByBuyerId(UUID buyerId) {
-        return orderRepository.findAllByBuyerId(buyerId);
+    public Order requireOrderWithItems(UUID orderId) {
+        return orderRepository.findByIdWithItems(orderId)
+                .orElseThrow(() -> new InvalidOrderOperationException("Order not found: " + orderId));
     }
 
-    public List<Order> getOrdersBySellerId(UUID sellerId) {
-        return orderRepository.findAllBySellerId(sellerId);
+    @Transactional(readOnly = true)
+    public OrderDTO getOrderDto(UUID orderId) {
+        return OrderMapper.toDTO(requireOrderWithItems(orderId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderDTO> getOrderDtosByBuyerId(UUID buyerId) {
+        return orderRepository.findAllByBuyerId(buyerId).stream()
+                .map(OrderMapper::toDTO)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderDTO> getOrderDtosBySellerId(UUID sellerId) {
+        return orderRepository.findAllBySellerId(sellerId).stream()
+                .map(OrderMapper::toDTO)
+                .toList();
     }
 
     public Order saveOrder(Order order) {
@@ -76,7 +94,7 @@ public class OrderService {
      * Sets auto confirm deadline 3 days from now
      */
     @Transactional
-    public Order shipOrder(UUID orderId, UUID sellerId) {
+    public OrderDTO shipOrder(UUID orderId, UUID sellerId) {
         Order order = getOrderById(orderId);
         validateSeller(order, sellerId);
         assertStatus(order, OrderStatus.PAID, "mark as shipped");
@@ -84,7 +102,7 @@ public class OrderService {
         order.setAutoConfirmDeadline(LocalDateTime.now().plusDays(3));
         orderRepository.save(order);
         eventPublisher.publishEvent(new OrderShippedEvent(orderId));
-        return order;
+        return OrderMapper.toDTO(requireOrderWithItems(orderId));
     }
 
     /**
@@ -92,7 +110,7 @@ public class OrderService {
      * SHIPPED to DELIVERED
      */
     @Transactional
-    public Order confirmDelivery(UUID orderId, UUID buyerId) {
+    public OrderDTO confirmDelivery(UUID orderId, UUID buyerId) {
         Order order = getOrderById(orderId);
         validateBuyer(order, buyerId);
         assertStatus(order, OrderStatus.SHIPPED, "confirm delivery");
@@ -100,7 +118,7 @@ public class OrderService {
         order.setDeliveredAt(LocalDateTime.now());
         orderRepository.save(order);
         eventPublisher.publishEvent(new OrderDeliveredEvent(orderId));
-        return order;
+        return OrderMapper.toDTO(requireOrderWithItems(orderId));
     }
 
     /**

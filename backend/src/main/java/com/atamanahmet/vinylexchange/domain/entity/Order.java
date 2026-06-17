@@ -114,7 +114,7 @@ public class Order extends BaseEntity {
 
     /** True when order completes and payout is waiting to be processed */
     @Builder.Default
-    @Column(nullable = false)
+    @Column(name = "payout_pending", nullable = false)
     private boolean payoutPending = false;
 
     /** Set by admin when payout is manually processed */
