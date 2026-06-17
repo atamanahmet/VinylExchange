@@ -15,7 +15,7 @@ import com.atamanahmet.vinylexchange.exception.InvalidStatusTransitionException;
 import com.atamanahmet.vinylexchange.exception.NoCurrentUserException;
 import com.atamanahmet.vinylexchange.exception.UserNotFoundException;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserService {

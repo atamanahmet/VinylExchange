@@ -10,14 +10,14 @@ import com.atamanahmet.vinylexchange.domain.enums.IssueType;
 import com.atamanahmet.vinylexchange.domain.enums.OrderStatus;
 import com.atamanahmet.vinylexchange.domain.enums.SaleType;
 import com.atamanahmet.vinylexchange.dto.order.CartValidationIssue;
+import com.atamanahmet.vinylexchange.dto.order.CheckoutResponseDTO;
 import com.atamanahmet.vinylexchange.event.OrderCreatedEvent;
 import com.atamanahmet.vinylexchange.exception.CheckOutProcessingException;
 import com.atamanahmet.vinylexchange.exception.CheckOutValidationException;
+import com.atamanahmet.vinylexchange.mapper.OrderMapper;
 import com.atamanahmet.vinylexchange.service.listing.ListingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,7 +41,7 @@ public class CheckOutService {
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
-    public List<Order> proceedCheckOut(UUID userId) {
+    public CheckoutResponseDTO proceedCheckOut(UUID userId) {
 
         Cart cart = cartService.getCart(userId);
 
@@ -62,7 +62,7 @@ public class CheckOutService {
         try {
             List<Order> orders = createOrdersPerSeller(userId, cart.getCartItems(), listingMap);
             cartService.clearCart(userId);
-            return orders;
+            return OrderMapper.toCheckoutResponse(orders);
         } catch (Exception e) {
             log.error("Checkout failed for userId={}", userId, e);
             throw new CheckOutProcessingException();
@@ -79,8 +79,7 @@ public class CheckOutService {
 
         Map<UUID, List<CartItem>> itemsBySeller = cartItems.stream()
                 .collect(Collectors.groupingBy(
-                        item -> listingMap.get(item.getListingId()).getOwnerId()
-                ));
+                        item -> listingMap.get(item.getListingId()).getOwnerId()));
 
         List<Order> createdOrders = new ArrayList<>();
         List<Listing> listingsToUpdate = new ArrayList<>();
@@ -99,8 +98,7 @@ public class CheckOutService {
                     buyerId,
                     sellerId,
                     order.getSaleType(),
-                    order.getTotalPrice()
-            ));
+                    order.getTotalPrice()));
 
             log.info("Order created orderNumber={} seller={} buyer={}",
                     order.getOrderNumber(), sellerId, buyerId);
@@ -124,8 +122,8 @@ public class CheckOutService {
         SaleType saleType = sellerItems.stream()
                 .map(item -> listingMap.get(item.getListingId()).getSaleType())
                 .anyMatch(t -> t == SaleType.FIXED_PRICE)
-                ? SaleType.FIXED_PRICE
-                : SaleType.TRADE;
+                        ? SaleType.FIXED_PRICE
+                        : SaleType.TRADE;
 
         Order order = Order.builder()
                 .orderNumber(orderService.getNextOrderNumber())
@@ -156,8 +154,7 @@ public class CheckOutService {
                             .unitPrice(listing.getPriceKurus())
                             .quantity(item.getOrderQuantity())
                             .subTotal(listing.getPriceKurus() * item.getOrderQuantity())
-                            .build()
-            );
+                            .build());
 
             order.getOrderItems().add(orderItem);
             totalPrice += orderItem.getSubTotal();
@@ -221,6 +218,6 @@ public class CheckOutService {
     }
 
     private boolean hasErrors(List<CartValidationIssue> issues) {
-        return issues.stream().anyMatch(i -> i.getErrorType() == ErrorType.ERROR);
+        return issues.stream().anyMatch(i -> i.errorType() == ErrorType.ERROR);
     }
 }

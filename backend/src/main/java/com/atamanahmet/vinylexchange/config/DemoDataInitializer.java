@@ -13,7 +13,7 @@ import com.atamanahmet.vinylexchange.service.user.AuthService;
 import com.atamanahmet.vinylexchange.service.user.RoleService;
 import com.atamanahmet.vinylexchange.service.user.UserService;
 import jakarta.persistence.EntityManager;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

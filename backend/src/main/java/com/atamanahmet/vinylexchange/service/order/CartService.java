@@ -29,7 +29,7 @@ import com.atamanahmet.vinylexchange.domain.enums.ListingStatus;
 import com.atamanahmet.vinylexchange.exception.CartItemNotFoundException;
 import com.atamanahmet.vinylexchange.exception.EmptyCartException;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor

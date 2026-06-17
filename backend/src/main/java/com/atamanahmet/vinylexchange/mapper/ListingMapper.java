@@ -59,9 +59,9 @@ public class ListingMapper {
         if (request.getTradePreferences() != null && !request.getTradePreferences().isEmpty()) {
             request.getTradePreferences().forEach(prefRequest -> {
                 TradePreference pref = new TradePreference();
-                pref.setDesiredItem(prefRequest.getDesiredItem());
-                pref.setExtraAmount(prefRequest.getExtraAmount());
-                pref.setPaymentDirection(prefRequest.getPaymentDirection());
+                pref.setDesiredItem(prefRequest.desiredItem());
+                pref.setExtraAmount(prefRequest.extraAmount());
+                pref.setPaymentDirection(prefRequest.paymentDirection());
                 listing.addTradePreference(pref);
             });
         }
@@ -129,9 +129,9 @@ public class ListingMapper {
 
     private TradePreference toTradePreferenceEntity(TradePreferenceRequest request) {
         TradePreference pref = new TradePreference();
-        pref.setDesiredItem(request.getDesiredItem());
-        pref.setExtraAmount(request.getExtraAmount());
-        pref.setPaymentDirection(request.getPaymentDirection());
+        pref.setDesiredItem(request.desiredItem());
+        pref.setExtraAmount(request.extraAmount());
+        pref.setPaymentDirection(request.paymentDirection());
         return pref;
     }
 

@@ -44,10 +44,10 @@ public class CmsService {
 
         String textContent = fileStorageService.readTextContentFile(page.getTextContentPath());
 
-        return PageDTO.builder()
-                .header(page.getHeader())
-                .textContent(textContent)
-                .backgroundImagePath(page.getBackgroundImagePath())
-                .build();
+        return new PageDTO(
+                page.getHeader(),
+                textContent,
+                page.getBackgroundImagePath()
+        );
     }
 }

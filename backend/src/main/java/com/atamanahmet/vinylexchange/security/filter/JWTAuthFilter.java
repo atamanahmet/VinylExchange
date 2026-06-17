@@ -5,7 +5,6 @@ import java.util.UUID;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 
 import org.springframework.stereotype.Component;
@@ -14,6 +13,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.auth0.jwt.exceptions.JWTVerificationException;
 
+import com.atamanahmet.vinylexchange.exception.NoCurrentUserException;
 import com.atamanahmet.vinylexchange.security.principal.UserDetailsImpl;
 import com.atamanahmet.vinylexchange.security.service.UserDetailsServiceImpl;
 import com.atamanahmet.vinylexchange.security.util.JwtCookieUtil;
@@ -86,10 +86,12 @@ public class JWTAuthFilter extends OncePerRequestFilter {
         } catch (JWTVerificationException e) {
 
             logger.warn("JWT verification failed: ", e);
+            jwtCookieUtil.revokeJwtCookie(response);
 
-        } catch (UsernameNotFoundException e) {
+        } catch (NoCurrentUserException e) {
 
-            logger.warn("User not found for JWT authentication: ", e);
+            logger.warn("No current user for JWT authentication, clearing stale cookie: " + e.getMessage());
+            jwtCookieUtil.revokeJwtCookie(response);
 
         } catch (Exception e) {
 

@@ -30,7 +30,7 @@ import com.atamanahmet.vinylexchange.repository.user.UserRepository;
 import com.atamanahmet.vinylexchange.domain.enums.UserStatus;
 import com.atamanahmet.vinylexchange.dto.user.UserDTO;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional

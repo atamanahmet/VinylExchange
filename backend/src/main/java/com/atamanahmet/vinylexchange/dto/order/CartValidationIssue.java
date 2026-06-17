@@ -4,20 +4,13 @@ import java.util.UUID;
 
 import com.atamanahmet.vinylexchange.domain.enums.ErrorType;
 import com.atamanahmet.vinylexchange.domain.enums.IssueType;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import lombok.*;
+import lombok.Builder;
 
-@Getter
-@Setter
-@AllArgsConstructor
-@NoArgsConstructor
 @Builder
-@ToString
-public class CartValidationIssue {
-    private UUID cartItemId;
-    private UUID listingId;
-    private IssueType type;
-    private ErrorType errorType;
-    private String message;
-}
+public record CartValidationIssue(
+        UUID cartItemId,
+        UUID listingId,
+        IssueType type,
+        ErrorType errorType,
+        String message
+) {}

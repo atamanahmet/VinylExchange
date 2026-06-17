@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 import com.atamanahmet.vinylexchange.dto.notification.NotificationDTO;
 import com.atamanahmet.vinylexchange.dto.notification.NotificationResponse;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class NotificationService {

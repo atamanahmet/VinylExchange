@@ -1,19 +1,7 @@
 package com.atamanahmet.vinylexchange.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
-@Getter
-@Setter
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
-public class PageDTO {
-    private String header;
-    private String textContent;
-    private String backgroundImagePath;
-
-}
+public record PageDTO(
+        String header,
+        String textContent,
+        String backgroundImagePath
+) {}

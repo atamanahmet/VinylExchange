@@ -5,8 +5,8 @@ import java.util.UUID;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Service;
 
-import com.atamanahmet.vinylexchange.security.principal.UserDetailsImpl;
 import com.atamanahmet.vinylexchange.exception.NoCurrentUserException;
+import com.atamanahmet.vinylexchange.security.principal.UserDetailsImpl;
 import com.atamanahmet.vinylexchange.domain.entity.User;
 import com.atamanahmet.vinylexchange.repository.user.UserRepository;
 
@@ -24,7 +24,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     public UserDetailsImpl loadUserByUsername(String username) {
 
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new NoCurrentUserException());
+                .orElseThrow(NoCurrentUserException::new);
 
         return new UserDetailsImpl(user);
     }
@@ -32,7 +32,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     public UserDetailsImpl loadUserByUserId(UUID userId) {
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new NoCurrentUserException());
+                .orElseThrow(NoCurrentUserException::new);
 
         return new UserDetailsImpl(user);
     }
