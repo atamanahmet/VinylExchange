@@ -2,6 +2,7 @@ export function mbReleaseToWishlistItem(
   item,
   isInWishlistHolder,
   addToWishlistHolder,
+  removeFromWishlistHolder,
 ) {
   const inWishlist = isInWishlistHolder(item);
 
@@ -15,14 +16,20 @@ export function mbReleaseToWishlistItem(
     country: item.country || "Unknown Country",
     year: item.year || "Unknown Date",
     label: item.labelInfo?.[0].label?.name || "Unknown Label",
+    disableLink: true,
+    textCenter: true,
 
     primaryAction: {
-      label: inWishlist ? "Added" : "Add to Wishlist",
-
+      label: inWishlist ? "Remove from Wishlist" : "Add to Wishlist",
       onClick: () => {
+        if (inWishlist) {
+          removeFromWishlistHolder(item);
+          return;
+        }
+
         addToWishlistHolder(item);
       },
-      //   isActive: inWishlist, // To show active state in UI
+      isActive: inWishlist,
     },
   };
 }

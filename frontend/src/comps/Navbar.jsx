@@ -10,36 +10,35 @@ import Notification from "./Notification";
 import { useSearchStore } from "../stores/searchStore";
 import { useListingStore } from "../stores/listingStore";
 
-//TODO: remove, test
 const SkeletonNavbar = () => (
-  <nav className=" border-neutral-secondary border-b">
+  <nav className="border-surface-3 border-b bg-surface-base">
     <div className="max-w-7xl mx-auto px-3 py-3">
       {/* logo */}
       <div className="flex items-center justify-between">
-        <div className="h-10 w-32 bg-neutral-secondary-medium rounded animate-pulse"></div>
+        <div className="h-10 w-32 bg-surface-3 rounded animate-pulse"></div>
 
         <div className="hidden md:block flex-1 max-w-md mx-8">
-          <div className="h-10 bg-neutral-secondary-medium rounded animate-pulse"></div>
+          <div className="h-10 bg-surface-3 rounded animate-pulse"></div>
         </div>
 
         <div className="flex items-center gap-2">
           {/* mobile search button */}
-          <div className="h-10 w-10 bg-neutral-secondary-medium rounded md:hidden animate-pulse"></div>
+          <div className="h-10 w-10 bg-surface-3 rounded md:hidden animate-pulse"></div>
 
           {/* sign in bvutton */}
-          <div className="h-10 w-20 bg-neutral-secondary-medium rounded animate-pulse"></div>
+          <div className="h-10 w-20 bg-surface-3 rounded animate-pulse"></div>
 
           {/* cart icon */}
-          <div className="h-10 w-10 bg-neutral-secondary-medium rounded animate-pulse"></div>
+          <div className="h-10 w-10 bg-surface-3 rounded animate-pulse"></div>
 
           {/* message icon */}
-          <div className="h-10 w-10 bg-neutral-secondary-medium rounded animate-pulse"></div>
+          <div className="h-10 w-10 bg-surface-3 rounded animate-pulse"></div>
 
           {/* avatar */}
-          <div className="h-10 w-10 bg-neutral-secondary-medium rounded-full animate-pulse"></div>
+          <div className="h-10 w-10 bg-surface-3 rounded-full animate-pulse"></div>
 
           {/* mobile menu*/}
-          <div className="h-10 w-10 bg-neutral-secondary-medium rounded lg:hidden animate-pulse"></div>
+          <div className="h-10 w-10 bg-surface-3 rounded lg:hidden animate-pulse"></div>
         </div>
       </div>
     </div>
@@ -133,7 +132,7 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="full-width-break  border-neutral-secondary border-b sticky top-0 z-50 bg-black ">
+    <nav className="full-width-break border-surface-3 border-b sticky top-0 z-50 bg-surface-base">
       <div className=" max-w-7xl mx-auto  px-4 sm:px-6 lg:px-8 ">
         <div className="flex items-center justify-between h-16">
           {/* logo */}
@@ -142,13 +141,13 @@ export default function Navbar() {
             className="flex items-center space-x-3 shrink-0"
           >
             <svg
-              className="h-10 w-8 text-accent-primary"
+              className="h-10 w-8 text-accent-dim"
               fill="currentColor"
               viewBox="0 0 20 20"
             >
               <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8 10a2 2 0 114 0 2 2 0 01-4 0z" />
             </svg>
-            <span className="self-center text-xl font-semibold whitespace-nowrap text-heading hidden sm:block">
+            <span className="self-center text-xl font-semibold whitespace-nowrap text-on-surface hidden sm:block">
               VexChange
             </span>
           </button>
@@ -158,7 +157,7 @@ export default function Navbar() {
             <div className="relative w-full">
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                 <svg
-                  className="w-4 h-4 text-body"
+                  className="w-4 h-4 text-on-surface-dim"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -173,7 +172,7 @@ export default function Navbar() {
               </div>
               <input
                 type="search"
-                className="block w-full p-2.5 pl-10 text-sm text-heading border-2  rounded-base bg-neutral-primary focus:ring-accent-primary focus:border-accent-primary placeholder-body rounded-xl"
+                className="block w-full p-2.5 pl-10 text-sm text-on-surface border-2 rounded-base bg-surface-1 focus:ring-accent focus:border-accent placeholder:text-on-surface-muted rounded-xl"
                 placeholder="Search marketplace..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -186,7 +185,7 @@ export default function Navbar() {
             {/* mobile search */}
             <button
               onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
-              className="flex items-center justify-center md:hidden text-body hover:text-heading bg-transparent border border-transparent hover:bg-neutral-secondary-medium focus:ring-2 focus:ring-neutral-tertiary font-medium rounded-base text-sm w-10 h-10 focus:outline-none"
+              className="flex items-center justify-center md:hidden text-on-surface-dim hover:text-on-surface bg-transparent border border-transparent hover:bg-surface-2 focus:ring-2 focus:ring-surface-3 font-medium rounded-base text-sm w-10 h-10 focus:outline-none"
               aria-label="Search"
             >
               <svg
@@ -209,26 +208,22 @@ export default function Navbar() {
               <div>
                 <button
                   onClick={setModalActive}
-                  className="hidden sm:flex items-center text-body hover:text-heading  hover:bg-neutral-secondary-medium focus:ring-2 focus:ring-neutral-tertiary font-medium rounded-base text-sm px-4 py-2.5 focus:outline-none bg-amber-600 hover:bg-amber-700   rounded-xl"
+                  className="hidden sm:flex items-center text-on-surface hover:text-on-surface hover:bg-accent-hover focus:ring-2 focus:ring-surface-3 font-medium rounded-base text-sm px-4 py-2.5 focus:outline-none bg-accent rounded-xl"
                 >
                   Sign in
                 </button>
-                <AuthModal
-                  openModal={openLogin}
-                  setOpenModal={setModalActive}
-                ></AuthModal>
               </div>
             ) : (
               <div className="flex flex-row gap-4">
                 <button
                   onClick={() => navigate("/newlisting")}
-                  className="hidden sm:flex items-center text-neutral-primary bg-amber-600  rounded-xl hover:bg-amber-700 focus:ring-2 focus:ring-accent-primary font-medium rounded-base text-sm px-4 py-2.5 focus:outline-none"
+                  className="hidden sm:flex items-center text-on-surface bg-accent rounded-xl hover:bg-accent-hover focus:ring-2 focus:ring-accent font-medium rounded-base text-sm px-4 py-2.5 focus:outline-none"
                 >
                   New Listing
                 </button>
                 <button
                   onClick={() => navigate("/orders")}
-                  className="hidden sm:flex items-center text-neutral-primary bg-amber-600  rounded-xl hover:bg-amber-700 focus:ring-2 focus:ring-accent-primary font-medium rounded-base text-sm px-4 py-2.5 focus:outline-none"
+                  className="hidden sm:flex items-center text-on-surface bg-accent rounded-xl hover:bg-accent-hover focus:ring-2 focus:ring-accent font-medium rounded-base text-sm px-4 py-2.5 focus:outline-none"
                 >
                   Orders
                 </button>
@@ -240,7 +235,7 @@ export default function Navbar() {
               {user != null && (
                 <button
                   onClick={() => navigate("/messaging")}
-                  className="relative flex items-center justify-center text-body hover:text-heading bg-transparent border border-transparent hover:bg-neutral-secondary-medium focus:ring-2 focus:ring-neutral-tertiary font-medium rounded-base text-sm w-10 h-10 ml-2 hover:-translate-y-0.5 ease-in-out"
+                  className="relative flex items-center justify-center text-on-surface-dim hover:text-on-surface bg-transparent border border-transparent hover:bg-surface-2 focus:ring-2 focus:ring-surface-3 font-medium rounded-base text-sm w-10 h-10 ml-2 hover:-translate-y-0.5 ease-in-out"
                   aria-label="Messages"
                 >
                   <div className="border-2 border-gray-800 p-2 rounded-full">
@@ -259,7 +254,7 @@ export default function Navbar() {
                     </svg>
                   </div>
 
-                  <span className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-accent-primary rounded-full">
+                  <span className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 text-xs font-bold text-on-surface bg-accent rounded-full">
                     {messageUnreadCount}
                   </span>
                 </button>
@@ -269,7 +264,7 @@ export default function Navbar() {
               {user != null && (
                 <button
                   onClick={() => navigate("/cart")}
-                  className="relative flex items-center justify-center text-body hover:text-heading bg-transparent  hover:bg-neutral-secondary-medium focus:ring-2 focus:ring-neutral-tertiary font-medium rounded-base text-sm w-10 h-10 focus:outline-none "
+                  className="relative flex items-center justify-center text-on-surface-dim hover:text-on-surface bg-transparent hover:bg-surface-2 focus:ring-2 focus:ring-surface-3 font-medium rounded-base text-sm w-10 h-10 focus:outline-none "
                   aria-label="Cart"
                 >
                   <div className="border-2 border-gray-800 p-2 rounded-full">
@@ -288,7 +283,7 @@ export default function Navbar() {
                     </svg>
                   </div>
                   {cartItemCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-accent-primary rounded-full">
+                    <span className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 text-xs font-bold text-on-surface bg-accent rounded-full">
                       {cartItemCount}
                     </span>
                   )}
@@ -303,7 +298,7 @@ export default function Navbar() {
                   onClick={() =>
                     setIsNotificationMenuOpen(!isNotificationMenuOpen)
                   }
-                  className="flex  items-center justify-center text-sm bg-neutral-secondary-medium rounded-full w-10 h-10 focus:ring-4 focus:ring-neutral-tertiary"
+                  className="flex items-center justify-center text-sm bg-surface-2 rounded-full w-10 h-10 focus:ring-4 focus:ring-surface-3"
                   aria-label="Open user menu"
                 >
                   <div className="border-2 border-gray-800 p-2 rounded-full">
@@ -322,7 +317,7 @@ export default function Navbar() {
                     </svg>
                   </div>
                   {notificationUnreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-accent-primary rounded-full">
+                    <span className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 text-xs font-bold text-on-surface bg-accent rounded-full">
                       {notificationUnreadCount}
                     </span>
                   )}
@@ -337,9 +332,9 @@ export default function Navbar() {
 
                 {/* notification dropdown */}
                 {isNotificationMenuOpen && (
-                  <div className="absolute bg-black right-0 z-40 mt-2 w-65 bg-neutral-primary divide-y divide-neutral-secondary rounded-base shadow-lg border border-amber-100">
+                  <div className="absolute bg-surface-base right-0 z-40 mt-2 w-65 divide-y divide-surface-3 rounded-base shadow-lg border border-surface-3">
                     <div className=" py-3">
-                      <span className="block text-sm text-heading font-semibold">
+                      <span className="block text-sm text-on-surface font-semibold">
                         Notifications
                       </span>
                     </div>
@@ -365,7 +360,7 @@ export default function Navbar() {
                         onClick={() => {
                           navigate("/notifications");
                         }}
-                        className="w-full text-left block px-4 py-2 text-sm text-body hover:bg-neutral-secondary-medium hover:text-heading"
+                        className="w-full text-left block px-4 py-2 text-sm text-on-surface-dim hover:bg-surface-2 hover:text-on-surface"
                       >
                         All notifications
                       </button>
@@ -380,10 +375,10 @@ export default function Navbar() {
               <div className="relative">
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="flex  items-center justify-center text-sm bg-neutral-secondary-medium rounded-full w-10 h-10 focus:ring-4 focus:ring-neutral-tertiary"
+                  className="flex items-center justify-center text-sm bg-surface-2 rounded-full w-10 h-10 focus:ring-4 focus:ring-surface-3"
                   aria-label="Open user menu"
                 >
-                  <span className="text-heading font-extrabold text-center  border-3 border-white py-2 px-3.5 rounded-full">
+                  <span className="text-on-surface font-extrabold text-center  border-3 border-white py-2 px-3.5 rounded-full">
                     {user?.username?.charAt(0).toUpperCase() || "U"}
                   </span>
                 </button>
@@ -397,12 +392,12 @@ export default function Navbar() {
 
                 {/* user menu drop */}
                 {isUserMenuOpen && (
-                  <div className="absolute bg-black right-0 z-40 mt-2 w-56 bg-neutral-primary divide-y divide-neutral-secondary rounded-base shadow-lg border border-neutral-tertiary">
+                  <div className="absolute bg-surface-base right-0 z-40 mt-2 w-56 divide-y divide-surface-3 rounded-base shadow-lg border border-surface-3">
                     <div className="px-4 py-3">
-                      <span className="block text-sm text-heading font-semibold">
+                      <span className="block text-sm text-on-surface font-semibold">
                         {user?.username || ""}
                       </span>
-                      <span className="block text-sm text-body truncate">
+                      <span className="block text-sm text-on-surface-dim truncate">
                         {user.email}
                       </span>
                     </div>
@@ -413,7 +408,7 @@ export default function Navbar() {
                             navigate("/listings");
                             setIsUserMenuOpen(false);
                           }}
-                          className="w-full text-left block px-4 py-2 text-sm text-body hover:bg-neutral-secondary-medium hover:text-heading"
+                          className="w-full text-left block px-4 py-2 text-sm text-on-surface-dim hover:bg-surface-2 hover:text-on-surface"
                         >
                           My listings
                         </button>
@@ -424,7 +419,7 @@ export default function Navbar() {
                             navigate("/profile");
                             setIsUserMenuOpen(false);
                           }}
-                          className="w-full text-left block px-4 py-2 text-sm text-body hover:bg-neutral-secondary-medium hover:text-heading"
+                          className="w-full text-left block px-4 py-2 text-sm text-on-surface-dim hover:bg-surface-2 hover:text-on-surface"
                         >
                           Profile
                         </button>
@@ -435,7 +430,7 @@ export default function Navbar() {
                             navigate("/wishlist");
                             setIsUserMenuOpen(false);
                           }}
-                          className="w-full text-left block px-4 py-2 text-sm text-body hover:bg-neutral-secondary-medium hover:text-heading"
+                          className="w-full text-left block px-4 py-2 text-sm text-on-surface-dim hover:bg-surface-2 hover:text-on-surface"
                         >
                           Wishlist
                         </button>
@@ -446,7 +441,7 @@ export default function Navbar() {
                             navigate("/earnings");
                             setIsUserMenuOpen(false);
                           }}
-                          className="w-full text-left block px-4 py-2 text-sm text-body hover:bg-neutral-secondary-medium hover:text-heading"
+                          className="w-full text-left block px-4 py-2 text-sm text-on-surface-dim hover:bg-surface-2 hover:text-on-surface"
                         >
                           Earnings
                         </button>
@@ -458,7 +453,7 @@ export default function Navbar() {
                           handleLogOut();
                           setIsUserMenuOpen(false);
                         }}
-                        className="w-full text-left block px-4 py-2 text-sm text-body hover:bg-neutral-secondary-medium hover:text-heading"
+                        className="w-full text-left block px-4 py-2 text-sm text-on-surface-dim hover:bg-surface-2 hover:text-on-surface"
                       >
                         Sign out
                       </button>
@@ -471,7 +466,7 @@ export default function Navbar() {
             {/* mmobile menu button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-body rounded-base lg:hidden hover:bg-neutral-secondary-soft hover:text-heading focus:outline-none focus:ring-2 focus:ring-neutral-tertiary"
+              className="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-on-surface-dim rounded-base lg:hidden hover:bg-surface-2 hover:text-on-surface focus:outline-none focus:ring-2 focus:ring-surface-3"
               aria-label="Open main menu"
             >
               <svg
@@ -497,7 +492,7 @@ export default function Navbar() {
             <div className="relative">
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                 <svg
-                  className="w-4 h-4 text-body"
+                  className="w-4 h-4 text-on-surface-dim"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -512,7 +507,7 @@ export default function Navbar() {
               </div>
               <input
                 type="search"
-                className="block w-full p-2.5 pl-10 text-sm text-heading border border-neutral-tertiary rounded-base bg-neutral-primary focus:ring-accent-primary focus:border-accent-primary placeholder-body"
+                className="block w-full p-2.5 pl-10 text-sm text-on-surface border border-surface-3 rounded-base bg-surface-1 focus:ring-accent focus:border-accent placeholder:text-on-surface-muted"
                 placeholder="Search products..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -526,7 +521,7 @@ export default function Navbar() {
         {/* <div
           className={`${
             isMobileMenuOpen ? "block" : "hidden"
-          } lg:flex lg:items-center lg:justify-center lg:space-x-8 border-t border-neutral-secondary lg:border-t-0 py-4 lg:py-3`}
+          } lg:flex lg:items-center lg:justify-center lg:space-x-8 border-t border-surface-3 lg:border-t-0 py-4 lg:py-3`}
         >
           <ul className="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-8">
             <li>
@@ -535,7 +530,7 @@ export default function Navbar() {
                   navigate("/");
                   setIsMobileMenuOpen(false);
                 }}
-                className="block py-2 text-body hover:text-heading transition-colors"
+                className="block py-2 text-on-surface-dim hover:text-on-surface transition-colors"
               >
                 Home
               </button>
@@ -546,7 +541,7 @@ export default function Navbar() {
                   navigate("/about");
                   setIsMobileMenuOpen(false);
                 }}
-                className="block py-2 text-body hover:text-heading transition-colors"
+                className="block py-2 text-on-surface-dim hover:text-on-surface transition-colors"
               >
                 About
               </button>
@@ -557,7 +552,7 @@ export default function Navbar() {
                   navigate("/services");
                   setIsMobileMenuOpen(false);
                 }}
-                className="block py-2 text-body hover:text-heading transition-colors"
+                className="block py-2 text-on-surface-dim hover:text-on-surface transition-colors"
               >
                 Services
               </button>
@@ -568,7 +563,7 @@ export default function Navbar() {
                   navigate("/orders");
                   setIsMobileMenuOpen(false);
                 }}
-                className="block py-2 text-body hover:text-heading transition-colors"
+                className="block py-2 text-on-surface-dim hover:text-on-surface transition-colors"
               >
                 Orders
               </button>
@@ -580,7 +575,7 @@ export default function Navbar() {
                     navigate("/admin");
                     setIsMobileMenuOpen(false);
                   }}
-                  className="block py-2 text-body hover:text-heading transition-colors"
+                  className="block py-2 text-on-surface-dim hover:text-on-surface transition-colors"
                 >
                   AdminDash
                 </button>

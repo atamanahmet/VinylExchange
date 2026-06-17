@@ -3,8 +3,8 @@ export default function CardShell({ children, onClick }) {
     <div
       onClick={onClick}
       className="
-        bg-neutral-primary-soft
-        border border-default
+        bg-surface-1
+        border border-surface-3
         rounded-2xl
         shadow-xs
         flex flex-col

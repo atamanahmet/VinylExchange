@@ -1,19 +1,21 @@
 export function attachCardActions(cardData, context) {
   const {
     user,
-    cartIds = new Set(),
+    cartItemByListingId = new Map(),
     addToCart,
+    removeFromCart,
     navigate,
     startConversation,
     onDelete,
   } = context;
 
   const isOwner = user?.username === cardData.ownerUsername;
-  const inCart = cartIds.has(cardData.id);
+  const listingKey = String(cardData.id);
+  const cartItemId = cartItemByListingId.get(listingKey);
+  const inCart = cartItemByListingId.has(listingKey);
 
   const actions = {};
 
-  // Primary button
   if (!isOwner && startConversation) {
     actions.primaryAction = {
       label: "Trade",
@@ -26,11 +28,13 @@ export function attachCardActions(cardData, context) {
     };
   }
 
-  // Secondary button
-  if (!isOwner && addToCart) {
+  if (!isOwner && addToCart && removeFromCart) {
     actions.secondaryAction = {
-      label: inCart ? "In Cart" : "Add to Cart",
-      onClick: () => addToCart(cardData.id),
+      label: inCart ? "Remove" : "Add to cart",
+      onClick: () =>
+        inCart && cartItemId
+          ? removeFromCart(cartItemId)
+          : addToCart(cardData.id, 1),
     };
   } else if (isOwner && onDelete) {
     actions.secondaryAction = {

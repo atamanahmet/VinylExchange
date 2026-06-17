@@ -1,5 +1,12 @@
-export function wishlistItemToCardItem(item, isInWishlist, removeFromWishlist) {
+export function wishlistItemToCardItem(
+  item,
+  isInWishlist,
+  removeFromWishlist,
+  matchingListing,
+  navigate,
+) {
   const inWishlist = isInWishlist(item);
+  const inStock = Boolean(matchingListing);
 
   return {
     id: item.id,
@@ -11,20 +18,32 @@ export function wishlistItemToCardItem(item, isInWishlist, removeFromWishlist) {
     country: item.country || "Unknown Country",
     year: item.year || "Unknown Date",
     label: item.label || "Unknown Label",
+    disableLink: true,
+    textCenter: true,
+    stackActions: true,
 
     primaryAction: {
-      label: inWishlist ? "Remove" : "Add to Wishlist",
-
+      label: "Remove from Wishlist",
       onClick: async () => {
         const result = await removeFromWishlist(item.id);
 
         if (result) {
-          console.log("Removed to wishlist:", item.title);
+          console.log("Removed from wishlist:", item.title);
         } else {
           console.log("Failed to remove", item.title);
         }
       },
-      //   isActive: inWishlist, // To show active state in UI
+      isActive: inWishlist,
     },
+
+    secondaryAction: inStock
+      ? {
+          label: "In stock",
+          onClick: () => navigate(`/listing/${matchingListing.id}`),
+        }
+      : {
+          label: "Not in stock",
+          disabled: true,
+        },
   };
 }

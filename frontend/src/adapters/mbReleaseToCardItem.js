@@ -10,6 +10,7 @@ export function mbReleaseToCardItem(release, isInWishlist, toggleToWishlist) {
     externalCoverUrl: release.externalCoverUrl,
     year: release.year || "Unknown Date",
     label: release.labelInfo?.[0].label?.name || "Unknown Label",
+    disableLink: true,
 
     primaryAction: {
       label: inWishlist ? "Remove from Wishlist" : "Add to Wishlist",
@@ -25,7 +26,7 @@ export function mbReleaseToCardItem(release, isInWishlist, toggleToWishlist) {
           console.log("Removed from wishlist:", release.title);
         }
       },
-      isActive: inWishlist, // To show active state in UI
+      isActive: inWishlist,
     },
   };
 }
