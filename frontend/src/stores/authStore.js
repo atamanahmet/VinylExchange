@@ -78,9 +78,10 @@ export const useAuthStore = create((set, get) => ({
         { withCredentials: true },
       );
       if (res.status === 201) {
-        const { username, email } = res.data;
-
-        set({ authResponse: "Account created successfully. Redirecting..." });
+        set({
+          user: { username: formData.username, email: formData.email },
+          authResponse: "Account created successfully. Redirecting...",
+        });
         return true;
       }
       console.warn("Unexpected register status:", res.status);
