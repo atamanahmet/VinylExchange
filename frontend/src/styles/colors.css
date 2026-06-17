@@ -1,0 +1,112 @@
+/* ================================================================
+   VINYL EXCHANGE - Central Color Palette
+   ================================================================
+   All raw color values live here. Change one value to update
+   every usage site instantly.
+
+   Tailwind tokens are registered in App.css @theme inline so
+   the classes bg-brand, text-accent, bg-surface-1, etc. work
+   everywhere. Prefix convention: --c-<group>[-variant]
+   ================================================================ */
+
+:root {
+
+  /* ══ BRAND ═══════════════════════════════════════════════════
+     Primary brand colour - default: indigo.
+     Swap the hex values here to change the brand identity.      */
+
+  --c-brand:          #4f43e9;  /* indigo-600 */
+  --c-brand-hover:    #432dd7;  /* indigo-700 */
+  --c-brand-active:   #372aac;  /* indigo-800 */
+  --c-brand-deep:     #17144b;  /* indigo-950 */
+  --c-brand-fg:       #7c86ff;  /* indigo-400 - text on dark bg */
+
+
+  /* ══ ACCENT ══════════════════════════════════════════════════
+     Secondary highlight colour - default: amber.
+     Used for prices, artist names, notification badges, etc.   */
+
+  --c-accent:         #e17100;   /* amber-600 */
+  --c-accent-hover:   #bb4d00;   /* amber-700 */
+  --c-accent-dim:     #fe9a00;   /* amber-500 */
+  --c-accent-text:    #fcbb00;   /* amber-400 - readable on dark bg */
+  --c-accent-light:   #fee685;   /* amber-200 */
+  --c-accent-soft:    #fcf4c7;   /* amber-100 */
+  --c-accent-muted:   #fffbeb;   /* amber-50  - subtle form borders */
+
+
+  /* ══ SURFACES ════════════════════════════════════════════════
+     Dark-theme surface stack - deeper number = darker layer.  */
+
+  --c-surface-base:   #000000;   /* black       */
+  --c-surface-1:      #171717;   /* neutral-900 */
+  --c-surface-2:      #262626;   /* neutral-800 */
+  --c-surface-3:      #404040;   /* neutral-700 */
+  --c-surface-4:      #525252;   /* neutral-600 */
+  --c-surface-form:   #354152;   /* slate-700   */
+
+
+  /* ══ ON-SURFACE TEXT ═════════════════════════════════════════
+     Text colours for use on dark surfaces, lightest first.    */
+
+  --c-on-surface:        #ffffff;   /* white         */
+  --c-on-surface-alpha:  #ffffffde; /* white 87%     */
+  --c-on-surface-bright: #e7e7e7;   /* neutral-200   */
+  --c-on-surface-dim:    #c0c0c0;   /* neutral-300   */
+  --c-on-surface-muted:  #a0a0a0;   /* neutral-400   */
+  --c-on-surface-faint:  #4c4c4c;   /* neutral-500   */
+
+
+  /* ══ STATUS: SUCCESS ══════════════════════════════════════════ */
+
+  --c-success:        #008236;  /* green-700 */
+  --c-success-hover:  #016630;  /* green-800 */
+  --c-success-fg:     #05df72;  /* green-400 */
+
+
+  /* ══ STATUS: DANGER ═══════════════════════════════════════════ */
+
+  --c-danger:         #e7000b;   /* red-600   */
+  --c-danger-hover:   #c10007;   /* red-700   */
+  --c-danger-deep:    #9f0715;   /* red-800   */
+  --c-danger-deeper:  #82181a;   /* red-900   */
+  --c-danger-bright:  #fb2c36;   /* red-500   */
+  --c-danger-pale:    #ffc9ca;   /* red-200   */
+  --c-danger-fg:      #ff6467;   /* red-400   */
+
+
+  /* ══ STATUS: WARNING ══════════════════════════════════════════ */
+
+  --c-warning:        #ca3500;   /* orange-700 */
+  --c-warning-hover:  #9f2d00;   /* orange-800 */
+  --c-warning-fg:     #ff8904;   /* orange-400 */
+
+
+  /* ══ STATUS: INFO ═════════════════════════════════════════════ */
+
+  --c-info:           #155dfc;  /* blue-600  */
+  --c-info-fg:        #51a2ff;  /* blue-400  */
+
+
+  /* ══ STATUS: NOTE (teal) ══════════════════════════════════════ */
+
+  --c-note-fg:        #00d5be;  /* teal-400  */
+
+
+  /* ══ STATUS: PROMO (purple) ════════════════════════════════════ */
+
+  --c-promo-fg:       #c27aff;  /* purple-400 */
+
+
+  /* ══ STATUS: SIGNAL (cyan) ═════════════════════════════════════ */
+
+  --c-signal-fg:      #00b8db;  /* cyan-500  */
+  --c-signal-fg-dark: #0092b8;  /* cyan-600  */
+
+
+  /* ══ SKELETON ═════════════════════════════════════════════════
+     Shimmer animation gradient for loading states.            */
+
+  --c-skeleton-base:  #f0f0f0;
+  --c-skeleton-shine: #e0e0e0;
+}

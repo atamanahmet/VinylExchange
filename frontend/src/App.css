@@ -1,4 +1,10 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+@import "./styles/colors.css";
+
+@custom-variant dark (&:is(.dark *));
 @plugin "flowbite-react/plugin/tailwindcss";
 @source "../.flowbite-react/class-list.json";
 #root {
@@ -14,7 +20,7 @@
 .skeleton {
   font-family: ui-monospace, monospace;
   color: transparent;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background: linear-gradient(90deg, var(--c-skeleton-base) 25%, var(--c-skeleton-shine) 50%, var(--c-skeleton-base) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: 4px;
@@ -58,4 +64,184 @@
 
 [data-modal-backdrop] {
   @apply backdrop-blur-sm;
+}
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: 'Geist Variable', sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* ── Vinyl Exchange semantic color tokens ────────────────────
+     These map the raw palette variables in colors.css to
+     Tailwind utility classes (bg-brand, text-accent, etc.).
+     To change a colour, edit colors.css only.               */
+
+  --color-brand:              var(--c-brand);
+  --color-brand-hover:        var(--c-brand-hover);
+  --color-brand-active:       var(--c-brand-active);
+  --color-brand-deep:         var(--c-brand-deep);
+  --color-brand-fg:           var(--c-brand-fg);
+
+  --color-accent:             var(--c-accent);
+  --color-accent-hover:       var(--c-accent-hover);
+  --color-accent-dim:         var(--c-accent-dim);
+  --color-accent-text:        var(--c-accent-text);
+  --color-accent-light:       var(--c-accent-light);
+  --color-accent-soft:        var(--c-accent-soft);
+  --color-accent-muted:       var(--c-accent-muted);
+
+  --color-surface-base:       var(--c-surface-base);
+  --color-surface-1:          var(--c-surface-1);
+  --color-surface-2:          var(--c-surface-2);
+  --color-surface-3:          var(--c-surface-3);
+  --color-surface-4:          var(--c-surface-4);
+  --color-surface-form:       var(--c-surface-form);
+
+  --color-on-surface:         var(--c-on-surface);
+  --color-on-surface-bright:  var(--c-on-surface-bright);
+  --color-on-surface-dim:     var(--c-on-surface-dim);
+  --color-on-surface-muted:   var(--c-on-surface-muted);
+  --color-on-surface-faint:   var(--c-on-surface-faint);
+
+  --color-success:            var(--c-success);
+  --color-success-hover:      var(--c-success-hover);
+  --color-success-fg:         var(--c-success-fg);
+
+  --color-danger:             var(--c-danger);
+  --color-danger-hover:       var(--c-danger-hover);
+  --color-danger-deep:        var(--c-danger-deep);
+  --color-danger-deeper:      var(--c-danger-deeper);
+  --color-danger-bright:      var(--c-danger-bright);
+  --color-danger-pale:        var(--c-danger-pale);
+  --color-danger-fg:          var(--c-danger-fg);
+
+  --color-warning:            var(--c-warning);
+  --color-warning-hover:      var(--c-warning-hover);
+  --color-warning-fg:         var(--c-warning-fg);
+
+  --color-info:               var(--c-info);
+  --color-info-fg:            var(--c-info-fg);
+
+  --color-note-fg:            var(--c-note-fg);
+  --color-promo-fg:           var(--c-promo-fg);
+  --color-signal-fg:          var(--c-signal-fg);
+  --color-signal-fg-dark:     var(--c-signal-fg-dark);
+}
+
+:root {
+  --background: var(--c-surface-1);
+  --foreground: var(--c-on-surface);
+  --card: var(--c-surface-2);
+  --card-foreground: var(--c-on-surface);
+  --popover: var(--c-surface-2);
+  --popover-foreground: var(--c-on-surface);
+  --primary: var(--c-brand);
+  --primary-foreground: var(--c-on-surface);
+  --secondary: var(--c-surface-3);
+  --secondary-foreground: var(--c-on-surface);
+  --muted: var(--c-surface-3);
+  --muted-foreground: var(--c-on-surface-muted);
+  --accent: var(--c-surface-3);
+  --accent-foreground: var(--c-on-surface);
+  --destructive: var(--c-danger);
+  --border: var(--c-surface-4);
+  --input: var(--c-accent-muted);
+  --ring: var(--c-brand-active);
+  --chart-1: var(--c-brand);
+  --chart-2: var(--c-accent);
+  --chart-3: var(--c-success);
+  --chart-4: var(--c-warning);
+  --chart-5: var(--c-info);
+  --radius: 0.625rem;
+  --sidebar: var(--c-surface-2);
+  --sidebar-foreground: var(--c-on-surface);
+  --sidebar-primary: var(--c-brand);
+  --sidebar-primary-foreground: var(--c-on-surface);
+  --sidebar-accent: var(--c-surface-3);
+  --sidebar-accent-foreground: var(--c-on-surface);
+  --sidebar-border: var(--c-surface-4);
+  --sidebar-ring: var(--c-brand-active);
+}
+
+.dark {
+  --background: var(--c-surface-1);
+  --foreground: var(--c-on-surface);
+  --card: var(--c-surface-2);
+  --card-foreground: var(--c-on-surface);
+  --popover: var(--c-surface-2);
+  --popover-foreground: var(--c-on-surface);
+  --primary: var(--c-brand);
+  --primary-foreground: var(--c-on-surface);
+  --secondary: var(--c-surface-3);
+  --secondary-foreground: var(--c-on-surface);
+  --muted: var(--c-surface-3);
+  --muted-foreground: var(--c-on-surface-muted);
+  --accent: var(--c-surface-3);
+  --accent-foreground: var(--c-on-surface);
+  --destructive: var(--c-danger);
+  --border: var(--c-surface-4);
+  --input: var(--c-accent-muted);
+  --ring: var(--c-brand-active);
+  --chart-1: var(--c-brand);
+  --chart-2: var(--c-accent);
+  --chart-3: var(--c-success);
+  --chart-4: var(--c-warning);
+  --chart-5: var(--c-info);
+  --sidebar: var(--c-surface-2);
+  --sidebar-foreground: var(--c-on-surface);
+  --sidebar-primary: var(--c-brand);
+  --sidebar-primary-foreground: var(--c-on-surface);
+  --sidebar-accent: var(--c-surface-3);
+  --sidebar-accent-foreground: var(--c-on-surface);
+  --sidebar-border: var(--c-surface-4);
+  --sidebar-ring: var(--c-brand-active);
+}
+
+@layer base {
+  * {
+    @apply border-surface-4 outline-brand-active/50;
+  }
+  body {
+    @apply bg-surface-1 text-on-surface;
+  }
+  html {
+    @apply font-sans;
+  }
 }
