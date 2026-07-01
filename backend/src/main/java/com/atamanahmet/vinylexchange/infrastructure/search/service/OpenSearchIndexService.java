@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.atamanahmet.vinylexchange.infrastructure.search.document.ListingDocument;
 import com.atamanahmet.vinylexchange.domain.entity.Listing;
+import com.atamanahmet.vinylexchange.mapper.MediaInfoFormatter;
 
 import lombok.RequiredArgsConstructor;
 
@@ -64,8 +65,8 @@ public class OpenSearchIndexService {
                 .artistName(listing.getArtistName())
                 .year(listing.getYear())
                 .status(listing.getStatus().name())
-                .country(listing.getCountry())
-                .format(listing.getFormat())
+                .country(listing.getCountry() != null ? listing.getCountry().getIsoCode() : null)
+                .format(MediaInfoFormatter.toDisplayLabel(listing.getMediaInfo()))
                 .labelName(listing.getLabelName())
                 .barcode(listing.getBarcode())
                 .ownerUsername(listing.getOwnerUsername())

@@ -1,5 +1,6 @@
 package com.atamanahmet.vinylexchange.dto.listing;
 
+import com.atamanahmet.vinylexchange.domain.enums.Country;
 import com.atamanahmet.vinylexchange.dto.user.TradePreferenceRequest;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -62,8 +63,9 @@ public class CreateListingRequest {
     private List<TradePreferenceRequest> tradePreferences;
 
     // Album details
-    @NotBlank(message = "Format is required")
-    private String format;
+    @NotNull(message = "Media info is required")
+    @Valid
+    private MediaInfoDTO mediaInfo;
 
     @NotBlank(message = "Condition is required")
     private String condition;
@@ -72,7 +74,9 @@ public class CreateListingRequest {
     private String packaging;
 
     private Integer year;
-    private String country;
+
+    @NotNull(message = "Country is required")
+    private Country country;
     private String barcode;
     private String labelName;
     private String artistId;

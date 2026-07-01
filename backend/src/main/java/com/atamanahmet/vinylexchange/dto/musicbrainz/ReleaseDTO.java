@@ -1,5 +1,7 @@
 package com.atamanahmet.vinylexchange.dto.musicbrainz;
 
+import com.atamanahmet.vinylexchange.dto.listing.MediaInfoDTO;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -37,6 +39,8 @@ public class ReleaseDTO {
     private Integer trackCount;
 
     private List<Media> media;
+
+    private MediaInfoDTO suggestedMediaInfo;
 
     private List<Tags> tags;
 

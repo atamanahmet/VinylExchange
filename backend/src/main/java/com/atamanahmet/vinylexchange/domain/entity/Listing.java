@@ -2,9 +2,14 @@ package com.atamanahmet.vinylexchange.domain.entity;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
+import com.atamanahmet.vinylexchange.common.NanoIdGenerator;
+import com.atamanahmet.vinylexchange.domain.embeddable.MediaInfo;
+import com.atamanahmet.vinylexchange.domain.enums.Country;
 import com.atamanahmet.vinylexchange.domain.enums.ListingStatus;
 import com.atamanahmet.vinylexchange.domain.enums.SaleType;
 
@@ -16,7 +21,13 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "listings")
+@Table(name = "listings", indexes = {
+        @Index(name = "idx_listings_country", columnList = "country"),
+        @Index(name = "idx_listings_media_info_format", columnList = "media_info_format"),
+        @Index(name = "idx_listings_condition", columnList = "condition"),
+        @Index(name = "idx_listings_year", columnList = "year"),
+        @Index(name = "idx_listings_price_kurus", columnList = "price_kurus")
+})
 @Getter
 @Setter
 @AllArgsConstructor
@@ -28,12 +39,33 @@ public class Listing extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "public_id", unique = true, nullable = false, updatable = false, length = 12)
+    private String publicId;
+
     private String title;
     private String packaging;
     private int year;
-    private String country;
+
+    // EnumType.STRING — declaration order is not stable; ORDINAL would break on enum regeneration.
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private Country country;
+
     private String barcode;
-    private String format;
+
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "format", column = @Column(name = "media_info_format", nullable = false)),
+            @AttributeOverride(name = "vinylSubtype", column = @Column(name = "media_info_vinyl_subtype")),
+            @AttributeOverride(name = "speedRpm", column = @Column(name = "media_info_speed_rpm")),
+            @AttributeOverride(name = "vinylSize", column = @Column(name = "media_info_vinyl_size")),
+            @AttributeOverride(name = "discCount", column = @Column(name = "media_info_disc_count")),
+            @AttributeOverride(name = "colored", column = @Column(name = "media_info_colored")),
+            @AttributeOverride(name = "pictureDisc", column = @Column(name = "media_info_picture_disc")),
+            @AttributeOverride(name = "sourceFormatRaw", column = @Column(name = "media_info_source_format_raw"))
+    })
+    private MediaInfo mediaInfo;
+
     private String description;
     private String artistName;
     private String artistId;
@@ -109,6 +141,10 @@ public class Listing extends BaseEntity {
     @Column(nullable = false)
     private boolean promote = false;
 
+    @Builder.Default
+    @Column(name = "needs_image_migration", nullable = false)
+    private boolean needsImageMigration = false;
+
     @Column(name = "main_image_url")
     private String mainImageUrl;
 
@@ -116,6 +152,18 @@ public class Listing extends BaseEntity {
     @OrderBy("position ASC")
     @Builder.Default
     private List<ListingImage> images = new ArrayList<>();
+
+    @ManyToMany
+    @JoinTable(
+            name = "listing_genre",
+            joinColumns = @JoinColumn(name = "listing_id"),
+            inverseJoinColumns = @JoinColumn(name = "genre_id"),
+            indexes = {
+                    @Index(name = "idx_listing_genre_listing_id", columnList = "listing_id"),
+                    @Index(name = "idx_listing_genre_genre_id", columnList = "genre_id")
+            })
+    @Builder.Default
+    private Set<Genre> genres = new HashSet<>();
 
     private UUID promotedById;
     private String promotedBy;
@@ -145,6 +193,13 @@ public class Listing extends BaseEntity {
     public void removeTradePreference(TradePreference tradePreference) {
         tradePreferences.remove(tradePreference);
         tradePreference.setListing(null);
+    }
+
+    @PrePersist
+    private void generatePublicId() {
+        if (this.publicId == null) {
+            this.publicId = NanoIdGenerator.generate();
+        }
     }
 
 }

@@ -7,6 +7,7 @@ import com.atamanahmet.vinylexchange.domain.entity.ListingImage;
 import com.atamanahmet.vinylexchange.domain.entity.TradePreference;
 import com.atamanahmet.vinylexchange.dto.listing.CreateListingRequest;
 import com.atamanahmet.vinylexchange.dto.listing.ListingDTO;
+import com.atamanahmet.vinylexchange.dto.listing.ListingSummaryDto;
 import com.atamanahmet.vinylexchange.dto.listing.UpdateListingRequest;
 import com.atamanahmet.vinylexchange.dto.user.TradePreferenceDTO;
 import com.atamanahmet.vinylexchange.dto.user.TradePreferenceRequest;
@@ -21,6 +22,7 @@ import java.util.List;
 public class ListingMapper {
 
     private final ListingPriceCalculator priceCalculator;
+    private final MediaInfoMapper mediaInfoMapper;
 
     /**
      * Converts CreateListingRequest to Listing entity
@@ -42,7 +44,7 @@ public class ListingMapper {
                 .originalPriceKurus(price.priceKurus())
                 .tradeable(request.getTradeable())
                 .tradeValue(request.getTradeValue())
-                .format(request.getFormat())
+                .mediaInfo(mediaInfoMapper.toEntity(request.getMediaInfo()))
                 .condition(request.getCondition())
                 .packaging(request.getPackaging())
                 .year(request.getYear())
@@ -79,7 +81,13 @@ public class ListingMapper {
         if (request.getDescription() != null) listing.setDescription(request.getDescription());
         if (request.getTradeable() != null) listing.setTradeable(request.getTradeable());
         if (request.getTradeValue() != null) listing.setTradeValue(request.getTradeValue());
-        if (request.getFormat() != null) listing.setFormat(request.getFormat());
+        if (request.getMediaInfo() != null) {
+            if (listing.getMediaInfo() == null) {
+                listing.setMediaInfo(mediaInfoMapper.toEntity(request.getMediaInfo()));
+            } else {
+                mediaInfoMapper.applyUpdate(listing.getMediaInfo(), request.getMediaInfo());
+            }
+        }
         if (request.getCondition() != null) listing.setCondition(request.getCondition());
         if (request.getPackaging() != null) listing.setPackaging(request.getPackaging());
         if (request.getYear() != null) listing.setYear(request.getYear());
@@ -125,6 +133,20 @@ public class ListingMapper {
                 .map(ListingImage::getSecureUrl)
                 .toList();
         return new ListingDTO(listing, imagePaths, discountPercent);
+    }
+
+    public ListingSummaryDto toSummaryDto(Listing listing) {
+        return new ListingSummaryDto(
+                listing.getPublicId(),
+                listing.getTitle(),
+                listing.getArtistName(),
+                listing.getPriceKurus(),
+                listing.getMainImageUrl(),
+                listing.getCondition(),
+                listing.getYear(),
+                listing.getCountry() != null ? listing.getCountry().getIsoCode() : null,
+                MediaInfoFormatter.toDisplayLabel(listing.getMediaInfo()),
+                listing.getLabelName());
     }
 
     private TradePreference toTradePreferenceEntity(TradePreferenceRequest request) {

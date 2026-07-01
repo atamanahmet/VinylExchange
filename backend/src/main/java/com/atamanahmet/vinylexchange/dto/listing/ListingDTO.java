@@ -4,6 +4,8 @@ import com.atamanahmet.vinylexchange.config.json.PriceTlSerializer;
 import com.atamanahmet.vinylexchange.domain.entity.Listing;
 import com.atamanahmet.vinylexchange.domain.enums.ListingStatus;
 import com.atamanahmet.vinylexchange.dto.user.TradePreferenceDTO;
+import com.atamanahmet.vinylexchange.mapper.MediaInfoFormatter;
+import com.atamanahmet.vinylexchange.mapper.MediaInfoMapper;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Getter;
@@ -11,6 +13,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,10 +22,11 @@ import java.util.UUID;
 @NoArgsConstructor
 public class ListingDTO {
 
-    private UUID id;
+    private String publicId;
     private UUID mbId;
     private String title;
     private String description;
+    private MediaInfoDTO mediaInfo;
     private String format;
     private String condition;
     private String packaging;
@@ -37,6 +41,7 @@ public class ListingDTO {
     private ListingStatus status;
     private LocalDateTime createdAt;
     private List<String> imagePaths;
+    private List<String> genres;
     private List<TradePreferenceDTO> tradePreferences;
     private Integer trackCount;
 
@@ -61,7 +66,7 @@ public class ListingDTO {
     private Integer discountPercent;
 
     public ListingDTO(Listing listing, List<String> imagePaths, Integer discountPercent) {
-        this.id = listing.getId();
+        this.publicId = listing.getPublicId();
         this.mbId = listing.getMbId();
         this.title = listing.getTitle();
         this.description = listing.getDescription();
@@ -69,8 +74,9 @@ public class ListingDTO {
         this.priceKurus = listing.getPriceKurus();
         this.tradeable = listing.getTradeable();
         this.imagePaths = imagePaths;
-        this.format = listing.getFormat();
-        this.country = listing.getCountry();
+        this.mediaInfo = MediaInfoMapper.toDtoStatic(listing.getMediaInfo());
+        this.format = MediaInfoFormatter.toDisplayLabel(listing.getMediaInfo());
+        this.country = listing.getCountry() != null ? listing.getCountry().getIsoCode() : null;
         this.status = listing.getStatus();
         this.packaging = listing.getPackaging();
         this.ownerUsername = listing.getOwner().getUsername();
@@ -85,5 +91,9 @@ public class ListingDTO {
         this.tradeValue = listing.getTradeValue();
         this.discountPercent = discountPercent;
         this.originalPriceKurus = discountPercent != null ? listing.getOriginalPriceKurus() : null;
+        this.genres = listing.getGenres().stream()
+                .map(genre -> genre.getName())
+                .sorted(Comparator.naturalOrder())
+                .toList();
     }
 }

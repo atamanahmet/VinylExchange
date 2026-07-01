@@ -1,5 +1,6 @@
 package com.atamanahmet.vinylexchange.dto.listing;
 
+import com.atamanahmet.vinylexchange.domain.enums.Country;
 import com.atamanahmet.vinylexchange.dto.user.TradePreferenceRequest;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -58,7 +59,8 @@ public class UpdateListingRequest {
     @Valid
     private List<TradePreferenceRequest> tradePreferences;
 
-    private String format;
+    @Valid
+    private MediaInfoDTO mediaInfo;
 
     private UUID mbId;
 
@@ -66,7 +68,7 @@ public class UpdateListingRequest {
     private String condition;
     private String packaging;
     private Integer year;
-    private String country;
+    private Country country;
     private String barcode;
     private String labelName;
     private Integer trackCount;

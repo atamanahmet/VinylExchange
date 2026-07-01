@@ -8,6 +8,7 @@ import com.atamanahmet.vinylexchange.domain.entity.Listing;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,7 +19,7 @@ import com.atamanahmet.vinylexchange.domain.enums.ListingStatus;
 import jakarta.persistence.LockModeType;
 
 @Repository
-public interface ListingRepository extends JpaRepository<Listing, UUID> {
+public interface ListingRepository extends JpaRepository<Listing, UUID>, JpaSpecificationExecutor<Listing> {
 
         List<Listing> findAllByOwner_IdAndStatus(UUID ownerId, ListingStatus status);
 
@@ -32,10 +33,14 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
          * Single query fetch with all images joined
          * Used only on detail page
          */
-        @Query("SELECT l FROM Listing l LEFT JOIN FETCH l.images WHERE l.id = :id")
+        @Query("SELECT DISTINCT l FROM Listing l LEFT JOIN FETCH l.images LEFT JOIN FETCH l.genres WHERE l.id = :id")
         Optional<Listing> findByIdWithImages(@Param("id") UUID id);
 
         List<Listing> findByPromoteTrue();
+
+        List<Listing> findByNeedsImageMigrationTrue();
+
+        List<Listing> findAllByNeedsImageMigrationTrue();
 
         List<Listing> findByOnHoldFalse();
 
@@ -81,7 +86,7 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
                     coalesce(l.title,'') || ' ' ||
                     coalesce(l.artist_name,'') || ' ' ||
                     coalesce(l.label_name,'') || ' ' ||
-                    coalesce(l.format,'')
+                    coalesce(l.media_info_format,'')
                 ) @@ plainto_tsquery('english', :query)
                 OR l.title ILIKE '%' || :query || '%'
                 OR l.artist_name ILIKE '%' || :query || '%'
@@ -92,7 +97,7 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
                         coalesce(l.title,'') || ' ' ||
                         coalesce(l.artist_name,'') || ' ' ||
                         coalesce(l.label_name,'') || ' ' ||
-                        coalesce(l.format,'')
+                        coalesce(l.media_info_format,'')
                     ),
                     plainto_tsquery('english', :query)
                 ) DESC
@@ -113,7 +118,7 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
                     coalesce(l.title,'') || ' ' ||
                     coalesce(l.artist_name,'') || ' ' ||
                     coalesce(l.label_name,'') || ' ' ||
-                    coalesce(l.format,'')
+                    coalesce(l.media_info_format,'')
                 ) @@ plainto_tsquery('english', :query)
                 OR l.title ILIKE '%' || :query || '%'
                 OR l.artist_name ILIKE '%' || :query || '%'
@@ -133,5 +138,9 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
                 @Param("size") int size,
                 @Param("offset") int offset);
 
+        Optional<Listing> findByPublicId(String publicId);
+
+        @Query("SELECT l.publicId FROM Listing l WHERE l.id = :id")
+        Optional<String> findPublicIdById(@Param("id") UUID id);
 
 }
