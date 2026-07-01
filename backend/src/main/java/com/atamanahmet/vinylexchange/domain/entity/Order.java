@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.atamanahmet.vinylexchange.config.json.PriceTlSerializer;
 import com.atamanahmet.vinylexchange.domain.enums.OrderStatus;
 import com.atamanahmet.vinylexchange.domain.enums.SaleType;
+import com.atamanahmet.vinylexchange.security.encryption.PiiAttributeConverter;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -82,31 +83,43 @@ public class Order extends BaseEntity {
     private LocalDateTime paidAt;
 
     //
-    // CARGO FIELDS
+    // SHIPMENT FIELDS
     //
 
     /** Basit Kargo order ID returned on shipment creation */
-    @Column(name = "cargo_order_id")
-    private String cargoOrderId;
+    @Column(name = "shipment_order_id")
+    private String shipmentOrderId;
 
-    /** Barcode seller prints and takes to cargo branch */
-    @Column(name = "cargo_barcode")
-    private String cargoBarcode;
+    /** Barcode seller prints and takes to shipment branch */
+    @Column(name = "shipment_barcode")
+    private String shipmentBarcode;
 
-    /** Cargo company code e.g. MNG, ARAS, YURTICI */
-    @Column(name = "cargo_handler_code")
-    private String cargoHandlerCode;
+    /** Shipment company code e.g. MNG, ARAS, YURTICI */
+    @Column(name = "shipment_handler_code")
+    private String shipmentHandlerCode;
 
-    /** Tracking number from the actual cargo company, set after pickup */
-    @Column(name = "cargo_tracking_number")
-    private String cargoTrackingNumber;
+    /** Tracking number from the actual shipment company, set after pickup */
+    @Column(name = "shipment_tracking_number")
+    private String shipmentTrackingNumber;
 
     /** SVG label URL stored after generation */
-    @Column(name = "cargo_label_url")
-    private String cargoLabelUrl;
+    @Column(name = "shipment_label_url")
+    private String shipmentLabelUrl;
 
-    @Column(name = "cargo_label_generated_at")
-    private LocalDateTime cargoLabelGeneratedAt;
+    @Column(name = "shipment_label_generated_at")
+    private LocalDateTime shipmentLabelGeneratedAt;
+
+    @Convert(converter = PiiAttributeConverter.class)
+    @Column(name = "shipping_address_snapshot", columnDefinition = "TEXT")
+    private String shippingAddressSnapshot;
+
+    @Convert(converter = PiiAttributeConverter.class)
+    @Column(name = "billing_address_snapshot", columnDefinition = "TEXT")
+    private String billingAddressSnapshot;
+
+    @Convert(converter = PiiAttributeConverter.class)
+    @Column(name = "seller_address_snapshot", columnDefinition = "TEXT")
+    private String sellerAddressSnapshot;
 
     //
     // PAYOUT FIELDS
