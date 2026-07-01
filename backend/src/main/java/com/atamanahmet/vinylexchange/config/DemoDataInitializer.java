@@ -1,39 +1,53 @@
 package com.atamanahmet.vinylexchange.config;
 
+import com.atamanahmet.vinylexchange.common.NanoIdGenerator;
+import com.atamanahmet.vinylexchange.common.money.ListingPriceCalculator;
+import com.atamanahmet.vinylexchange.common.money.ListingPriceResult;
 import com.atamanahmet.vinylexchange.domain.entity.Listing;
+import com.atamanahmet.vinylexchange.domain.entity.ListingImage;
 import com.atamanahmet.vinylexchange.domain.entity.Page;
 import com.atamanahmet.vinylexchange.domain.entity.User;
+import com.atamanahmet.vinylexchange.domain.enums.ListingStatus;
 import com.atamanahmet.vinylexchange.domain.enums.PageType;
 import com.atamanahmet.vinylexchange.domain.enums.RoleName;
+import com.atamanahmet.vinylexchange.domain.enums.SaleType;
+import com.atamanahmet.vinylexchange.domain.enums.StorageProvider;
 import com.atamanahmet.vinylexchange.dto.user.RegisterRequest;
 import com.atamanahmet.vinylexchange.infrastructure.search.service.BulkListingIndexService;
+import com.atamanahmet.vinylexchange.repository.GenreRepository;
+import com.atamanahmet.vinylexchange.repository.listing.ListingRepository;
 import com.atamanahmet.vinylexchange.service.CmsService;
-import com.atamanahmet.vinylexchange.service.listing.ListingService;
+import com.atamanahmet.vinylexchange.service.media.DemoCoverService;
+import com.atamanahmet.vinylexchange.service.media.FileStorageService;
 import com.atamanahmet.vinylexchange.service.user.AuthService;
 import com.atamanahmet.vinylexchange.service.user.RoleService;
 import com.atamanahmet.vinylexchange.service.user.UserService;
 import jakarta.persistence.EntityManager;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
- * Seeds demo data on every startup.
- * Creates admin user, mock listings, and CMS pages if not already present.
+ * Seeds demo data on every startup in local dev.
+ * Creates admin user, mock listings with fixed ids, local cover images, and CMS pages.
  * Triggers bulk OpenSearch index after seeding.
- * Runs after RoleInitializer (Order 2).
+ * Runs after RoleInitializer (Order 1) and GenreInitializer (Order 2).
  */
 @Slf4j
 @Component
-@Order(2)
+@Order(3)
+@Profile("dev")
 @RequiredArgsConstructor
 public class DemoDataInitializer implements ApplicationRunner {
 
@@ -51,26 +65,28 @@ public class DemoDataInitializer implements ApplicationRunner {
 
         private final UserService userService;
         private final AuthService authService;
-        private final ListingService listingService;
+        private final ListingRepository listingRepository;
         private final RoleService roleService;
         private final CmsService cmsService;
         private final EntityManager entityManager;
         private final BulkListingIndexService bulkListingIndexService;
+        private final DemoCoverService demoCoverService;
+        private final FileStorageService fileStorageService;
+        private final GenreRepository genreRepository;
+        private final ListingPriceCalculator priceCalculator;
 
         @Override
         @Transactional
         public void run(ApplicationArguments args) {
                 createDatabaseSequences();
+                migrateListingMediaSchema();
                 User adminUser = ensureAdminUser();
+                demoCoverService.syncAllDemoCovers();
                 seedMockListings(adminUser);
                 seedCmsPages();
                 bulkListingIndexService.indexAllListings();
         }
 
-        /**
-         * Creates order number sequence if not exists.
-         * Native query used because JPA does not support sequence DDL.
-         */
         private void createDatabaseSequences() {
                 try {
                         entityManager.createNativeQuery(
@@ -83,9 +99,32 @@ public class DemoDataInitializer implements ApplicationRunner {
         }
 
         /**
-         * Creates admin user if not present.
-         * Admin is the owner of all mock listings.
+         * Dev-only: ddl-auto update does not always add embeddable columns when legacy exists.
          */
+        private void migrateListingMediaSchema() {
+                List<String> statements = List.of(
+                                "ALTER TABLE listings ADD COLUMN IF NOT EXISTS media_info_format VARCHAR(255)",
+                                "ALTER TABLE listings ADD COLUMN IF NOT EXISTS media_info_vinyl_subtype VARCHAR(255)",
+                                "ALTER TABLE listings ADD COLUMN IF NOT EXISTS media_info_speed_rpm INTEGER",
+                                "ALTER TABLE listings ADD COLUMN IF NOT EXISTS media_info_vinyl_size VARCHAR(32)",
+                                "ALTER TABLE listings ADD COLUMN IF NOT EXISTS media_info_disc_count INTEGER",
+                                "ALTER TABLE listings ADD COLUMN IF NOT EXISTS media_info_colored BOOLEAN",
+                                "ALTER TABLE listings ADD COLUMN IF NOT EXISTS media_info_picture_disc BOOLEAN",
+                                "ALTER TABLE listings ADD COLUMN IF NOT EXISTS media_info_source_format_raw VARCHAR(255)",
+                                "ALTER TABLE listings DROP COLUMN IF EXISTS format");
+
+                for (String sql : statements) {
+                        try {
+                                entityManager.createNativeQuery(sql).executeUpdate();
+                        } catch (Exception e) {
+                                log.warn("listing_media_schema_step_skipped sql={} reason={}", sql, e.getMessage());
+                        }
+                }
+
+                entityManager.flush();
+                log.info("listing_media_schema_ready");
+        }
+
         private User ensureAdminUser() {
                 Optional<User> adminUser = userService.findAdmin();
 
@@ -101,27 +140,122 @@ public class DemoDataInitializer implements ApplicationRunner {
                 return adminUser.get();
         }
 
-        /**
-         * Seeds mock vinyl listings owned by admin.
-         * Skips listings that already exist by title.
-         */
         private void seedMockListings(User adminUser) {
                 log.info("seeding_mock_listings");
 
-                List<Listing> mockListings = generateMockListings(adminUser);
-
-                mockListings.forEach(listing -> {
-                        if (!listingService.isExistByTitle(listing.getTitle())) {
-                                listingService.saveListing(listing);
+                for (DemoListingCatalog.DemoListing demo : DemoListingCatalog.ALL) {
+                        if (!listingRepository.existsById(demo.id())) {
+                                insertDemoListingRow(demo, adminUser);
+                                log.info("demo_listing_created id={} title={}", demo.id(), demo.title());
                         }
-                });
+
+                        listingRepository.findByIdWithImages(demo.id()).ifPresent(listing -> {
+                                if (listing.getImages().isEmpty()) {
+                                        wireImages(listing, demo.id());
+                                        listingRepository.save(listing);
+                                        log.info("demo_listing_images_wired id={} title={}", demo.id(), demo.title());
+                                }
+                                wireGenres(listing, demo);
+                        });
+                }
 
                 log.info("mock_listings_seeded");
         }
 
         /**
-         * Seeds CMS about page if not already present.
+         * Native insert for fixed demo ids, JPA save/persist fails with pre-assigned UUIDs on @GeneratedValue.
          */
+        private void insertDemoListingRow(DemoListingCatalog.DemoListing demo, User owner) {
+                ListingPriceResult price = priceCalculator.fromBuyerPrice(demo.priceKurus());
+                LocalDateTime now = LocalDateTime.now();
+                String publicId = NanoIdGenerator.generate();
+
+                entityManager.createNativeQuery("""
+                                INSERT INTO listings (
+                                    id, public_id, title, artist_name, label_name, country, year, condition,
+                                    media_info_format, media_info_vinyl_subtype, media_info_speed_rpm,
+                                    media_info_vinyl_size, media_info_disc_count,
+                                    price_kurus, seller_earnings_kurus, platform_cut_kurus, platform_fee_bp,
+                                    original_price_kurus, owner_id, status, stock_quantity, on_hold,
+                                    sale_type, promote, needs_image_migration, trade_value, created_at, updated_at
+                                ) VALUES (
+                                    :id, :publicId, :title, :artistName, :labelName, :country, :year, :condition,
+                                    :mediaFormat, :vinylSubtype, :speedRpm, :vinylSize, :discCount,
+                                    :priceKurus, :sellerEarningsKurus, :platformCutKurus, :platformFeeBp,
+                                    :originalPriceKurus, :ownerId, :status, :stockQuantity, :onHold,
+                                    :saleType, :promote, false, :tradeValue, :createdAt, :updatedAt
+                                )
+                                """)
+                        .setParameter("id", demo.id())
+                        .setParameter("title", demo.title())
+                        .setParameter("artistName", demo.artistName())
+                        .setParameter("labelName", demo.labelName())
+                        .setParameter("country", demo.country().name())
+                        .setParameter("year", demo.year())
+                        .setParameter("condition", demo.condition())
+                        .setParameter("mediaFormat", demo.mediaInfo().getFormat().name())
+                        .setParameter("vinylSubtype",
+                                demo.mediaInfo().getVinylSubtype() != null
+                                        ? demo.mediaInfo().getVinylSubtype().name()
+                                        : null)
+                        .setParameter("speedRpm", demo.mediaInfo().getSpeedRpm())
+                        .setParameter("vinylSize", demo.mediaInfo().getVinylSize())
+                        .setParameter("discCount", demo.mediaInfo().getDiscCount())
+                        .setParameter("priceKurus", price.priceKurus())
+                        .setParameter("sellerEarningsKurus", price.sellerEarningsKurus())
+                        .setParameter("platformCutKurus", price.platformCutKurus())
+                        .setParameter("platformFeeBp", price.feeBP())
+                        .setParameter("originalPriceKurus", price.priceKurus())
+                        .setParameter("ownerId", owner.getId())
+                        .setParameter("status", ListingStatus.AVAILABLE.name())
+                        .setParameter("stockQuantity", 5)
+                        .setParameter("onHold", false)
+                        .setParameter("saleType", SaleType.FIXED_PRICE.name())
+                        .setParameter("promote", false)
+                        .setParameter("tradeValue", 0L)
+                        .setParameter("createdAt", now)
+                        .setParameter("updatedAt", now)
+                        .setParameter("publicId", publicId)
+                        .executeUpdate();
+
+                entityManager.flush();
+        }
+
+        private void wireImages(Listing listing, UUID listingId) {
+                List<String> imageUrls = fileStorageService.getListingImagePaths(listingId);
+                if (imageUrls.isEmpty()) {
+                        log.warn("demo_listing_no_images id={} title={}", listingId, listing.getTitle());
+                        return;
+                }
+
+                int position = 0;
+                for (String url : imageUrls) {
+                        listing.getImages().add(ListingImage.builder()
+                                .publicId(url)
+                                .secureUrl(url)
+                                .position(position++)
+                                .provider(StorageProvider.LOCAL)
+                                .uploadedAt(LocalDateTime.now())
+                                .listing(listing)
+                                .build());
+                }
+                listing.setMainImageUrl(imageUrls.get(0));
+        }
+
+        private void wireGenres(Listing listing, DemoListingCatalog.DemoListing demo) {
+                if (!listing.getGenres().isEmpty()) {
+                        return;
+                }
+
+                for (String genreName : demo.genreNames()) {
+                        genreRepository.findByName(genreName)
+                                        .ifPresent(genre -> listing.getGenres().add(genre));
+                }
+
+                listingRepository.save(listing);
+                log.info("demo_listing_genres_wired id={} title={}", demo.id(), demo.title());
+        }
+
         private void seedCmsPages() {
                 if (cmsService.existsByPageType(PageType.ABOUT)) {
                         log.info("cms_about_page_exists skipping");
@@ -142,66 +276,5 @@ public class DemoDataInitializer implements ApplicationRunner {
                         .build());
 
                 log.info("cms_about_page_seeded");
-        }
-
-        private List<Listing> generateMockListings(User adminUser) {
-                return List.of(
-                        Listing.builder().title("Abbey Road").artistName("The Beatles")
-                                .labelName("Apple Records").format("LP").country("UK")
-                                .year(1969).condition("VG").priceKurus(90000).owner(adminUser).build(),
-                        Listing.builder().title("Nevermind").artistName("Nirvana")
-                                .labelName("DGC").format("LP").country("US")
-                                .year(1991).condition("NM").priceKurus(78000).owner(adminUser).build(),
-                        Listing.builder().title("OK Computer").artistName("Radiohead")
-                                .labelName("Parlophone").format("LP").country("UK")
-                                .year(1997).condition("NM").priceKurus(82000).owner(adminUser).build(),
-                        Listing.builder().title("In Rainbows").artistName("Radiohead")
-                                .labelName("XL Recordings").format("LP").country("EU")
-                                .year(2007).condition("NM").priceKurus(76000).owner(adminUser).build(),
-                        Listing.builder().title("The Wall").artistName("Pink Floyd")
-                                .labelName("Harvest").format("2xLP").country("UK")
-                                .year(1979).condition("VG+").priceKurus(95000).owner(adminUser).build(),
-                        Listing.builder().title("Kind of Blue").artistName("Miles Davis")
-                                .labelName("Columbia").format("LP").country("US")
-                                .year(1959).condition("VG+").priceKurus(88000).owner(adminUser).build(),
-                        Listing.builder().title("Blue Train").artistName("John Coltrane")
-                                .labelName("Blue Note").format("LP").country("US")
-                                .year(1957).condition("VG").priceKurus(92000).owner(adminUser).build(),
-                        Listing.builder().title("Back to Black").artistName("Amy Winehouse")
-                                .labelName("Island Records").format("LP").country("EU")
-                                .year(2006).condition("NM").priceKurus(68000).owner(adminUser).build(),
-                        Listing.builder().title("Rumours").artistName("Fleetwood Mac")
-                                .labelName("Warner Bros.").format("LP").country("US")
-                                .year(1977).condition("VG+").priceKurus(74000).owner(adminUser).build(),
-                        Listing.builder().title("Led Zeppelin IV").artistName("Led Zeppelin")
-                                .labelName("Atlantic").format("LP").country("UK")
-                                .year(1971).condition("VG").priceKurus(86000).owner(adminUser).build(),
-                        Listing.builder().title("Master of Puppets").artistName("Metallica")
-                                .labelName("Elektra").format("LP").country("US")
-                                .year(1986).condition("NM").priceKurus(83000).owner(adminUser).build(),
-                        Listing.builder().title("Revolver").artistName("The Beatles")
-                                .labelName("Parlophone").format("LP").country("UK")
-                                .year(1966).condition("VG").priceKurus(89000).owner(adminUser).build(),
-                        Listing.builder().title("Unknown Pleasures").artistName("Joy Division")
-                                .labelName("Factory").format("LP").country("UK")
-                                .year(1979).condition("NM").priceKurus(81000).owner(adminUser).build(),
-                        Listing.builder().title("Disintegration").artistName("The Cure")
-                                .labelName("Fiction").format("LP").country("UK")
-                                .year(1989).condition("NM").priceKurus(79000).owner(adminUser).build(),
-                        Listing.builder().title("The Rise and Fall of Ziggy Stardust").artistName("David Bowie")
-                                .labelName("RCA").format("LP").country("UK")
-                                .year(1972).condition("VG+").priceKurus(84000).owner(adminUser).build(),
-                        Listing.builder().title("Discovery").artistName("Daft Punk")
-                                .labelName("Virgin").format("LP").country("EU")
-                                .year(2001).condition("NM").priceKurus(72000).owner(adminUser).build(),
-                        Listing.builder().title("To Pimp a Butterfly").artistName("Kendrick Lamar")
-                                .labelName("Top Dawg").format("LP").country("US")
-                                .year(2015).condition("NM").priceKurus(87000).owner(adminUser).build(),
-                        Listing.builder().title("Mezzanine").artistName("Massive Attack")
-                                .labelName("Virgin").format("LP").country("UK")
-                                .year(1998).condition("NM").priceKurus(80000).owner(adminUser).build(),
-                        Listing.builder().title("Violator").artistName("Depeche Mode")
-                                .labelName("Mute").format("LP").country("UK")
-                                .year(1990).condition("VG+").priceKurus(76000).owner(adminUser).build());
         }
 }

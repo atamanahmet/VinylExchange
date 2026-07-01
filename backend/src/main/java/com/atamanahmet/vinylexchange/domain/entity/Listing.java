@@ -118,8 +118,8 @@ public class Listing extends BaseEntity {
     private LocalDateTime priceLastChangedAt;
 
     /** Basit Kargo handler code, null means platform picks ECONOMIC */
-    @Column(name = "preferred_cargo_company")
-    private String preferredCargoCompany;
+    @Column(name = "preferred_shipment_company")
+    private String preferredShipmentCompany;
 
     @Column(name = "trade_value")
     private long tradeValue;

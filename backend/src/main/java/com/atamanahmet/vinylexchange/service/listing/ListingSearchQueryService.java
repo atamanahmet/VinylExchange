@@ -12,9 +12,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import com.atamanahmet.vinylexchange.domain.entity.Listing;
 import com.atamanahmet.vinylexchange.dto.listing.ListingDTO;
 import com.atamanahmet.vinylexchange.infrastructure.search.service.SearchPort;
+import com.atamanahmet.vinylexchange.mapper.ListingMapper;
 
 import lombok.RequiredArgsConstructor;
 
@@ -25,7 +28,9 @@ public class ListingSearchQueryService {
 
         private final SearchPort searchPort;
         private final ListingService listingService;
+        private final ListingMapper listingMapper;
 
+        @Transactional(readOnly = true)
         public Page<ListingDTO> search(String query, int page, int size) {
                 Page<UUID> idPage = searchPort.searchIds(query, page, size);
 
@@ -34,10 +39,8 @@ public class ListingSearchQueryService {
                 }
 
                 List<UUID> orderedIds = idPage.getContent();
-                List<ListingDTO> unorderedDtos = listingService.getListingDTOsWithIds(orderedIds);
-
-                Map<UUID, ListingDTO> byId = unorderedDtos.stream()
-                        .collect(Collectors.toMap(ListingDTO::getId, dto -> dto, (a, b) -> a));
+                Map<UUID, ListingDTO> byId = listingService.getListingsByIds(orderedIds).stream()
+                        .collect(Collectors.toMap(Listing::getId, listingMapper::toDTO, (a, b) -> a));
 
                 List<ListingDTO> orderedDtos = orderedIds.stream()
                         .map(byId::get)

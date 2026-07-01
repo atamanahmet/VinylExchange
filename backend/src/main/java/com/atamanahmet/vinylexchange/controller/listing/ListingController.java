@@ -1,12 +1,16 @@
 package com.atamanahmet.vinylexchange.controller.listing;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import com.atamanahmet.vinylexchange.dto.*;
 import com.atamanahmet.vinylexchange.dto.listing.*;
+import com.atamanahmet.vinylexchange.domain.enums.Country;
+import com.atamanahmet.vinylexchange.domain.enums.MediaFormat;
+import com.atamanahmet.vinylexchange.domain.enums.VinylSubtype;
 import com.atamanahmet.vinylexchange.dto.order.CartItemDTO;
 import com.atamanahmet.vinylexchange.service.listing.ListingService;
 import com.atamanahmet.vinylexchange.service.order.CartService;
@@ -29,6 +33,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -48,26 +53,95 @@ public class ListingController {
         private final CartService cartService;
 
         @GetMapping
-        public ResponseEntity<?> getPublicListings(
+        public ResponseEntity<Page<ListingSummaryDto>> getPublicListings(
+                        @RequestParam(required = false) List<String> country,
+                        @RequestParam(required = false) List<MediaFormat> format,
+                        @RequestParam(required = false) List<Integer> speedRpm,
+                        @RequestParam(required = false) List<VinylSubtype> vinylSubtype,
+                        @RequestParam(required = false) List<String> condition,
+                        @RequestParam(required = false) Integer yearFrom,
+                        @RequestParam(required = false) Integer yearTo,
+                        @RequestParam(required = false) List<Long> genreIds,
+                        @RequestParam(required = false) Boolean tradeable,
+                        @RequestParam(required = false) Long priceFromKurus,
+                        @RequestParam(required = false) Long priceToKurus,
+                        @RequestParam(required = false) String ownerUsername,
                         @PageableDefault(size = 50) Pageable pageable) {
 
-                Page<ListingDTO> listingDTOs = listingService.getPublicListings(pageable);
+                List<Country> resolvedCountries = country == null ? null : country.stream()
+                                .filter(value -> value != null && !value.isBlank())
+                                .map(Country::fromIsoCode)
+                                .filter(Objects::nonNull)
+                                .toList();
+
+                if (resolvedCountries != null && resolvedCountries.isEmpty()) {
+                        resolvedCountries = null;
+                }
+
+                ListingFilterCriteria criteria = new ListingFilterCriteria(
+                                resolvedCountries,
+                                format,
+                                speedRpm,
+                                vinylSubtype,
+                                condition,
+                                yearFrom,
+                                yearTo,
+                                genreIds,
+                                tradeable,
+                                priceFromKurus,
+                                priceToKurus,
+                                ownerUsername);
+
+                Page<ListingSummaryDto> listings = listingService.search(criteria, pageable);
 
                 return ResponseEntity
                                 .status(HttpStatus.OK)
-                                .body(listingDTOs);
+                                .body(listings);
         }
 
-        @GetMapping("/username")
-        public ResponseEntity<?> getPublicListingsByUser(
-                        @PathVariable(name = "username", required = true) String username,
+        @GetMapping("/by-username/{username}")
+        public ResponseEntity<Page<ListingSummaryDto>> getPublicListingsByUsername(
+                        @PathVariable String username,
+                        @RequestParam(required = false) List<String> country,
+                        @RequestParam(required = false) List<MediaFormat> format,
+                        @RequestParam(required = false) List<Integer> speedRpm,
+                        @RequestParam(required = false) List<VinylSubtype> vinylSubtype,
+                        @RequestParam(required = false) List<String> condition,
+                        @RequestParam(required = false) Integer yearFrom,
+                        @RequestParam(required = false) Integer yearTo,
+                        @RequestParam(required = false) List<Long> genreIds,
+                        @RequestParam(required = false) Boolean tradeable,
+                        @RequestParam(required = false) Long priceFromKurus,
+                        @RequestParam(required = false) Long priceToKurus,
                         @PageableDefault(size = 50) Pageable pageable) {
 
-                Page<ListingDTO> listingDTOs = listingService.getAllAvailableListingsByUser(username, pageable);
+                List<Country> resolvedCountries = country == null ? null : country.stream()
+                                .filter(value -> value != null && !value.isBlank())
+                                .map(Country::fromIsoCode)
+                                .filter(Objects::nonNull)
+                                .toList();
 
-                return ResponseEntity
-                                .status(HttpStatus.OK)
-                                .body(listingDTOs);
+                if (resolvedCountries != null && resolvedCountries.isEmpty()) {
+                        resolvedCountries = null;
+                }
+
+                ListingFilterCriteria criteria = new ListingFilterCriteria(
+                                resolvedCountries,
+                                format,
+                                speedRpm,
+                                vinylSubtype,
+                                condition,
+                                yearFrom,
+                                yearTo,
+                                genreIds,
+                                tradeable,
+                                priceFromKurus,
+                                priceToKurus,
+                                username);
+
+                Page<ListingSummaryDto> listings = listingService.search(criteria, pageable);
+
+                return ResponseEntity.ok(listings);
         }
 
         // for admin actions only, promote, freeze, remove etc
@@ -88,13 +162,13 @@ public class ListingController {
 
                 UUID userId = UserUtil.getCurrentUserId();
 
-                Set<UUID> cartListingIds = cartService.getCartDTO(userId)
+                Set<String> cartListingPublicIds = cartService.getCartDTO(userId)
                         .getItems()
                         .stream()
-                        .map(CartItemDTO::getListingId)
+                        .map(CartItemDTO::getPublicId)
                         .collect(Collectors.toSet());
 
-                List<ListingDTO> promoted = listingService.getPromotedListingDTOs(cartListingIds);
+                List<ListingDTO> promoted = listingService.getPromotedListingDTOs(cartListingPublicIds);
 
                 return ResponseEntity.status(HttpStatus.OK).body(promoted);
         }
@@ -106,49 +180,43 @@ public class ListingController {
 
                 User user = UserUtil.getCurrentUser();
 
-                listingService.createNewListing(
+                ListingDTO createdListing = listingService.createNewListing(
                                 request,
                                 images,
                                 user);
 
                 return ResponseEntity
                                 .status(HttpStatus.CREATED)
-                                .build();
+                                .body(createdListing);
         }
 
-        @PatchMapping("/{listingId}")
+        @PatchMapping("/{publicId}")
         public ResponseEntity<?> updateListing(
-                        @PathVariable UUID listingId,
+                        @PathVariable String publicId,
                         @RequestPart("listing") UpdateListingRequest request,
                         @RequestPart(value = "images", required = false) List<MultipartFile> newImages) {
 
                 UserUtil.isAuthenticated();
 
-               ListingDTO updatedListing = listingService.updateListing(listingId, request, newImages, UserUtil.getCurrentUserId());
+               ListingDTO updatedListing = listingService.updateListing(publicId, request, newImages, UserUtil.getCurrentUserId());
 
                 return ResponseEntity
                         .status(HttpStatus.OK)
                         .body(updatedListing);
         }
 
-        @GetMapping("/{listingId}")
-        public ResponseEntity<?> getListing(@PathVariable(name = "listingId", required = true) UUID listingId) {
-
-                ListingDTO listingDTO = listingService.getListingDTOById(listingId);
-
-                return ResponseEntity
-                                .status(HttpStatus.OK)
-                                .body(listingDTO);
-
+        @GetMapping("/{publicId}")
+        public ResponseEntity<?> getListing(@PathVariable String publicId) {
+                return ResponseEntity.ok(listingService.getListingByPublicId(publicId));
         }
 
-        @DeleteMapping("/{listingId}")
+        @DeleteMapping("/{publicId}")
         public ResponseEntity<?> deleteListing(
-                        @PathVariable(name = "listingId", required = true) UUID listingId) {
+                        @PathVariable(name = "publicId", required = true) String publicId) {
 
                 UserUtil.isAuthenticated();
 
-                listingService.deleteListing(listingId);
+                listingService.deleteListing(publicId);
 
                 return ResponseEntity
                                 .status(HttpStatus.NO_CONTENT)
@@ -166,14 +234,14 @@ public class ListingController {
 
         // admin
         @PreAuthorize("hasRole('ADMIN')")
-        @PatchMapping("/promote/{listingId}")
+        @PatchMapping("/promote/{publicId}")
         public ResponseEntity<?> promoteListing(
-                        @PathVariable(name = "listingId", required = true) UUID listingId,
+                        @PathVariable(name = "publicId", required = true) String publicId,
                         @RequestBody PromoteRequest promoteRequest) {
 
                 UserUtil.isAuthenticated();
 
-                listingService.promoteListing(listingId, promoteRequest.action(), UserUtil.getCurrentUserDetails());
+                listingService.promoteListing(publicId, promoteRequest.action(), UserUtil.getCurrentUserDetails());
 
                 return ResponseEntity
                                 .status(HttpStatus.OK)
@@ -182,16 +250,16 @@ public class ListingController {
 
         // admin
         @PreAuthorize("hasRole('ADMIN')")
-        @PatchMapping("/freeze/{listingId}")
+        @PatchMapping("/freeze/{publicId}")
         public ResponseEntity<?> freezeListing(
-                        @PathVariable(name = "listingId", required = true) UUID listingId,
+                        @PathVariable(name = "publicId", required = true) String publicId,
                         @RequestBody FreezeRequest freezeRequest) {
 
-                listingService.freezeListing(listingId, freezeRequest.action(), UserUtil.getCurrentUserDetails());
+                listingService.freezeListing(publicId, freezeRequest.action(), UserUtil.getCurrentUserDetails());
 
                 if (freezeRequest.action()) {
 
-                        listingService.promoteListing(listingId, false, UserUtil.getCurrentUserDetails());
+                        listingService.promoteListing(publicId, false, UserUtil.getCurrentUserDetails());
                 }
 
                 return ResponseEntity

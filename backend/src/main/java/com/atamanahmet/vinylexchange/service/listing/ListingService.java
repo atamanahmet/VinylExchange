@@ -4,8 +4,11 @@ import com.atamanahmet.vinylexchange.common.money.ListingPriceCalculator;
 import com.atamanahmet.vinylexchange.domain.entity.Listing;
 import com.atamanahmet.vinylexchange.domain.entity.ListingImage;
 import com.atamanahmet.vinylexchange.domain.enums.ListingStatus;
+import com.atamanahmet.vinylexchange.domain.enums.StorageProvider;
 import com.atamanahmet.vinylexchange.dto.listing.CreateListingRequest;
 import com.atamanahmet.vinylexchange.dto.listing.ListingDTO;
+import com.atamanahmet.vinylexchange.dto.listing.ListingFilterCriteria;
+import com.atamanahmet.vinylexchange.dto.listing.ListingSummaryDto;
 import com.atamanahmet.vinylexchange.dto.listing.UpdateListingRequest;
 import com.atamanahmet.vinylexchange.event.ListingCreatedEvent;
 import com.atamanahmet.vinylexchange.event.ListingUpdatedEvent;
@@ -18,8 +21,10 @@ import com.atamanahmet.vinylexchange.infrastructure.ImageSource;
 import com.atamanahmet.vinylexchange.infrastructure.ImageUploadResult;
 import com.atamanahmet.vinylexchange.mapper.ListingMapper;
 import com.atamanahmet.vinylexchange.repository.listing.ListingRepository;
+import com.atamanahmet.vinylexchange.repository.listing.ListingSpecifications;
 import com.atamanahmet.vinylexchange.security.principal.UserDetailsImpl;
 import com.atamanahmet.vinylexchange.service.media.CoverArtService;
+import com.atamanahmet.vinylexchange.service.media.FileStorageService;
 import com.atamanahmet.vinylexchange.service.media.ImageStorageRouter;
 import com.atamanahmet.vinylexchange.service.order.OrderAccessService;
 import com.atamanahmet.vinylexchange.session.UserUtil;
@@ -30,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -51,6 +57,7 @@ public class ListingService {
     private final ListingPriceHistoryService listingPriceHistoryService;
     private final OrderAccessService orderAccessService;
     private final ImageStorageRouter imageStorageRouter;
+    private final FileStorageService fileStorageService;
     private final CoverArtService coverArtService;
     private final ApplicationEventPublisher eventPublisher;
     private final ListingPriceCalculator priceCalculator;
@@ -58,6 +65,26 @@ public class ListingService {
     public Page<ListingDTO> getPublicListings(Pageable pageable) {
         return listingRepository.findAllWithStatus(ListingStatus.AVAILABLE, pageable)
                 .map(listingMapper::toDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ListingSummaryDto> search(ListingFilterCriteria criteria, Pageable pageable) {
+        Specification<Listing> spec = ListingSpecifications.isPubliclyAvailable()
+                .and(ListingSpecifications.hasCountry(criteria.country()))
+                .and(ListingSpecifications.hasFormat(criteria.format()))
+                .and(ListingSpecifications.hasSpeedRpm(criteria.speedRpm()))
+                .and(ListingSpecifications.hasVinylSubtype(criteria.vinylSubtype()))
+                .and(ListingSpecifications.hasCondition(criteria.condition()))
+                .and(ListingSpecifications.hasYearFrom(criteria.yearFrom()))
+                .and(ListingSpecifications.hasYearTo(criteria.yearTo()))
+                .and(ListingSpecifications.hasGenreIds(criteria.genreIds()))
+                .and(ListingSpecifications.hasTradeable(criteria.tradeable()))
+                .and(ListingSpecifications.hasPriceFrom(criteria.priceFromKurus()))
+                .and(ListingSpecifications.hasPriceTo(criteria.priceToKurus()))
+                .and(ListingSpecifications.hasOwnerUsername(criteria.ownerUsername()));
+
+        return listingRepository.findAll(spec, pageable)
+                .map(listingMapper::toSummaryDto);
     }
 
     public Page<ListingDTO> getAllAvailableListingsByUser(String username, Pageable pageable) {
@@ -78,20 +105,31 @@ public class ListingService {
         return listingMapper.toDTOWithImages(listing, discountPercent);
     }
 
+    @Transactional(readOnly = true)
+    public ListingDTO getListingByPublicId(String publicId) {
+        Listing listing = listingRepository.findByPublicId(publicId)
+                .orElseThrow(ListingNotFoundException::new);
+        Integer discountPercent = priceCalculator.discountPercent(
+                listing.getOriginalPriceKurus(),
+                listing.getPriceKurus(),
+                listing.getPriceLastChangedAt()).orElse(null);
+        return listingMapper.toDTOWithImages(listing, discountPercent);
+    }
+
     /**
      * Returns promoted listings excluding ones already in cart
      */
-    public List<ListingDTO> getPromotedListingDTOs(Set<UUID> excludeListingIds) {
+    public List<ListingDTO> getPromotedListingDTOs(Set<String> excludePublicIds) {
         return listingRepository.findByPromoteTrue()
                 .stream()
-                .filter(listing -> !excludeListingIds.contains(listing.getId()))
+                .filter(listing -> !excludePublicIds.contains(listing.getPublicId()))
                 .limit(5)
                 .map(listingMapper::toDTO)
                 .toList();
     }
 
     @Transactional
-    public void createNewListing(
+    public ListingDTO createNewListing(
             CreateListingRequest request,
             List<MultipartFile> images,
             com.atamanahmet.vinylexchange.domain.entity.User owner) {
@@ -107,16 +145,44 @@ public class ListingService {
                 List<ImageUploadResult> results = imageStorageRouter.upload(
                         toImageSources(images), savedListing.getId());
                 attachImages(savedListing, results);
-                listingRepository.save(savedListing);
+                savedListing = listingRepository.save(savedListing);
+            } else if (request.getMbId() != null) {
+                try {
+                    attachPlaceholderCover(savedListing, request.getMbId());
+                    savedListing = listingRepository.save(savedListing);
+                } catch (Exception placeholderError) {
+                    log.warn(
+                            "Placeholder cover failed for listing {} (mbId {}): {}",
+                            savedListing.getId(),
+                            request.getMbId(),
+                            placeholderError.getMessage());
+                }
             }
 
             eventPublisher.publishEvent(
                     ListingCreatedEvent.builder().listing(savedListing).build());
 
+            Integer discountPercent = priceCalculator.discountPercent(
+                    savedListing.getOriginalPriceKurus(),
+                    savedListing.getPriceKurus(),
+                    savedListing.getPriceLastChangedAt()).orElse(null);
+            return listingMapper.toDTOWithImages(savedListing, discountPercent);
+
         } catch (Exception e) {
             log.error("Listing creation failed for user {}: {}", owner.getUsername(), e.getMessage());
             throw new ListingCreationException("Listing creation failed for user: ", owner.getUsername());
         }
+    }
+
+    @Transactional
+    public ListingDTO updateListing(
+            String publicId,
+            UpdateListingRequest request,
+            List<MultipartFile> newImages,
+            UUID userId) {
+        Listing listing = listingRepository.findByPublicId(publicId)
+                .orElseThrow(ListingNotFoundException::new);
+        return updateListing(listing.getId(), request, newImages, userId);
     }
 
     @Transactional
@@ -171,6 +237,12 @@ public class ListingService {
             log.error("Error updating listing {}: {}", listingId, e.getMessage());
             throw new ListingCreationException("Listing update failed for listingId: ", listingId.toString());
         }
+    }
+
+    public void deleteListing(String publicId) {
+        Listing listing = listingRepository.findByPublicId(publicId)
+                .orElseThrow(ListingNotFoundException::new);
+        deleteListing(listing.getId());
     }
 
     public void deleteListing(UUID listingId) {
@@ -229,6 +301,47 @@ public class ListingService {
     }
 
     /**
+     * When seller uploads no photos, attach cached cover-art-archive image under
+     * /uploads/placeholders/{mbId}/ so the UI can show the placeholder badge.
+     */
+    private void attachPlaceholderCover(Listing listing, UUID mbId) throws IOException {
+        List<String> placeholderPaths = fileStorageService.getPlaceholderImagePaths(mbId);
+
+        if (placeholderPaths.isEmpty()) {
+            String coverUrl = coverArtService.fetchCoverUrl(mbId);
+            if (coverUrl == null) {
+                return;
+            }
+
+            ImageSource imageSource = fileStorageService.downloadExternalImage(coverUrl);
+            if (imageSource == null) {
+                return;
+            }
+
+            fileStorageService.savePlaceholderImage(imageSource, mbId);
+            placeholderPaths = fileStorageService.getPlaceholderImagePaths(mbId);
+        }
+
+        if (placeholderPaths.isEmpty()) {
+            return;
+        }
+
+        int position = 0;
+        for (String url : placeholderPaths) {
+            listing.getImages().add(ListingImage.builder()
+                    .publicId(url)
+                    .secureUrl(url)
+                    .position(position++)
+                    .provider(StorageProvider.LOCAL)
+                    .uploadedAt(LocalDateTime.now())
+                    .listing(listing)
+                    .build());
+        }
+
+        listing.setMainImageUrl(placeholderPaths.get(0));
+    }
+
+    /**
      * Attaches uploaded results to listing, sets mainImageUrl from first image
      */
     private void attachImages(Listing listing, List<ImageUploadResult> results) {
@@ -264,6 +377,11 @@ public class ListingService {
 
     public Listing findListingById(UUID listingId) {
         return listingRepository.findById(listingId)
+                .orElseThrow(ListingNotFoundException::new);
+    }
+
+    public Listing findListingByPublicId(String publicId) {
+        return listingRepository.findByPublicId(publicId)
                 .orElseThrow(ListingNotFoundException::new);
     }
 
@@ -323,6 +441,12 @@ public class ListingService {
         listingRepository.save(listing);
     }
 
+    public void promoteListing(String publicId, Boolean action, UserDetailsImpl currentUser) {
+        Listing listing = listingRepository.findByPublicId(publicId)
+                .orElseThrow(() -> new ListingNotFoundException("Listing not found to promote"));
+        promoteListing(listing.getId(), action, currentUser);
+    }
+
     public void promoteListing(UUID listingId, Boolean action, UserDetailsImpl currentUser) {
         Listing listing = listingRepository.findById(listingId)
                 .orElseThrow(() -> new ListingNotFoundException("Listing not found to promote"));
@@ -331,6 +455,12 @@ public class ListingService {
         listing.setPromotedById(currentUser.getId());
         listing.setPromotedAt(LocalDateTime.now());
         listingRepository.save(listing);
+    }
+
+    public void freezeListing(String publicId, Boolean action, UserDetailsImpl currentUser) {
+        Listing listing = listingRepository.findByPublicId(publicId)
+                .orElseThrow(() -> new ListingNotFoundException("Listing not found to freeze"));
+        freezeListing(listing.getId(), action, currentUser);
     }
 
     public void freezeListing(UUID listingId, Boolean action, UserDetailsImpl currentUser) {
