@@ -6,7 +6,7 @@ import com.atamanahmet.vinylexchange.infrastructure.ImageSource;
 import com.atamanahmet.vinylexchange.infrastructure.ImageUploadResult;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
-import io.github.cdimascio.dotenv.Dotenv;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -18,14 +18,10 @@ import java.util.UUID;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class CloudinaryImageService implements ImageStorageService {
 
     private final Cloudinary cloudinary;
-
-    public CloudinaryImageService() {
-        Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
-        this.cloudinary = new Cloudinary(dotenv.get("CLOUDINARY_URL"));
-    }
 
     @Override
     public List<ImageUploadResult> uploadImages(List<ImageSource> images, UUID listingId) throws IOException {
