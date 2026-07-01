@@ -6,26 +6,33 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
+import com.atamanahmet.vinylexchange.config.MusicBrainzProperties;
 import com.atamanahmet.vinylexchange.dto.musicbrainz.RootResponse;
 
+import lombok.RequiredArgsConstructor;
 import reactor.util.retry.Retry;
 
 @Component
+@RequiredArgsConstructor
 public class MusicBrainzClient {
-        public RootResponse searchTitle(String title, int limit) {
+
+        private final MusicBrainzProperties musicBrainzProperties;
+        private final MusicBrainzRateLimiter musicBrainzRateLimiter;
+
+        public RootResponse searchReleases(String luceneQuery, int limit, int offset) {
+                musicBrainzRateLimiter.awaitPermit();
 
                 WebClient client = WebClient.builder()
-                                .baseUrl("https://musicbrainz.org/ws/2/release")
-                                .defaultHeader("User-Agent", "testApp/0.1 (foxitrot42@gmail.com)")
+                                .baseUrl(musicBrainzProperties.getBaseUrl())
+                                .defaultHeader("User-Agent", musicBrainzProperties.getUserAgent())
                                 .build();
 
                 RootResponse result = client.get()
                                 .uri(uriBuilder -> uriBuilder
-                                                .queryParam("query", "release:\"" + title
-                                                                + "\" AND primarytype:album AND NOT title:Tribute")
+                                                .queryParam("query", luceneQuery)
                                                 .queryParam("fmt", "json")
-                                                // .queryParam("inc", "ratings")
-                                                .queryParam("limit", 75)
+                                                .queryParam("limit", limit)
+                                                .queryParam("offset", offset)
                                                 .build())
                                 .retrieve()
                                 .bodyToMono(RootResponse.class)
@@ -34,7 +41,7 @@ public class MusicBrainzClient {
                                                 .filter(throwable -> throwable instanceof WebClientResponseException
                                                                 || throwable.getMessage().contains(
                                                                                 "Connection reset")))
-                                .timeout(Duration.ofSeconds(30)) // Add timeout
+                                .timeout(Duration.ofSeconds(30))
                                 .block();
 
                 return result;

@@ -23,10 +23,20 @@ public class MusicBrainzController {
 
         @GetMapping("/search")
         public ResponseEntity<List<ReleaseDTO>> search(
-                        @RequestParam String title,
-                        @RequestParam(defaultValue = "20") int limit) {
+                        @RequestParam(required = false) String query,
+                        @RequestParam(required = false) String title,
+                        @RequestParam(defaultValue = "title") String scope,
+                        @RequestParam(defaultValue = "20") int limit,
+                        @RequestParam(defaultValue = "0") int offset) {
 
-                List<ReleaseDTO> releaseDTOs = musicBrainzService.searchTitle(title);
+                String searchQuery = query != null && !query.isBlank() ? query : title;
+
+                if (searchQuery == null || searchQuery.isBlank()) {
+                        return ResponseEntity.badRequest().build();
+                }
+
+                List<ReleaseDTO> releaseDTOs = musicBrainzService.searchReleases(
+                                searchQuery, scope, limit, offset);
 
                 return ResponseEntity
                                 .status(HttpStatus.OK)
