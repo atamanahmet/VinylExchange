@@ -30,6 +30,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import com.atamanahmet.vinylexchange.logging.MdcLoggingFilter;
 import com.atamanahmet.vinylexchange.security.filter.JWTAuthFilter;
 
 @Configuration
@@ -47,9 +48,11 @@ public class SecurityConfig implements WebMvcConfigurer {
     private String UPLOAD_CMS_DIR;
 
     private final JWTAuthFilter jwtAuthFilter;
+    private final MdcLoggingFilter mdcLoggingFilter;
 
-    public SecurityConfig(JWTAuthFilter jwtAuthFilter) {
+    public SecurityConfig(JWTAuthFilter jwtAuthFilter, MdcLoggingFilter mdcLoggingFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.mdcLoggingFilter = mdcLoggingFilter;
     }
 
     @Bean
@@ -71,6 +74,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(mdcLoggingFilter, JWTAuthFilter.class)
                 .authorizeHttpRequests((authorize) -> authorize
                         .requestMatchers(
                                 "/",
@@ -84,6 +88,8 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/listing/**",
                                 "/api/listings/**",
                                 "/api/listings/search",
+                                "/api/reference/**",
+                                "/api/users/by-username/**",
                                 "/uploads/cms/**",
                                 "/uploads/listings/**",
                                 "/uploads/placeholders/**",
