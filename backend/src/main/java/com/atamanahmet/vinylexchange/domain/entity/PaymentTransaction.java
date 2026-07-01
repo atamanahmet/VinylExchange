@@ -111,4 +111,12 @@ public class PaymentTransaction extends BaseEntity {
      */
     @Column(name = "dispute_resolution_note", length = 500)
     private String disputeResolutionNote;
+
+    /**
+     * Set when a verified provider callback arrives after payment already reached
+     * a terminal or in-flight payout state. Ops follow-up required; no auto-refund.
+     */
+    @Column(name = "refund_review_required", nullable = false)
+    @Builder.Default
+    private boolean refundReviewRequired = false;
 }

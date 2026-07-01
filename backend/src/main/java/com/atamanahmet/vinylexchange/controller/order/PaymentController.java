@@ -1,5 +1,6 @@
 package com.atamanahmet.vinylexchange.controller.order;
 
+import com.atamanahmet.vinylexchange.dto.payment.PaymentCallbackOutcome;
 import com.atamanahmet.vinylexchange.dto.payment.PaymentInitiateRequest;
 import com.atamanahmet.vinylexchange.dto.payment.PaymentInitiateResponse;
 import com.atamanahmet.vinylexchange.service.payment.PaymentService;
@@ -53,11 +54,16 @@ public class PaymentController {
             return ResponseEntity.badRequest().build();
         }
 
-        boolean success = paymentService.handleCallback(token);
+        PaymentCallbackOutcome outcome = paymentService.handleCallback(token);
 
-        String frontendUrl = success
-                ? frontendBaseUrl + "/payment/result?status=success"
-                : frontendBaseUrl + "/payment/result?status=failure";
+        String frontendUrl = switch (outcome) {
+            case PROCESSED, ALREADY_HELD ->
+                    frontendBaseUrl + "/payment/result?status=success";
+            case REFUND_REVIEW_REQUIRED ->
+                    frontendBaseUrl + "/payment/result?status=refund-review";
+            case VERIFICATION_FAILED ->
+                    frontendBaseUrl + "/payment/result?status=failure";
+        };
 
         return ResponseEntity.status(HttpStatus.FOUND)
                 .header("Location", frontendUrl)

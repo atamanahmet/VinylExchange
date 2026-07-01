@@ -5,6 +5,7 @@ import com.atamanahmet.vinylexchange.domain.entity.PaymentTransaction;
 import com.atamanahmet.vinylexchange.domain.enums.DisputeReason;
 import com.atamanahmet.vinylexchange.domain.enums.OrderStatus;
 import com.atamanahmet.vinylexchange.domain.enums.PaymentStatus;
+import com.atamanahmet.vinylexchange.dto.payment.PaymentCallbackOutcome;
 import com.atamanahmet.vinylexchange.dto.payment.PaymentInitiateResponse;
 import com.atamanahmet.vinylexchange.dto.payment.PaymentVerifyResult;
 import com.atamanahmet.vinylexchange.event.DisputeOpenedEvent;
@@ -14,6 +15,7 @@ import com.atamanahmet.vinylexchange.event.OrderDeliveredEvent;
 import com.atamanahmet.vinylexchange.event.OrderShippedEvent;
 import com.atamanahmet.vinylexchange.event.PaymentStateChangedEvent;
 import com.atamanahmet.vinylexchange.exception.InvalidOrderOperationException;
+import com.atamanahmet.vinylexchange.exception.InvalidPaymentStatusTransitionException;
 import com.atamanahmet.vinylexchange.exception.UnauthorizedActionException;
 import com.atamanahmet.vinylexchange.infrastructure.payment.IyzicoProperties;
 import com.atamanahmet.vinylexchange.infrastructure.payment.PaymentPort;
@@ -77,8 +79,8 @@ class PaymentServiceTest {
      */
     @Test
     void initiatePayment_createsNewTransaction_returnsSuccess() {
-        when(orderService.getOrderById(orderId)).thenReturn(order);
-        when(paymentTransactionRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+        when(orderService.requireOrderWithItems(orderId)).thenReturn(order);
+        when(paymentTransactionRepository.findByOrderIdWithOrderAndItems(orderId)).thenReturn(Optional.empty());
         when(paymentProperties.getCallbackUrl()).thenReturn("https://callback.test");
 
         PaymentTransaction savedTx = PaymentTransaction.builder()
@@ -113,8 +115,8 @@ class PaymentServiceTest {
                 .amountKurus(10000L)
                 .build();
 
-        when(orderService.getOrderById(orderId)).thenReturn(order);
-        when(paymentTransactionRepository.findByOrderId(orderId)).thenReturn(Optional.of(existingTx));
+        when(orderService.requireOrderWithItems(orderId)).thenReturn(order);
+        when(paymentTransactionRepository.findByOrderIdWithOrderAndItems(orderId)).thenReturn(Optional.of(existingTx));
         when(paymentProperties.getCallbackUrl()).thenReturn("https://callback.test");
 
         PaymentInitiateResponse fakeResponse = PaymentInitiateResponse.success("TOKEN-456", "<form/>");
@@ -131,8 +133,8 @@ class PaymentServiceTest {
      */
     @Test
     void initiatePayment_portReturnsFailure_returnsFailureResponse() {
-        when(orderService.getOrderById(orderId)).thenReturn(order);
-        when(paymentTransactionRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+        when(orderService.requireOrderWithItems(orderId)).thenReturn(order);
+        when(paymentTransactionRepository.findByOrderIdWithOrderAndItems(orderId)).thenReturn(Optional.empty());
         when(paymentProperties.getCallbackUrl()).thenReturn("https://callback.test");
 
         PaymentTransaction savedTx = PaymentTransaction.builder()
@@ -162,7 +164,7 @@ class PaymentServiceTest {
     @Test
     void initiatePayment_wrongBuyer_throwsUnauthorized() {
         UUID otherUser = UUID.randomUUID();
-        when(orderService.getOrderById(orderId)).thenReturn(order);
+        when(orderService.requireOrderWithItems(orderId)).thenReturn(order);
 
         assertThatThrownBy(() -> paymentService.initiatePayment(orderId, otherUser))
                 .isInstanceOf(UnauthorizedActionException.class);
@@ -176,7 +178,7 @@ class PaymentServiceTest {
     @Test
     void initiatePayment_wrongOrderStatus_throwsInvalidOperation() {
         order.setStatus(OrderStatus.PAID);
-        when(orderService.getOrderById(orderId)).thenReturn(order);
+        when(orderService.requireOrderWithItems(orderId)).thenReturn(order);
 
         assertThatThrownBy(() -> paymentService.initiatePayment(orderId, buyerId))
                 .isInstanceOf(InvalidOrderOperationException.class)
@@ -191,7 +193,7 @@ class PaymentServiceTest {
     @Test
     void initiatePayment_expiredWindow_throwsInvalidOperation() {
         order.setPaymentExpiresAt(LocalDateTime.now().minusMinutes(5));
-        when(orderService.getOrderById(orderId)).thenReturn(order);
+        when(orderService.requireOrderWithItems(orderId)).thenReturn(order);
 
         assertThatThrownBy(() -> paymentService.initiatePayment(orderId, buyerId))
                 .isInstanceOf(InvalidOrderOperationException.class)
@@ -202,7 +204,7 @@ class PaymentServiceTest {
 
     /**
      * Iyzico POSTs callback, payment verified, order must be marked paid
-     * Two transitions: PENDING_PAYMENT to CAPTURED and CAPTURED to HELD
+     * Single transition: PENDING_PAYMENT to HELD
      */
     @Test
     void handleCallback_successfulVerify_marksOrderPaid() {
@@ -224,13 +226,13 @@ class PaymentServiceTest {
         when(paymentTransactionRepository.save(any())).thenReturn(tx);
         when(paymentStatusHistoryRepository.save(any())).thenReturn(null);
 
-        boolean result = paymentService.handleCallback("TOKEN-123");
+        PaymentCallbackOutcome result = paymentService.handleCallback("TOKEN-123");
 
-        assertThat(result).isTrue();
+        assertThat(result).isEqualTo(PaymentCallbackOutcome.PROCESSED);
         assertThat(tx.getStatus()).isEqualTo(PaymentStatus.HELD);
         assertThat(tx.getCapturedAt()).isNotNull();
         verify(orderService).markPaid(orderId);
-        verify(paymentStatusHistoryRepository, times(2)).save(any());
+        verify(paymentStatusHistoryRepository, times(1)).save(any());
     }
 
     /**
@@ -267,7 +269,7 @@ class PaymentServiceTest {
     }
 
     /**
-     * Iyzico verification fails, return false, touch nothing
+     * Iyzico verification fails, return VERIFICATION_FAILED, touch nothing
      */
     @Test
     void handleCallback_failedVerify_returnsFalse() {
@@ -276,9 +278,9 @@ class PaymentServiceTest {
         );
         when(paymentPort.verifyCallback("BAD-TOKEN")).thenReturn(failResult);
 
-        boolean result = paymentService.handleCallback("BAD-TOKEN");
+        PaymentCallbackOutcome result = paymentService.handleCallback("BAD-TOKEN");
 
-        assertThat(result).isFalse();
+        assertThat(result).isEqualTo(PaymentCallbackOutcome.VERIFICATION_FAILED);
         verifyNoInteractions(paymentTransactionRepository);
         verifyNoInteractions(orderService);
     }
@@ -295,11 +297,65 @@ class PaymentServiceTest {
         when(paymentTransactionRepository.findByProviderCheckoutToken("GHOST-TOKEN"))
                 .thenReturn(Optional.empty());
 
-        boolean result = paymentService.handleCallback("GHOST-TOKEN");
+        PaymentCallbackOutcome result = paymentService.handleCallback("GHOST-TOKEN");
 
-        assertThat(result).isTrue();
+        assertThat(result).isEqualTo(PaymentCallbackOutcome.PROCESSED);
         verify(paymentTransactionRepository, never()).save(any());
         verifyNoInteractions(orderService);
+    }
+
+    @Test
+    void handleCallback_duplicateHeldCallback_isIdempotent() {
+        PaymentVerifyResult successResult = new PaymentVerifyResult(
+                true, "SUCCESS", "IYZICO-PAY-ID", "AUTH-123", "HOST-REF", 1
+        );
+        when(paymentPort.verifyCallback("TOKEN-DUP")).thenReturn(successResult);
+
+        PaymentTransaction tx = PaymentTransaction.builder()
+                .id(UUID.randomUUID())
+                .order(order)
+                .sellerId(sellerId)
+                .status(PaymentStatus.HELD)
+                .amountKurus(10000L)
+                .build();
+
+        when(paymentTransactionRepository.findByProviderCheckoutToken("TOKEN-DUP"))
+                .thenReturn(Optional.of(tx));
+
+        PaymentCallbackOutcome result = paymentService.handleCallback("TOKEN-DUP");
+
+        assertThat(result).isEqualTo(PaymentCallbackOutcome.ALREADY_HELD);
+        verify(orderService, never()).markPaid(any());
+        verify(paymentStatusHistoryRepository, never()).save(any());
+        verify(paymentTransactionRepository, never()).save(any());
+    }
+
+    @Test
+    void handleCallback_lateCallbackOnCancelled_flagsRefundReview() {
+        PaymentVerifyResult successResult = new PaymentVerifyResult(
+                true, "SUCCESS", "IYZICO-PAY-ID", "AUTH-123", "HOST-REF", 1
+        );
+        when(paymentPort.verifyCallback("TOKEN-LATE")).thenReturn(successResult);
+
+        PaymentTransaction tx = PaymentTransaction.builder()
+                .id(UUID.randomUUID())
+                .order(order)
+                .sellerId(sellerId)
+                .status(PaymentStatus.CANCELLED)
+                .amountKurus(10000L)
+                .build();
+
+        when(paymentTransactionRepository.findByProviderCheckoutToken("TOKEN-LATE"))
+                .thenReturn(Optional.of(tx));
+        when(paymentTransactionRepository.save(any())).thenReturn(tx);
+
+        PaymentCallbackOutcome result = paymentService.handleCallback("TOKEN-LATE");
+
+        assertThat(result).isEqualTo(PaymentCallbackOutcome.REFUND_REVIEW_REQUIRED);
+        assertThat(tx.isRefundReviewRequired()).isTrue();
+        assertThat(tx.getCapturedAt()).isNotNull();
+        verify(orderService, never()).markPaid(any());
+        verify(paymentStatusHistoryRepository, never()).save(any());
     }
 
     /**
@@ -354,11 +410,10 @@ class PaymentServiceTest {
     }
 
     /**
-     * Delivery event arrives but payment is already COMPLETED or REFUNDED
-     * Guard must skip, no double release
+     * Delivery event arrives but payment is already COMPLETED
      */
     @Test
-    void onOrderDelivered_nonHeldPayment_ignored() {
+    void onOrderDelivered_nonHeldPayment_throws() {
         PaymentTransaction tx = PaymentTransaction.builder()
                 .id(UUID.randomUUID())
                 .order(order)
@@ -369,11 +424,20 @@ class PaymentServiceTest {
 
         when(paymentTransactionRepository.findByOrderId(orderId)).thenReturn(Optional.of(tx));
 
-        paymentService.onOrderDelivered(new OrderDeliveredEvent(orderId));
+        assertThatThrownBy(() -> paymentService.onOrderDelivered(new OrderDeliveredEvent(orderId)))
+                .isInstanceOf(InvalidPaymentStatusTransitionException.class);
 
         verify(paymentPort, never()).approvePayoutToSeller(any());
         verify(orderService, never()).completeOrder(any());
         verify(paymentTransactionRepository, never()).save(any());
+    }
+
+    @Test
+    void onOrderDelivered_missingPayment_throws() {
+        when(paymentTransactionRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> paymentService.onOrderDelivered(new OrderDeliveredEvent(orderId)))
+                .isInstanceOf(InvalidPaymentStatusTransitionException.class);
     }
 
     /**
@@ -400,11 +464,10 @@ class PaymentServiceTest {
     }
 
     /**
-     * Cancellation event arrives but payment is not HELD (PENDING_PAYMENT)
-     * No refund should happen, nothing was captured yet
+     * Cancellation before capture transitions PENDING_PAYMENT to CANCELLED
      */
     @Test
-    void onOrderCancelled_nonHeldPayment_ignored() {
+    void onOrderCancelled_pendingPayment_transitionsToCancelled() {
         PaymentTransaction tx = PaymentTransaction.builder()
                 .id(UUID.randomUUID())
                 .order(order)
@@ -414,11 +477,15 @@ class PaymentServiceTest {
                 .build();
 
         when(paymentTransactionRepository.findByOrderId(orderId)).thenReturn(Optional.of(tx));
+        when(paymentTransactionRepository.save(any())).thenReturn(tx);
+        when(paymentStatusHistoryRepository.save(any())).thenReturn(null);
 
         paymentService.onOrderCancelled(new OrderCancelledEvent(orderId));
 
+        assertThat(tx.getStatus()).isEqualTo(PaymentStatus.CANCELLED);
         verify(paymentPort, never()).refundToBuyer(any());
-        verify(paymentTransactionRepository, never()).save(any());
+        verify(paymentTransactionRepository).save(tx);
+        verify(paymentStatusHistoryRepository).save(any());
     }
 
     /**
@@ -443,6 +510,8 @@ class PaymentServiceTest {
 
         assertThat(tx.getDisputeReason()).isEqualTo(DisputeReason.ITEM_NOT_RECEIVED.name());
         assertThat(tx.getStatus()).isEqualTo(PaymentStatus.HELD);
+        verify(paymentStatusHistoryRepository).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     /**
@@ -524,7 +593,7 @@ class PaymentServiceTest {
 
         paymentService.handleCallback("TOKEN-999");
 
-        verify(paymentStatusHistoryRepository, times(2)).save(any());
-        verify(eventPublisher, times(2)).publishEvent(any(PaymentStateChangedEvent.class));
+        verify(paymentStatusHistoryRepository, times(1)).save(any());
+        verify(eventPublisher, times(1)).publishEvent(any(PaymentStateChangedEvent.class));
     }
 }
