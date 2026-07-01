@@ -79,7 +79,20 @@ services:
     ports:
       - "80:80"
 
+  vault:
+    image: hashicorp/vault:1.17.0
+    container_name: vault-local
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_TOKEN}
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    command: server -dev
+    ports:
+      - "8200:8200"
+
 volumes:
   opensearch-data:
   postgres-data:
   uploads-data:
+  vault-data:

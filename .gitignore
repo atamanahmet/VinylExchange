@@ -1,5 +1,9 @@
 HELP.md
 .env
+.env.secrets
+*.secrets
+.env.vault
+.env.old
 
 ### STS ###
 .apt_generated
