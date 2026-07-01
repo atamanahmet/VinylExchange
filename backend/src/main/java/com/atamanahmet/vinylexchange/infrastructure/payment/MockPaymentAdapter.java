@@ -4,8 +4,6 @@ import com.atamanahmet.vinylexchange.domain.entity.PaymentTransaction;
 import com.atamanahmet.vinylexchange.dto.payment.PaymentInitiateResponse;
 import com.atamanahmet.vinylexchange.dto.payment.PaymentVerifyResult;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
