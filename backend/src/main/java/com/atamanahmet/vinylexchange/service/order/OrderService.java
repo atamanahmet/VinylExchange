@@ -1,7 +1,12 @@
 package com.atamanahmet.vinylexchange.service.order;
 
+import com.atamanahmet.vinylexchange.service.shipment.ShipmentService;
+import com.atamanahmet.vinylexchange.domain.entity.Listing;
 import com.atamanahmet.vinylexchange.domain.entity.Order;
+import com.atamanahmet.vinylexchange.domain.entity.OrderItem;
 import com.atamanahmet.vinylexchange.domain.entity.OrderStatusHistory;
+import com.atamanahmet.vinylexchange.domain.entity.UserAddress;
+import com.atamanahmet.vinylexchange.domain.enums.AddressType;
 import com.atamanahmet.vinylexchange.domain.enums.DisputeReason;
 import com.atamanahmet.vinylexchange.domain.enums.OrderStatus;
 import com.atamanahmet.vinylexchange.event.DisputeOpenedEvent;
@@ -15,15 +20,23 @@ import com.atamanahmet.vinylexchange.exception.UnauthorizedActionException;
 import com.atamanahmet.vinylexchange.mapper.OrderMapper;
 import com.atamanahmet.vinylexchange.repository.order.OrderRepository;
 import com.atamanahmet.vinylexchange.repository.order.OrderStatusHistoryRepository;
+import com.atamanahmet.vinylexchange.service.user.UserAddressService;
+import com.atamanahmet.vinylexchange.service.listing.ListingService;
+import com.atamanahmet.vinylexchange.service.user.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -33,6 +46,10 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OrderStatusHistoryRepository orderStatusHistoryRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final ShipmentService shipmentService;
+    private final UserAddressService userAddressService;
+    private final ListingService listingService;
+    private final UserService userService;
 
     public Order getOrderById(UUID orderId) {
         return orderRepository.findById(orderId)
@@ -45,21 +62,29 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public OrderDTO getOrderDto(UUID orderId) {
-        return OrderMapper.toDTO(requireOrderWithItems(orderId));
+    public OrderDTO getOrderDto(UUID orderId, UUID viewerUserId) {
+        Order order = requireOrderWithItems(orderId);
+        Map<UUID, String> usernames = resolveUsernames(order);
+        return OrderMapper.toDTO(order, resolveListingPublicIds(order), usernames, viewerUserId);
     }
 
     @Transactional(readOnly = true)
     public List<OrderDTO> getOrderDtosByBuyerId(UUID buyerId) {
-        return orderRepository.findAllByBuyerId(buyerId).stream()
-                .map(OrderMapper::toDTO)
+        List<Order> orders = orderRepository.findAllByBuyerId(buyerId);
+        Map<UUID, String> usernames = resolveUsernames(orders);
+        return orders.stream()
+                .map(order -> OrderMapper.toDTO(
+                        order, resolveListingPublicIds(order), usernames, buyerId))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public List<OrderDTO> getOrderDtosBySellerId(UUID sellerId) {
-        return orderRepository.findAllBySellerId(sellerId).stream()
-                .map(OrderMapper::toDTO)
+        List<Order> orders = orderRepository.findAllBySellerId(sellerId);
+        Map<UUID, String> usernames = resolveUsernames(orders);
+        return orders.stream()
+                .map(order -> OrderMapper.toDTO(
+                        order, resolveListingPublicIds(order), usernames, sellerId))
                 .toList();
     }
 
@@ -102,7 +127,10 @@ public class OrderService {
         order.setAutoConfirmDeadline(LocalDateTime.now().plusDays(3));
         orderRepository.save(order);
         eventPublisher.publishEvent(new OrderShippedEvent(orderId));
-        return OrderMapper.toDTO(requireOrderWithItems(orderId));
+        Order orderWithItems = requireOrderWithItems(orderId);
+        Map<UUID, String> usernames = resolveUsernames(orderWithItems);
+        return OrderMapper.toDTO(
+                orderWithItems, resolveListingPublicIds(orderWithItems), usernames, sellerId);
     }
 
     /**
@@ -118,7 +146,10 @@ public class OrderService {
         order.setDeliveredAt(LocalDateTime.now());
         orderRepository.save(order);
         eventPublisher.publishEvent(new OrderDeliveredEvent(orderId));
-        return OrderMapper.toDTO(requireOrderWithItems(orderId));
+        Order orderWithItems = requireOrderWithItems(orderId);
+        Map<UUID, String> usernames = resolveUsernames(orderWithItems);
+        return OrderMapper.toDTO(
+                orderWithItems, resolveListingPublicIds(orderWithItems), usernames, buyerId);
     }
 
     /**
@@ -165,7 +196,9 @@ public class OrderService {
         Order order = getOrderById(orderId);
         assertStatus(order, OrderStatus.AWAITING_PAYMENT, "cancel expired order");
         transition(order, OrderStatus.CANCELLED, "Payment window expired", "SCHEDULER");
-        return orderRepository.save(order);
+        orderRepository.save(order);
+        eventPublisher.publishEvent(new OrderCancelledEvent(orderId));
+        return order;
     }
 
     /**
@@ -214,6 +247,83 @@ public class OrderService {
         }
         transition(order, OrderStatus.REFUNDED, "Refund issued to buyer", "SYSTEM");
         return orderRepository.save(order);
+    }
+
+    /**
+     * Seller selects carrier and sender address. Generates shipment label. Snapshots
+     * seller address onto order. Transitions order toward SHIPPED state.
+     */
+    @Transactional
+    public Order generateShipmentLabel(UUID orderId, UUID sellerId, String handlerCode, UUID sellerAddressId) {
+        Order order = getOrderById(orderId);
+
+        if (!order.getSellerId().equals(sellerId)) {
+            throw new AccessDeniedException("Seller does not own this order");
+        }
+
+        if (order.getStatus() != OrderStatus.PAID) {
+            throw new IllegalStateException("Label can only be generated for PAID orders");
+        }
+
+        UserAddress sellerAddress = userAddressService.getAddressOrThrow(sellerId, sellerAddressId);
+
+        if (sellerAddress.getAddressType() != AddressType.SHIPPING) {
+            throw new IllegalArgumentException("Seller must select a shipping address");
+        }
+
+        Order updatedOrder = shipmentService.createShipmentForOrder(order, handlerCode, sellerAddress);
+        Order savedOrder = orderRepository.save(updatedOrder);
+
+        orderStatusHistoryRepository.save(OrderStatusHistory.builder()
+                .order(savedOrder)
+                .fromStatus(OrderStatus.PAID)
+                .toStatus(OrderStatus.PAID)
+                .triggeredBy(sellerId.toString())
+                .occurredAt(LocalDateTime.now())
+                .note("Shipment label generated")
+                .build());
+
+        return savedOrder;
+    }
+
+    /**
+     * Finds order by shipmentOrderId and transitions status to SHIPPED. Sets
+     * shipmentTrackingNumber.
+     */
+    @Transactional
+    public void markShipped(String shipmentOrderId, String barcode, String trackingNumber) {
+        Order order = requireByShipmentOrderId(shipmentOrderId);
+        assertStatus(order, OrderStatus.PAID, "mark as shipped via shipment webhook");
+        transition(order, OrderStatus.SHIPPED, "Shipment provider reported shipment", "SYSTEM");
+        order.setShipmentTrackingNumber(trackingNumber);
+        order.setAutoConfirmDeadline(LocalDateTime.now().plusDays(3));
+        orderRepository.save(order);
+        eventPublisher.publishEvent(new OrderShippedEvent(order.getId()));
+    }
+
+    /**
+     * Finds order by shipmentOrderId and transitions status to OUT_FOR_DELIVERY.
+     */
+    @Transactional
+    public void markOutForDelivery(String shipmentOrderId) {
+        Order order = requireByShipmentOrderId(shipmentOrderId);
+        assertStatus(order, OrderStatus.SHIPPED, "mark as out for delivery via shipment webhook");
+        transition(order, OrderStatus.OUT_FOR_DELIVERY, "Shipment provider reported out for delivery", "SYSTEM");
+        orderRepository.save(order);
+    }
+
+    /**
+     * Finds order by shipmentOrderId and transitions status to DELIVERED. Sets
+     * deliveredAt.
+     */
+    @Transactional
+    public void markDelivered(String shipmentOrderId) {
+        Order order = requireByShipmentOrderId(shipmentOrderId);
+        assertStatus(order, OrderStatus.OUT_FOR_DELIVERY, "mark as delivered via shipment webhook");
+        transition(order, OrderStatus.DELIVERED, "Shipment provider reported delivery", "SYSTEM");
+        order.setDeliveredAt(LocalDateTime.now());
+        orderRepository.save(order);
+        eventPublisher.publishEvent(new OrderDeliveredEvent(order.getId()));
     }
 
     //
@@ -270,5 +380,33 @@ public class OrderService {
         if (!order.getSellerId().equals(userId)) {
             throw new UnauthorizedActionException("User is not the seller of this order");
         }
+    }
+
+    private Map<UUID, String> resolveUsernames(Order order) {
+        return resolveUsernames(List.of(order));
+    }
+
+    private Map<UUID, String> resolveUsernames(List<Order> orders) {
+        Set<UUID> userIds = new HashSet<>();
+        for (Order order : orders) {
+            userIds.add(order.getBuyerId());
+            userIds.add(order.getSellerId());
+        }
+        return userService.findUsernamesByIds(userIds);
+    }
+
+    private Map<UUID, String> resolveListingPublicIds(Order order) {
+        List<UUID> listingIds = order.getOrderItems().stream()
+                .map(OrderItem::getListingId)
+                .distinct()
+                .toList();
+        return listingService.getListingsByIds(listingIds).stream()
+                .collect(Collectors.toMap(Listing::getId, Listing::getPublicId));
+    }
+
+    private Order requireByShipmentOrderId(String shipmentOrderId) {
+        return orderRepository.findByShipmentOrderId(shipmentOrderId)
+                .orElseThrow(() -> new InvalidOrderOperationException(
+                        "Order not found for shipment order: " + shipmentOrderId));
     }
 }

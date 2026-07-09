@@ -35,6 +35,7 @@ public class ShipmentWebhookHandler {
 
         switch (status) {
             case "SHIPPED" -> orderService.markShipped(shipmentOrderId, barcode, handlerShipmentCode);
+            case "OUT_FOR_DELIVERY" -> orderService.markOutForDelivery(shipmentOrderId);
             case "DELIVERED" -> orderService.markDelivered(shipmentOrderId);
             case "RETURNING", "RETURNED" -> logger.warn(
                     "Return flow not implemented for shipment order {} status {}", shipmentOrderId, status);

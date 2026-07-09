@@ -13,7 +13,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -29,18 +28,20 @@ import jakarta.annotation.PreDestroy;
  */
 @Slf4j
 @Service
-@Component
 @ConditionalOnProperty(name = "shipment.provider", havingValue = "mock", matchIfMissing = true)
 public class MockShipmentAdapter implements ShipmentProvider {
 
     private final String appBaseUrl;
+    private final String webhookSecret;
     private final RestTemplate restTemplate;
     private final ScheduledExecutorService executor;
 
     public MockShipmentAdapter(
             @Value("${app.base-url}") String appBaseUrl,
+            @Value("${shipment.webhook.secret}") String webhookSecret,
             RestTemplate restTemplate) {
         this.appBaseUrl = appBaseUrl;
+        this.webhookSecret = webhookSecret;
         this.restTemplate = restTemplate;
         this.executor = Executors.newSingleThreadScheduledExecutor();
     }
@@ -59,8 +60,12 @@ public class MockShipmentAdapter implements ShipmentProvider {
                 .labelUrl("mock-label-url")
                 .build();
 
-        executor.schedule(() -> fireWebhook(shipmentOrderId, barcode, "SHIPPED"), 30, TimeUnit.SECONDS);
-        executor.schedule(() -> fireWebhook(shipmentOrderId, barcode, "DELIVERED"), 60, TimeUnit.SECONDS);
+        String handlerCode = request.getHandlerCode();
+
+        executor.schedule(() -> fireWebhook(shipmentOrderId, barcode, "SHIPPED", handlerCode), 30, TimeUnit.SECONDS);
+        executor.schedule(() -> fireWebhook(shipmentOrderId, barcode, "OUT_FOR_DELIVERY", handlerCode), 60,
+                TimeUnit.SECONDS);
+        executor.schedule(() -> fireWebhook(shipmentOrderId, barcode, "DELIVERED", handlerCode), 90, TimeUnit.SECONDS);
 
         return response;
     }
@@ -90,18 +95,26 @@ public class MockShipmentAdapter implements ShipmentProvider {
         executor.shutdown();
     }
 
-    private void fireWebhook(String shipmentOrderId, String barcode, String status) {
+    private void fireWebhook(String shipmentOrderId, String barcode, String status, String handlerCode) {
+        String handlerName = getAvailableCarriers().stream()
+                .filter(carrier -> carrier.getCode().equals(handlerCode))
+                .map(CarrierOption::getName)
+                .findFirst()
+                .orElse(handlerCode);
+
         WebhookPayload payload = new WebhookPayload(
                 shipmentOrderId,
                 barcode,
                 status,
-                new WebhookHandler("Mock Kargo", "MOCK"),
+                new WebhookHandler(handlerName, handlerCode),
                 barcode);
 
-        log.info("Firing mock shipment webhook: orderId={}, status={}", shipmentOrderId, status);
+        log.info("Firing mock shipment webhook: orderId={}, status={}, handlerCode={}",
+                shipmentOrderId, status, handlerCode);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("X-Webhook-Secret", webhookSecret);
 
         restTemplate.postForObject(
                 appBaseUrl + "/api/shipment/webhook/status",

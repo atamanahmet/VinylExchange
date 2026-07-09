@@ -84,6 +84,7 @@ public class SecurityConfig implements WebMvcConfigurer {
                                 "/register",
                                 "/api/mb/search/**",
                                 "/api/payment/callback",
+                                "/api/shipment/webhook/**",
                                 "/api/cms/**",
                                 "/listing/**",
                                 "/api/listings/**",
