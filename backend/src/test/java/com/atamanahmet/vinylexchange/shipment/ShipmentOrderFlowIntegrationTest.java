@@ -11,26 +11,29 @@ import com.atamanahmet.vinylexchange.domain.enums.SaleType;
 import com.atamanahmet.vinylexchange.domain.snapshot.AddressSnapshot;
 import com.atamanahmet.vinylexchange.exception.InvalidOrderOperationException;
 import com.atamanahmet.vinylexchange.repository.order.OrderRepository;
+import com.atamanahmet.vinylexchange.repository.order.OrderStatusHistoryRepository;
 import com.atamanahmet.vinylexchange.service.user.UserAddressService;
 import com.atamanahmet.vinylexchange.service.media.CloudinaryImageService;
 import com.atamanahmet.vinylexchange.service.payment.PaymentService;
 import com.atamanahmet.vinylexchange.service.order.OrderService;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.context.TestPropertySource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -53,13 +56,13 @@ class ShipmentOrderFlowIntegrationTest extends BaseIntegrationTest {
         private OrderRepository orderRepository;
 
         @Autowired
+        private OrderStatusHistoryRepository orderStatusHistoryRepository;
+
+        @Autowired
         private ShipmentService shipmentService;
 
         @Autowired
         private ShipmentWebhookHandler shipmentWebhookHandler;
-
-        @Autowired
-        private ObjectMapper objectMapper;
 
         @Autowired
         private TestRestTemplate restTemplate;
@@ -84,7 +87,7 @@ class ShipmentOrderFlowIntegrationTest extends BaseIntegrationTest {
         private AddressSnapshot sellerSnapshot;
 
         @BeforeEach
-        void setUp() throws JsonProcessingException {
+        void setUp() {
                 buyerUUID = UUID.randomUUID();
                 sellerUUID = UUID.randomUUID();
 
@@ -108,10 +111,10 @@ class ShipmentOrderFlowIntegrationTest extends BaseIntegrationTest {
                 order = Order.builder()
                                 .buyerId(buyerUUID)
                                 .sellerId(sellerUUID)
-                                .orderNumber(99_999L)
+                                .orderNumber(ThreadLocalRandom.current().nextLong(1_000_000L, 9_999_999L))
                                 .status(OrderStatus.PAID)
                                 .saleType(SaleType.FIXED_PRICE)
-                                .shippingAddressSnapshot(objectMapper.writeValueAsString(buyerSnapshot))
+                                .shippingAddressSnapshot(buyerSnapshot)
                                 .build();
                 order = orderRepository.save(order);
 
@@ -133,19 +136,20 @@ class ShipmentOrderFlowIntegrationTest extends BaseIntegrationTest {
                                 .thenReturn(sellerAddress);
                 lenient().when(userAddressService.toSnapshot(any(UserAddress.class)))
                                 .thenReturn(sellerSnapshot);
-                lenient().when(userAddressService.serializeSnapshot(any(AddressSnapshot.class)))
-                                .thenReturn(objectMapper.writeValueAsString(sellerSnapshot));
         }
 
         @AfterEach
         void tearDown() {
                 if (order != null && order.getId() != null) {
+                        orderStatusHistoryRepository.deleteAll(
+                                        orderStatusHistoryRepository.findAllByOrderIdOrderByOccurredAtAsc(
+                                                        order.getId()));
                         orderRepository.deleteById(order.getId());
                 }
         }
 
         /**
-         * Full flow: label generated, webhook marks shipped, webhook marks delivered
+         * Full flow: label generated, webhooks mark shipped, out for delivery, delivered
          */
         @Test
         void fullShipmentFlow_labelToDelivered_correctStatusTransitions() {
@@ -173,6 +177,15 @@ class ShipmentOrderFlowIntegrationTest extends BaseIntegrationTest {
                 assertThat(shipped.getShipmentTrackingNumber()).isEqualTo("TRACK-001");
                 assertThat(shipped.getAutoConfirmDeadline()).isNotNull();
 
+                Map<String, Object> outForDeliveryPayload = new HashMap<>();
+                outForDeliveryPayload.put("id", labeled.getShipmentOrderId());
+                outForDeliveryPayload.put("status", "OUT_FOR_DELIVERY");
+
+                shipmentWebhookHandler.handleStatusChange(outForDeliveryPayload);
+
+                Order outForDelivery = orderRepository.findById(order.getId()).orElseThrow();
+                assertThat(outForDelivery.getStatus()).isEqualTo(OrderStatus.OUT_FOR_DELIVERY);
+
                 Map<String, Object> deliveredPayload = new HashMap<>();
                 deliveredPayload.put("id", labeled.getShipmentOrderId());
                 deliveredPayload.put("status", "DELIVERED");
@@ -184,7 +197,7 @@ class ShipmentOrderFlowIntegrationTest extends BaseIntegrationTest {
                 assertThat(delivered.getDeliveredAt()).isNotNull();
         }
 
-        /** Webhook endpoint accepts correct secret and processes status update */
+        /** Webhook endpoint accepts correct secret header and processes status update */
         @Test
         void webhookEndpoint_correctSecret_updatesOrderStatus() {
                 UUID sellerAddressId = UUID.randomUUID();
@@ -197,8 +210,11 @@ class ShipmentOrderFlowIntegrationTest extends BaseIntegrationTest {
                 payload.put("status", "SHIPPED");
                 payload.put("handlerShipmentCode", "TRACK-002");
 
-                String url = "http://localhost:" + port + "/api/shipment/webhook/status?secret=test-shipment-webhook-secret";
-                ResponseEntity<Void> response = restTemplate.postForEntity(url, payload, Void.class);
+                String url = "http://localhost:" + port + "/api/shipment/webhook/status";
+                ResponseEntity<Void> response = restTemplate.postForEntity(
+                                url,
+                                webhookRequest(payload, "test-shipment-webhook-secret"),
+                                Void.class);
 
                 assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 
@@ -207,24 +223,34 @@ class ShipmentOrderFlowIntegrationTest extends BaseIntegrationTest {
                 assertThat(shipped.getShipmentTrackingNumber()).isEqualTo("TRACK-002");
         }
 
-        /** Webhook endpoint rejects wrong secret and leaves order status unchanged */
+        /** Webhook endpoint rejects wrong secret header and leaves order status unchanged */
         @Test
         void webhookEndpoint_wrongSecret_returnsUnauthorizedAndDoesNotUpdate() {
                 UUID sellerAddressId = UUID.randomUUID();
-                orderService.generateShipmentLabel(order.getId(), sellerUUID, "ARAS", sellerAddressId);
+                Order labeled = orderService.generateShipmentLabel(
+                                order.getId(), sellerUUID, "ARAS", sellerAddressId);
 
-                Order labeled = orderService.generateShipmentLabel(order.getId(), sellerUUID, "ARAS", sellerAddressId);
                 Map<String, Object> payload = new HashMap<>();
                 payload.put("id", labeled.getShipmentOrderId());
                 payload.put("status", "SHIPPED");
 
-                String url = "http://localhost:" + port + "/api/shipment/webhook/status?secret=wrong-secret";
-                ResponseEntity<Void> response = restTemplate.postForEntity(url, payload, Void.class);
+                String url = "http://localhost:" + port + "/api/shipment/webhook/status";
+                ResponseEntity<Void> response = restTemplate.postForEntity(
+                                url,
+                                webhookRequest(payload, "wrong-secret"),
+                                Void.class);
 
                 assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
 
                 Order unchanged = orderRepository.findById(order.getId()).orElseThrow();
                 assertThat(unchanged.getStatus()).isEqualTo(OrderStatus.PAID);
+        }
+
+        private HttpEntity<Map<String, Object>> webhookRequest(Map<String, Object> payload, String secret) {
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                headers.set("X-Webhook-Secret", secret);
+                return new HttpEntity<>(payload, headers);
         }
 
         /** generateShipmentLabel with unknown orderId throws immediately */

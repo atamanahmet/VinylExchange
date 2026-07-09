@@ -8,13 +8,18 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpEntity;
 import org.springframework.web.client.RestTemplate;
 
+import java.lang.reflect.Method;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class MockShipmentAdapterTest {
@@ -26,7 +31,7 @@ class MockShipmentAdapterTest {
 
     @BeforeEach
     void setUp() {
-        adapter = new MockShipmentAdapter("http://localhost:8080", restTemplate);
+        adapter = new MockShipmentAdapter("http://localhost:8080", "test-secret", restTemplate);
     }
 
     @AfterEach
@@ -95,5 +100,30 @@ class MockShipmentAdapterTest {
         assertThat(carriers)
                 .extracting(CarrierOption::getCode)
                 .containsExactlyInAnyOrder("ARAS", "YURTICI", "MNG", "PTT", "SURAT");
+    }
+
+    /** Webhook POST uses header auth and resolves carrier name from handler code */
+    @Test
+    void fireWebhook_postsStatusWithSecretHeaderAndCarrierName() throws Exception {
+        Method fireWebhook = MockShipmentAdapter.class.getDeclaredMethod(
+                "fireWebhook", String.class, String.class, String.class, String.class);
+        fireWebhook.setAccessible(true);
+        fireWebhook.invoke(adapter, "MOCK-ABC123", "1234567890", "SHIPPED", "ARAS");
+
+        ArgumentCaptor<String> urlCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<HttpEntity<?>> entityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+
+        verify(restTemplate).postForObject(
+                urlCaptor.capture(),
+                entityCaptor.capture(),
+                eq(Void.class));
+
+        assertThat(urlCaptor.getValue()).isEqualTo("http://localhost:8080/api/shipment/webhook/status");
+        assertThat(urlCaptor.getValue()).doesNotContain("secret=");
+
+        HttpEntity<?> request = entityCaptor.getValue();
+        assertThat(request.getHeaders().getFirst("X-Webhook-Secret")).isEqualTo("test-secret");
+        assertThat(request.getBody().toString()).contains("Aras Kargo");
+        assertThat(request.getBody().toString()).contains("ARAS");
     }
 }

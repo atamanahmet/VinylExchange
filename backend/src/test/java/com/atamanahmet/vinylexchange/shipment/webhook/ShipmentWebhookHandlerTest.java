@@ -37,6 +37,22 @@ class ShipmentWebhookHandlerTest {
         shipmentWebhookHandler.handleStatusChange(payload);
 
         verify(orderService).markShipped("shipment-123", "BAR-456", "TRACK-789");
+        verify(orderService, never()).markOutForDelivery(any());
+        verify(orderService, never()).markDelivered(any());
+    }
+
+    /** OUT_FOR_DELIVERY status routes to markOutForDelivery with shipment order id */
+    @Test
+    void handleStatusChange_outForDelivery_callsMarkOutForDelivery() {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("id", "shipment-789");
+        payload.put("barcode", "BAR-012");
+        payload.put("status", "OUT_FOR_DELIVERY");
+
+        shipmentWebhookHandler.handleStatusChange(payload);
+
+        verify(orderService).markOutForDelivery("shipment-789");
+        verify(orderService, never()).markShipped(any(), any(), any());
         verify(orderService, never()).markDelivered(any());
     }
 
@@ -52,6 +68,7 @@ class ShipmentWebhookHandlerTest {
 
         verify(orderService).markDelivered("shipment-456");
         verify(orderService, never()).markShipped(any(), any(), any());
+        verify(orderService, never()).markOutForDelivery(any());
     }
 
     /** Missing status key is ignored so no order state transition occurs */

@@ -10,8 +10,6 @@ import com.atamanahmet.vinylexchange.domain.enums.AddressType;
 import com.atamanahmet.vinylexchange.domain.enums.OrderStatus;
 import com.atamanahmet.vinylexchange.domain.snapshot.AddressSnapshot;
 import com.atamanahmet.vinylexchange.service.user.UserAddressService;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,13 +34,22 @@ class ShipmentServiceTest {
     @Mock
     private UserAddressService userAddressService;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
     private ShipmentService shipmentService;
 
     @BeforeEach
     void setUp() {
-        shipmentService = new ShipmentService(shipmentProvider, userAddressService, objectMapper);
+        shipmentService = new ShipmentService(shipmentProvider, userAddressService);
+    }
+
+    private AddressSnapshot buildBuyerSnapshot() {
+        return new AddressSnapshot(
+                "Buyer User",
+                "+905551112233",
+                "Buyer Street 10",
+                "Kadikoy",
+                "Istanbul",
+                "34000",
+                "TR");
     }
 
     private Order buildOrder() {
@@ -50,10 +57,7 @@ class ShipmentServiceTest {
                 .id(UUID.randomUUID())
                 .orderNumber(1001L)
                 .status(OrderStatus.PAID)
-                .shippingAddressSnapshot(
-                        "{\"fullName\":\"Buyer User\",\"phone\":\"+905551112233\","
-                                + "\"addressLine\":\"Buyer Street 10\",\"district\":\"Kadikoy\","
-                                + "\"city\":\"Istanbul\",\"postalCode\":\"34000\",\"country\":\"TR\"}")
+                .shippingAddressSnapshot(buildBuyerSnapshot())
                 .build();
     }
 
@@ -84,10 +88,8 @@ class ShipmentServiceTest {
                 "TR");
     }
 
-    private void setupAddressMocks(AddressSnapshot seller) throws JsonProcessingException {
+    private void setupAddressMocks(AddressSnapshot seller) {
         when(userAddressService.toSnapshot(any(UserAddress.class))).thenReturn(seller);
-        when(userAddressService.serializeSnapshot(seller))
-                .thenReturn(objectMapper.writeValueAsString(seller));
     }
 
     /** Successful shipment creation writes all shipment fields from provider response onto order */
@@ -121,17 +123,6 @@ class ShipmentServiceTest {
     void createShipmentForOrder_nullSnapshot_throwsIllegalState() {
         Order order = buildOrder();
         order.setShippingAddressSnapshot(null);
-
-        assertThatThrownBy(() -> shipmentService.createShipmentForOrder(order, "ARAS", buildSellerAddress()))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("missing");
-    }
-
-    /** Blank shipping snapshot cannot build shipment request */
-    @Test
-    void createShipmentForOrder_blankSnapshot_throwsIllegalState() {
-        Order order = buildOrder();
-        order.setShippingAddressSnapshot("   ");
 
         assertThatThrownBy(() -> shipmentService.createShipmentForOrder(order, "ARAS", buildSellerAddress()))
                 .isInstanceOf(IllegalStateException.class)
