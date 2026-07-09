@@ -3,25 +3,30 @@ spring:
     hibernate:
       ddl-auto: update
 
+file:
+  demo-covers-dir: src/main/resources/demo/covers/
+
 server:
   error:
     include-message: always
     include-binding-errors: always
 
-payment:
-  provider: mock
-  iyzico:
-    api-key: mock
-    secret-key: mock
-    base-url: mock
-    callback-url: mock
-
-opensearch:
-  password: ${OPENSEARCH_PASSWORD}
 # payment:
-#   provider: iyzico
+#   provider: mock
 #   iyzico:
-#     api-key: ${IYZICO_API_KEY}
-#     secret-key: ${IYZICO_SECRET_KEY}
-#     base-url: ${IYZICO_BASE_URL}
-#     callback-url: ${IYZICO_CALLBACK_URL}
+#     api-key: mock
+#     secret-key: mock
+#     base-url: mock
+#     callback-url: mock
+
+payment:
+  provider: iyzico
+  iyzico:
+    api-key: ${IYZICO_API_KEY}
+    secret-key: ${IYZICO_SECRET_KEY}
+    base-url: ${IYZICO_BASE_URL}
+    callback-url: ${IYZICO_CALLBACK_URL}
+
+app:
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}

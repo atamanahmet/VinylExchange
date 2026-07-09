@@ -5,13 +5,13 @@ import com.atamanahmet.vinylexchange.dto.payment.PaymentInitiateRequest;
 import com.atamanahmet.vinylexchange.dto.payment.PaymentInitiateResponse;
 import com.atamanahmet.vinylexchange.service.payment.PaymentService;
 import com.atamanahmet.vinylexchange.session.UserUtil;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -40,14 +40,21 @@ public class PaymentController {
     }
 
     /**
-     * Iyzico POSTs here after user's payment completes or fails
-     * Not authenticated, Iyzico server calls this, not the user
+     * Iyzico redirects the buyer's browser here after payment completes or fails.
+     * Not authenticated, the payment provider calls this, not the logged-in
+     * session.
      */
-    @PostMapping("/callback")
-    public ResponseEntity<Void> paymentCallback(
-            @RequestParam(required = false) String token,
-            HttpServletRequest request) {
+    @GetMapping("/callback")
+    public ResponseEntity<String> paymentCallbackGet(@RequestParam(required = false) String token) {
+        return buildCallbackResponse(token);
+    }
 
+    @PostMapping("/callback")
+    public ResponseEntity<String> paymentCallbackPost(@RequestParam(required = false) String token) {
+        return buildCallbackResponse(token);
+    }
+
+    private ResponseEntity<String> buildCallbackResponse(String token) {
         log.info("Payment callback received token={}", token);
 
         if (token == null) {
@@ -58,15 +65,30 @@ public class PaymentController {
 
         String frontendUrl = switch (outcome) {
             case PROCESSED, ALREADY_HELD ->
-                    frontendBaseUrl + "/payment/result?status=success";
+                frontendBaseUrl + "/payment/result?status=success";
             case REFUND_REVIEW_REQUIRED ->
-                    frontendBaseUrl + "/payment/result?status=refund-review";
+                frontendBaseUrl + "/payment/result?status=refund-review";
             case VERIFICATION_FAILED ->
-                    frontendBaseUrl + "/payment/result?status=failure";
+                frontendBaseUrl + "/payment/result?status=failure";
         };
 
-        return ResponseEntity.status(HttpStatus.FOUND)
-                .header("Location", frontendUrl)
-                .build();
+        String html = """
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                  <meta charset="UTF-8">
+                  <meta http-equiv="refresh" content="0;url=%s">
+                  <title>Redirecting</title>
+                </head>
+                <body>
+                  <p>Redirecting...</p>
+                  <script>window.location.replace("%s");</script>
+                </body>
+                </html>
+                """.formatted(frontendUrl, frontendUrl);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.TEXT_HTML)
+                .body(html);
     }
 }
