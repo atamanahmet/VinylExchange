@@ -1,5 +1,6 @@
 package com.atamanahmet.vinylexchange.controller.order;
 
+import com.atamanahmet.vinylexchange.dto.shipment.GenerateLabelRequest;
 import com.atamanahmet.vinylexchange.dto.order.CancelRequest;
 import com.atamanahmet.vinylexchange.dto.payment.DisputeRequest;
 import com.atamanahmet.vinylexchange.dto.payment.DisputeResolveRequest;
@@ -11,6 +12,7 @@ import com.atamanahmet.vinylexchange.session.UserUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,7 +35,7 @@ public class OrderController {
     @GetMapping("/{orderId}")
     public ResponseEntity<OrderDTO> getOrder(@PathVariable UUID orderId) {
         orderAccessService.assertCanView(orderId, UserUtil.getCurrentUserId());
-        return ResponseEntity.ok(orderService.getOrderDto(orderId));
+        return ResponseEntity.ok(orderService.getOrderDto(orderId, UserUtil.getCurrentUserId()));
     }
 
     @GetMapping("/my/purchases")
@@ -46,9 +48,16 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getOrderDtosBySellerId(UserUtil.getCurrentUserId()));
     }
 
-    @PostMapping("/{orderId}/ship")
-    public ResponseEntity<OrderDTO> shipOrder(@PathVariable UUID orderId) {
-        return ResponseEntity.ok(orderService.shipOrder(orderId, UserUtil.getCurrentUserId()));
+    @PostMapping("/{orderId}/shipment/label")
+    public ResponseEntity<OrderDTO> generateShipmentLabel(
+            @PathVariable UUID orderId,
+            @RequestBody @Valid GenerateLabelRequest request) {
+        orderService.generateShipmentLabel(
+                orderId,
+                UserUtil.getCurrentUserId(),
+                request.getHandlerCode(),
+                request.getSellerAddressId());
+        return ResponseEntity.ok(orderService.getOrderDto(orderId, UserUtil.getCurrentUserId()));
     }
 
     @PostMapping("/{orderId}/confirm-delivery")
@@ -74,8 +83,9 @@ public class OrderController {
     }
 
     /**
-     * Admin only — security enforcement to be added in Phase 8
+     * Admin only
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{orderId}/dispute/resolve")
     public ResponseEntity<Void> resolveDispute(
             @PathVariable UUID orderId,
