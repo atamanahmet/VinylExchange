@@ -72,9 +72,12 @@ export const useOrderStore = create((set, get) => ({
     }
   },
 
-  shipOrder: async (orderId) => {
+  generateShipmentLabel: async (orderId, handlerCode, sellerAddressId) => {
     try {
-      const res = await axios.post(`/api/orders/${orderId}/ship`);
+      const res = await axios.post(`/api/orders/${orderId}/shipment/label`, {
+        handlerCode,
+        sellerAddressId,
+      });
       if (res.status === 200) {
         set({ currentOrder: res.data });
         return true;

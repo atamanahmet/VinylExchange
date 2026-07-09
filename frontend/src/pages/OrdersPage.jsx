@@ -78,7 +78,6 @@ function StatusBadge({ status }) {
 function OrderCard({
   order,
   isSeller,
-  onShip,
   onPay,
   onConfirmDelivery,
   onCancel,
@@ -89,7 +88,8 @@ function OrderCard({
   const navigate = useNavigate();
   const canPay = !isSeller && order.status === "AWAITING_PAYMENT";
 
-  const canShip = isSeller && order.status === "PAID";
+  const canCreateShippingLabel =
+    isSeller && order.status === "PAID" && !order.shipmentHandlerCode;
   const canConfirm = !isSeller && order.status === "SHIPPED";
   const canCancel =
     !isSeller && ["AWAITING_PAYMENT", "PAID"].includes(order.status);
@@ -242,12 +242,14 @@ function OrderCard({
             Message
           </button>
 
-          {canShip && (
+          {canCreateShippingLabel && (
             <button
-              onClick={() => onShip(order.orderId)}
+              onClick={() =>
+                navigate(`/orders/${order.orderId}/shipment/label`)
+              }
               className="text-xs text-white bg-amber-600 hover:bg-amber-700 px-3 py-1.5 rounded-lg transition-colors"
             >
-              Mark shipped
+              Create shipping label
             </button>
           )}
 
@@ -300,20 +302,26 @@ function OrderGroup({
   label,
   orders,
   isSeller,
-  onShip,
   onPay,
   onConfirmDelivery,
   onCancel,
   onDispute,
   onOpenConversation,
 }) {
+  const navigate = useNavigate();
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
         <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
           {isSeller ? "Buyer" : "Seller"}
         </span>
-        <span className="text-sm font-medium text-white">{label}</span>
+        <button
+          onClick={() => navigate(`/seller/${label}`)}
+          className="text-sm font-medium text-white hover:text-amber-400 transition-colors"
+        >
+          {label}
+        </button>
         <span className="text-xs text-neutral-600 ml-auto">
           {orders.length} order{orders.length !== 1 ? "s" : ""}
         </span>
@@ -323,7 +331,6 @@ function OrderGroup({
           key={order.orderId}
           order={order}
           isSeller={isSeller}
-          onShip={onShip}
           onConfirmDelivery={onConfirmDelivery}
           onCancel={onCancel}
           onDispute={onDispute}
@@ -357,7 +364,6 @@ export default function OrdersPage() {
   const isFetching = useOrderStore((state) => state.isFetching);
   const fetchPurchases = useOrderStore((state) => state.fetchPurchases);
   const fetchSales = useOrderStore((state) => state.fetchSales);
-  const shipOrder = useOrderStore((state) => state.shipOrder);
   const confirmDelivery = useOrderStore((state) => state.confirmDelivery);
   const cancelOrder = useOrderStore((state) => state.cancelOrder);
   const openDispute = useOrderStore((state) => state.openDispute);
@@ -388,19 +394,20 @@ export default function OrdersPage() {
     : activeOrders;
 
   /**
-   * Groups orders by counterpart ID for display
-   * Purchases: group by sellerId, sales: group by buyerId
+   * Groups orders by counterpart username for display
+   * Purchases: group by sellerUsername, sales: group by buyerUsername
    */
   const grouped = filtered.reduce((acc, order) => {
-    const key = isSeller ? order.buyerId : order.sellerId;
+    const key = isSeller ? order.buyerUsername : order.sellerUsername;
     if (!acc[key]) acc[key] = [];
     acc[key].push(order);
     return acc;
   }, {});
 
   const handleOpenConversation = (order) => {
-    const counterpartId = isSeller ? order.buyerId : order.sellerId;
-    navigate("/messaging", { state: { startWithUserId: counterpartId } });
+    const listingPublicId = order.items?.[0]?.publicId;
+    if (!listingPublicId) return;
+    navigate(`/messaging/${listingPublicId}`);
   };
 
   const handleCancelConfirm = async () => {
@@ -409,11 +416,6 @@ export default function OrdersPage() {
     setCancelModal(null);
     setCancelReason("");
     fetchPurchases();
-  };
-
-  const handleShip = async (orderId) => {
-    await shipOrder(orderId);
-    fetchSales();
   };
 
   const handleConfirmDelivery = async (orderId) => {
@@ -512,13 +514,12 @@ export default function OrdersPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-8">
-          {Object.entries(grouped).map(([counterpartId, orders]) => (
+          {Object.entries(grouped).map(([counterpartUsername, orders]) => (
             <OrderGroup
-              key={counterpartId}
-              label={counterpartId}
+              key={counterpartUsername}
+              label={counterpartUsername}
               orders={orders}
               isSeller={isSeller}
-              onShip={handleShip}
               onConfirmDelivery={handleConfirmDelivery}
               onCancel={(orderId) => setCancelModal(orderId)}
               onDispute={handleDispute}

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useOrderStore } from "../stores/orderStore";
-import { useAuthStore } from "../stores/authStore";
 
 const STATUS_CONFIG = {
   AWAITING_PAYMENT: {
@@ -80,11 +79,9 @@ export default function OrderDetailPage() {
   const { orderId } = useParams();
   const navigate = useNavigate();
 
-  const user = useAuthStore((state) => state.user);
   const currentOrder = useOrderStore((state) => state.currentOrder);
   const isFetching = useOrderStore((state) => state.isFetchingCurrent);
   const fetchOrder = useOrderStore((state) => state.fetchOrder);
-  const shipOrder = useOrderStore((state) => state.shipOrder);
   const confirmDelivery = useOrderStore((state) => state.confirmDelivery);
   const cancelOrder = useOrderStore((state) => state.cancelOrder);
   const openDispute = useOrderStore((state) => state.openDispute);
@@ -123,17 +120,16 @@ export default function OrderDetailPage() {
     );
   }
 
-  const isSeller = currentOrder.sellerId === user?.id;
+  const isSeller = currentOrder.viewerRole === "SELLER";
 
-  const canShip = isSeller && currentOrder.status === "PAID";
   const canConfirm = !isSeller && currentOrder.status === "SHIPPED";
   const canCancel =
     !isSeller && ["AWAITING_PAYMENT", "PAID"].includes(currentOrder.status);
   const canDispute = !isSeller && currentOrder.status === "SHIPPED";
-
-  const handleShip = async () => {
-    await shipOrder(currentOrder.orderId);
-  };
+  const showGenerateLabelPrompt =
+    isSeller &&
+    currentOrder.status === "PAID" &&
+    !currentOrder.shipmentHandlerCode;
 
   const handleConfirm = async () => {
     await confirmDelivery(currentOrder.orderId);
@@ -300,17 +296,49 @@ export default function OrderDetailPage() {
         <InfoRow label="Payment date" value={formatDate(currentOrder.paidAt)} />
       </div>
 
+      {currentOrder.shipmentHandlerCode && (
+        <div className="bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2 mb-4">
+          <InfoRow label="Carrier" value={currentOrder.shipmentHandlerCode} />
+          <InfoRow label="Tracking barcode" value={currentOrder.shipmentBarcode} />
+          <div className="flex justify-between items-center py-2 border-b border-neutral-800 last:border-0">
+            <span className="text-sm text-neutral-500">Shipping label</span>
+            {currentOrder.shipmentLabelUrl ? (
+              <a
+                href={currentOrder.shipmentLabelUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-amber-500 hover:text-amber-400 transition-colors"
+              >
+                View label
+              </a>
+            ) : (
+              <span className="text-sm text-neutral-200">—</span>
+            )}
+          </div>
+          <InfoRow
+            label="Label date"
+            value={formatDate(currentOrder.shipmentLabelGeneratedAt)}
+          />
+        </div>
+      )}
+
+      {showGenerateLabelPrompt && (
+        <div className="bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-4 mb-4 flex items-center justify-between gap-4">
+          <p className="text-sm text-neutral-400">Label not generated yet</p>
+          <button
+            onClick={() =>
+              navigate(`/orders/${currentOrder.orderId}/shipment/label`)
+            }
+            className="text-sm text-white bg-amber-600 hover:bg-amber-700 px-4 py-2 rounded-lg transition-colors shrink-0"
+          >
+            Generate shipping label
+          </button>
+        </div>
+      )}
+
       {/* actions */}
-      {(canShip || canConfirm || canCancel || canDispute) && (
+      {(canConfirm || canCancel || canDispute) && (
         <div className="flex flex-wrap gap-2 justify-end mt-6">
-          {canShip && (
-            <button
-              onClick={handleShip}
-              className="text-sm text-white bg-amber-600 hover:bg-amber-700 px-4 py-2 rounded-lg transition-colors"
-            >
-              Mark as shipped
-            </button>
-          )}
           {canConfirm && (
             <button
               onClick={handleConfirm}
