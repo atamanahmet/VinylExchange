@@ -21,6 +21,7 @@ export VAULT_ADDR="${VAULT_ADDR:-http://localhost:8200}"
 : "${ADMIN_TEST_PASSWORD:?ADMIN_TEST_PASSWORD is required}"
 : "${DB_USER:?DB_USER is required}"
 : "${DB_PASSWORD:?DB_PASSWORD is required}"
+: "${DB_NAME:?DB_NAME is required}"
 : "${JWT_SECRET:?JWT_SECRET is required}"
 : "${IYZICO_API_KEY:?IYZICO_API_KEY is required}"
 : "${IYZICO_SECRET_KEY:?IYZICO_SECRET_KEY is required}"
@@ -52,6 +53,7 @@ seed_profile_secrets() {
   local profile="$1"
   log "Writing secret/vinyl-exchange/${profile}..."
   vault kv put "secret/vinyl-exchange/${profile}" \
+    spring.datasource.url="jdbc:postgresql://localhost:${DB_PORT:-5432}/${DB_NAME}" \
     spring.datasource.username="$DB_USER" \
     spring.datasource.password="$DB_PASSWORD" \
     jwt.secret="$JWT_SECRET" \
