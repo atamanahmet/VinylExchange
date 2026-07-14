@@ -8,6 +8,7 @@ import com.atamanahmet.vinylexchange.domain.entity.TradePreference;
 import com.atamanahmet.vinylexchange.dto.listing.CreateListingRequest;
 import com.atamanahmet.vinylexchange.dto.listing.ListingDTO;
 import com.atamanahmet.vinylexchange.dto.listing.ListingSummaryDto;
+import com.atamanahmet.vinylexchange.dto.listing.ListingSummaryResponse;
 import com.atamanahmet.vinylexchange.dto.listing.UpdateListingRequest;
 import com.atamanahmet.vinylexchange.dto.user.TradePreferenceDTO;
 import com.atamanahmet.vinylexchange.dto.user.TradePreferenceRequest;
@@ -147,6 +148,24 @@ public class ListingMapper {
                 listing.getCountry() != null ? listing.getCountry().getIsoCode() : null,
                 MediaInfoFormatter.toDisplayLabel(listing.getMediaInfo()),
                 listing.getLabelName());
+    }
+
+    /**
+     * Converts cache DTO to HTTP response DTO
+     */
+    public ListingSummaryResponse toResponse(ListingSummaryDto dto) {
+        return new ListingSummaryResponse(
+                dto.publicId(),
+                dto.title(),
+                dto.artistName(),
+                dto.priceKurus(),
+                dto.mainImageUrl(),
+                dto.condition(),
+                dto.year(),
+                dto.country(),
+                dto.format(),
+                dto.labelName()
+        );
     }
 
     private TradePreference toTradePreferenceEntity(TradePreferenceRequest request) {
