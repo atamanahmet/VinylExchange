@@ -1,16 +1,22 @@
 import dayjs from "dayjs";
 
+import {
+  getListingFormatLabel,
+  getListingLabelName,
+} from "../utils/mediaInfo";
+
 export function listingToCardData(listing) {
   const formattedDate = dayjs(listing.createdAt).format("DD-MM-YYYY");
 
   return {
-    id: listing.id,
+    id: listing.publicId,
+    publicId: listing.publicId,
     title: listing.title,
     artist: listing.artistName,
     year: listing.year,
-    format: listing.format,
-    label: listing.labelName,
-    imageUrl: listing.imagePaths?.[0] || "/placeholder.png",
+    format: getListingFormatLabel(listing),
+    label: getListingLabelName(listing),
+    imageUrl: listing.imageUrl || listing.imagePaths?.[0] || listing.mainImageUrl || "/placeholder.png",
     price: listing.price,
     country: listing.country,
     discountedPrice: listing.discountedPrice,
