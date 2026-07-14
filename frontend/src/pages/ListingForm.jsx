@@ -1,13 +1,209 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
-import ImageUploader from "../comps/ImageUploader";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Plus, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useSearchStore } from "../stores/searchStore";
-import { useAuthStore } from "../stores/authStore";
-import Card from "../comps/Card";
+import { toast } from "sonner";
+
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+
 import { mbReleaseToListingMap } from "../adapters/mbReleaseToListingMap";
-import SkeletonCardView from "../comps/Skeletons/SkeletonCardView";
-import { Modal } from "flowbite-react";
+import MediaInfoFields from "@/components/listing/MediaInfoFields";
+import MbReleaseFilterBar from "@/components/listing/MbReleaseFilterBar";
+import ReleaseCard from "@/components/listing/Card";
+import ImageUploader from "@/components/listing/ImageUploader";
+import AddressFormDialog from "@/components/account/AddressFormDialog";
+import SkeletonCardView from "@/components/shared/skeletons/SkeletonCardView";
+import { useAuthStore } from "../stores/authStore";
+import { useAddressStore } from "../stores/addressStore";
+import { useSearchStore } from "../stores/searchStore";
+import { useMbReleaseFilters } from "../hooks/useMbReleaseFilters";
+import { useMbScrollLoadMore } from "../hooks/useMbScrollLoadMore";
+import axios from "../api/axiosInstance";
+import { CARD_GRID_CLASS } from "../utils/cardLayout";
+import { buildListingPath } from "../utils/listingPath";
+import {
+  emptyMediaInfo,
+  normalizeMediaInfoFromApi,
+  sanitizeMediaInfoForSubmit,
+} from "../utils/mediaInfo";
+import { getApiErrorMessage, isShippingAddressRequiredError } from "../utils/apiErrorMessage";
+import {
+  ensureUserLoggedIn,
+  isAuthRequiredError,
+  promptReauthentication,
+} from "../utils/authSession";
+
+const PACKAGING_OPTIONS = [
+  { value: "SEALED", label: "Sealed" },
+  { value: "OPENED", label: "Opened" },
+  { value: "RESEALED", label: "Resealed" },
+];
+
+const SELECT_CLASS =
+  "h-8 w-full min-w-0 rounded-lg border border-accent-muted bg-surface-form px-2.5 py-1 text-base text-on-surface transition-colors outline-none focus-visible:border-brand-active focus-visible:ring-3 focus-visible:ring-brand-active/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-surface-form/50 disabled:opacity-50 md:text-sm";
+
+const CONDITION_OPTIONS = [
+  { value: "P", label: "(P) (F) Poor / Fair" },
+  { value: "G", label: "(G) Good" },
+  { value: "VG", label: "(VG) Very Good" },
+  { value: "VG+", label: "(VG+) Very Good+" },
+  { value: "E", label: "(E) Excellent" },
+  { value: "NM", label: "(NM) Near Mint" },
+  { value: "M", label: "(M) Mint" },
+];
+
+const PAYMENT_DIRECTIONS = [
+  { value: "NO_EXTRA", label: "0" },
+  { value: "PAY", label: "Pay" },
+  { value: "RECEIVE", label: "Receive" },
+];
+
+function mapImagePathsToUploaderImages(imagePaths = []) {
+  return imagePaths.map((url, index) => ({
+    preview: url,
+    isExisting: true,
+    url,
+    name: `existing-image-${index}`,
+  }));
+}
+
+function sanitizeListingPayload(payload) {
+  const next = { ...payload };
+
+  if (!next.mbId) {
+    delete next.mbId;
+  }
+
+  if (typeof next.year === "string" && next.year.trim()) {
+    next.year = Number.parseInt(next.year, 10);
+  } else if (next.year === "" || Number.isNaN(next.year)) {
+    delete next.year;
+  }
+
+  next.mediaInfo = sanitizeMediaInfoForSubmit(next.mediaInfo);
+
+  return next;
+}
+
+function paymentDirectionButtonClass(direction, isActive) {
+  if (!isActive) {
+    return "border-accent-muted bg-surface-form text-on-surface-dim hover:bg-surface-3 hover:text-on-surface";
+  }
+
+  if (direction === "PAY") {
+    return "border-danger bg-danger text-on-surface hover:bg-danger-hover";
+  }
+
+  if (direction === "RECEIVE") {
+    return "border-success bg-success text-on-surface hover:bg-success-hover";
+  }
+
+  return "border-brand bg-brand text-on-surface hover:bg-brand-hover";
+}
+
+function FormSection({ title, description, children, className, contentClassName }) {
+  return (
+    <Card
+      className={cn(
+        "flex h-full min-h-0 flex-col border-surface-3 bg-surface-2 shadow-xs ring-1 ring-surface-4",
+        className,
+      )}
+    >
+      <CardHeader className="shrink-0 space-y-1 px-4 pb-2 pt-4 sm:px-6">
+        <CardTitle className="text-base font-semibold text-on-surface sm:text-lg">
+          {title}
+        </CardTitle>
+        {description && (
+          <CardDescription className="text-xs text-on-surface-muted sm:text-sm">
+            {description}
+          </CardDescription>
+        )}
+      </CardHeader>
+      <CardContent
+        className={cn(
+          "min-h-0 flex-1 overflow-y-auto px-4 pb-4 sm:px-6",
+          contentClassName,
+        )}
+      >
+        <FieldGroup className="gap-3">{children}</FieldGroup>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RadioGroup({
+  name,
+  value,
+  onChange,
+  options,
+  required = false,
+  layout = "wrap",
+}) {
+  return (
+    <div
+      className={cn(
+        layout === "column"
+          ? "flex flex-col gap-2"
+          : "flex flex-wrap gap-x-4 gap-y-2",
+      )}
+    >
+      {options.map((option) => {
+        const isChecked =
+          value === option.value ||
+          (option.value === "other" && value === "Other");
+
+        return (
+          <label
+            key={option.value}
+            className={cn(
+              "flex cursor-pointer items-center gap-2 rounded-md border px-2 py-1.5 text-sm transition-colors",
+              isChecked
+                ? "border-brand/40 bg-brand/10 text-on-surface"
+                : "border-transparent text-on-surface-dim hover:border-surface-4 hover:bg-surface-3/50 hover:text-on-surface",
+            )}
+          >
+            <input
+              type="radio"
+              name={name}
+              value={option.value}
+              checked={isChecked}
+              onChange={onChange}
+              required={required}
+              className="size-4 accent-brand"
+            />
+            <span>{option.label}</span>
+          </label>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function ListingForm() {
   const { listingId } = useParams();
@@ -15,15 +211,28 @@ export default function ListingForm() {
 
   const navigate = useNavigate();
 
-  const checkAuth = useAuthStore((state) => state.checkAuth);
+  const createAddress = useAddressStore((state) => state.createAddress);
+  const fetchAddresses = useAddressStore((state) => state.fetchAddresses);
+  const isSavingAddress = useAddressStore((state) => state.isSaving);
   const searchMusicBrainz = useSearchStore((state) => state.searchMusicBrainz);
-  const isLoadingSearch = useSearchStore((state) => state.isLoadingSearch);
-  const searchResult = useSearchStore((state) => state.searchResult);
+  const isLoadingMbSearch = useSearchStore((state) => state.isLoadingMbSearch);
+  const isLoadingMoreMb = useSearchStore((state) => state.isLoadingMoreMb);
+  const hasMoreMbResults = useSearchStore((state) => state.hasMoreMbResults);
+  const mbSearchContext = useSearchStore((state) => state.mbSearchContext);
+  const mbSearchResult = useSearchStore((state) => state.mbSearchResult);
+
+  const mbModalScrollRef = useRef(null);
+  useMbScrollLoadMore(mbModalScrollRef);
 
   const [images, setImages] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [items, setItems] = useState([]);
+  const [addressDialogOpen, setAddressDialogOpen] = useState(false);
+  const [retryListingAfterAddress, setRetryListingAfterAddress] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [countryOptions, setCountryOptions] = useState([]);
+  const [countriesLoading, setCountriesLoading] = useState(true);
 
   const emptyListing = {
     title: "",
@@ -32,7 +241,7 @@ export default function ListingForm() {
     condition: "",
     packaging: "",
     labelName: "",
-    format: "",
+    mediaInfo: emptyMediaInfo(),
     mbId: "",
     trackCount: 1,
     stockQuantity: 1,
@@ -55,7 +264,7 @@ export default function ListingForm() {
     condition: data.condition ?? "",
     packaging: data.packaging ?? "",
     labelName: data.labelName ?? "",
-    format: data.format ?? "",
+    mediaInfo: normalizeMediaInfoFromApi(data.mediaInfo),
     mbId: data.mbId ?? "",
     trackCount: data.trackCount ?? 1,
     stockQuantity: data.stockQuantity ?? 1,
@@ -67,62 +276,90 @@ export default function ListingForm() {
     price: data.price ?? 0,
     discount: data.discount ?? 0,
     tradePreferences: data.tradePreferences ?? [],
+    imagePaths: Array.isArray(data.imagePaths) ? data.imagePaths : [],
   });
 
-  // load edit mode
   useEffect(() => {
-    checkAuth();
-
     if (isEditMode) {
+      setImages([]);
       loadListing();
+    } else {
+      setImages([]);
+      setListing(emptyListing);
     }
   }, [listingId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    axios
+      .get("/api/reference/countries", { params: { lang: "en" } })
+      .then((res) => {
+        if (!cancelled) {
+          setCountryOptions(Array.isArray(res.data) ? res.data : []);
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to load countries:", error);
+        if (!cancelled) {
+          toast.error("Failed to load country list");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setCountriesLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const loadListing = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(
-        `http://localhost:8080/api/listings/${listingId}`,
-        { withCredentials: true },
-      );
+
+      const authenticated = await ensureUserLoggedIn({
+        promptMessage: "Sign in to edit this listing.",
+      });
+      if (!authenticated) {
+        navigate("/");
+        return;
+      }
+
+      const res = await axios.get(`/api/listings/${listingId}`);
 
       if (res.status === 200) {
-        console.log("loading data>: ", res.data);
+        const currentUser = useAuthStore.getState().user;
+        if (
+          res.data.ownerUsername &&
+          currentUser?.username !== res.data.ownerUsername
+        ) {
+          toast.error("You can only edit your own listings");
+          navigate("/");
+          return;
+        }
+
         setListing(mapListingToForm(res.data));
+        setImages(mapImagePathsToUploaderImages(res.data.imagePaths));
       }
     } catch (error) {
       console.error("Failed to load listing:", error);
       if (error.response?.status === 404) {
-        alert("Listing not found");
+        toast.error("Listing not found");
         navigate("/listings");
+      } else if (isAuthRequiredError(error)) {
+        await promptReauthentication(error);
+      } else {
+        toast.error(getApiErrorMessage(error, "Failed to load listing"));
       }
     } finally {
       setLoading(false);
     }
   };
 
-  // musicbrainz search for autofill and release check
-  useEffect(() => {
-    if (!searchResult?.items) {
-      setItems([]);
-      return;
-    }
-
-    setItems(
-      searchResult.items.map((release) => mbReleaseToListingMap(release)),
-    );
-  }, [searchResult]);
-
-  const checkRelease = async () => {
-    if (!listing.title) {
-      alert("Enter album title first");
-      return;
-    }
-    setIsModalOpen(true);
-    await searchMusicBrainz(listing.title);
-  };
-
-  const selectMbRelease = (item) => {
+  const selectMbRelease = useCallback((item) => {
     setListing((prev) => ({
       ...prev,
       title: item.title,
@@ -131,11 +368,42 @@ export default function ListingForm() {
       labelName: item.label || "",
       mbId: item.id || "",
       barcode: item.barcode || "",
-      format: item.format || "",
+      mediaInfo: item.mediaInfo || emptyMediaInfo(),
       country: item.country || "",
       trackCount: item.trackCount || 1,
     }));
     setIsModalOpen(false);
+  }, []);
+
+  const mbReleases = mbSearchResult?.items;
+
+  const {
+    filters: mbFilters,
+    setFilters: setMbFilters,
+    bounds: mbFilterBounds,
+    filteredReleases: filteredMbReleases,
+    hasReleases: hasMbReleases,
+    releaseCount: mbReleaseCount,
+  } = useMbReleaseFilters(mbReleases, {
+    isLoadingSearch: isLoadingMbSearch,
+    searchContext: mbSearchContext,
+  });
+
+  const searchItems = useMemo(
+    () =>
+      filteredMbReleases.map((release) =>
+        mbReleaseToListingMap(release, selectMbRelease),
+      ),
+    [filteredMbReleases, selectMbRelease],
+  );
+
+  const checkRelease = async () => {
+    if (!listing.title) {
+      toast.warning("Enter album title first");
+      return;
+    }
+    setIsModalOpen(true);
+    await searchMusicBrainz(listing.title);
   };
 
   const handleChange = (e) => {
@@ -147,7 +415,6 @@ export default function ListingForm() {
         [name]: type === "checkbox" ? checked : value,
       };
 
-      // clear trade preferences if tradeable is disabled
       if (name === "tradeable" && !checked) {
         updated.tradePreferences = [];
       }
@@ -188,688 +455,718 @@ export default function ListingForm() {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
+  const buildListingFormData = () => {
     const formData = new FormData();
 
     if (isEditMode) {
-      // edit mode= separate existing and new images
       const existingImageUrls = images
         .filter((img) => img.isExisting)
         .map((img) => img.url);
 
       const newImageFiles = images.filter((img) => !img.isExisting);
-
       const { id, ownerUsername, discountedPrice, ...cleanListing } = listing;
-
-      const payload = {
-        ...cleanListing,
-        imagePaths: existingImageUrls,
-        tradePreferences: listing.tradeable ? listing.tradePreferences : null,
-      };
 
       formData.append(
         "listing",
-        new Blob([JSON.stringify(payload)], { type: "application/json" }),
+        new Blob(
+          [
+            JSON.stringify(
+              sanitizeListingPayload({
+                ...cleanListing,
+                imagePaths: existingImageUrls,
+                tradePreferences: listing.tradeable
+                  ? listing.tradePreferences
+                  : null,
+              }),
+            ),
+          ],
+          { type: "application/json" },
+        ),
       );
 
       newImageFiles.forEach((img) => {
         formData.append("images", img);
       });
     } else {
-      // create mode= all images are new
-
       const { id, ownerUsername, discountedPrice, ...cleanListing } = listing;
 
-      const payload = {
-        ...cleanListing,
-        tradePreferences: listing.tradeable ? listing.tradePreferences : null,
-      };
       images.forEach((img) => {
         formData.append("images", img);
       });
 
       formData.append(
         "listing",
-        new Blob([JSON.stringify(payload)], { type: "application/json" }),
+        new Blob(
+          [
+            JSON.stringify(
+              sanitizeListingPayload({
+                ...cleanListing,
+                tradePreferences: listing.tradeable
+                  ? listing.tradePreferences
+                  : null,
+              }),
+            ),
+          ],
+          { type: "application/json" },
+        ),
       );
     }
 
-    try {
-      const url = isEditMode
-        ? `http://localhost:8080/api/listings/${listingId}`
-        : "http://localhost:8080/api/listings";
+    return formData;
+  };
 
-      const method = isEditMode ? "patch" : "post";
+  const openShippingAddressDialog = (retryAfterSave = false) => {
+    setRetryListingAfterAddress(retryAfterSave);
+    setAddressDialogOpen(true);
+  };
 
-      const res = await axios[method](url, formData, {
-        withCredentials: true,
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+  const ensureShippingAddressForCreate = async () => {
+    await fetchAddresses("SHIPPING");
+    const shippingAddresses = useAddressStore.getState().addresses;
+    if (shippingAddresses.length > 0) {
+      return true;
+    }
 
-      if (res.status === 200 || res.status === 201) {
-        alert(`Listing ${isEditMode ? "updated" : "created"} successfully!`);
-        navigate("/listings");
-      }
-    } catch (err) {
-      console.error("Error submitting listing:", err);
-      if (err.response?.status === 403) {
-        alert("You don't have permission to perform this action");
-        navigate("/");
-      } else {
-        alert(`Error ${isEditMode ? "updating" : "creating"} listing`);
-      }
+    toast.warning("Add a shipping address before creating a listing.");
+    openShippingAddressDialog(false);
+    return false;
+  };
+
+  const handleAddressDialogSubmit = async (form) => {
+    const shippingAddressCount = useAddressStore.getState().addresses.length;
+    const payload = {
+      ...form,
+      country: form.country?.trim() || "TR",
+      addressType: "SHIPPING",
+      isDefault: shippingAddressCount === 0,
+    };
+
+    const result = await createAddress(payload);
+    if (!result.success) {
+      toast.error(result.message || "Could not save address.");
+      return;
+    }
+
+    toast.success("Shipping address saved.");
+    setAddressDialogOpen(false);
+
+    if (retryListingAfterAddress) {
+      setRetryListingAfterAddress(false);
+      await saveListing({ retryAfterLogin: true });
     }
   };
 
+  const submitListingRequest = async () => {
+    const formData = buildListingFormData();
+    const url = isEditMode ? `/api/listings/${listingId}` : "/api/listings";
+    const method = isEditMode ? "patch" : "post";
+
+    return axios[method](url, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  };
+
+  const saveListing = async ({ retryAfterLogin = false } = {}) => {
+    if (!retryAfterLogin) {
+      const authenticated = await ensureUserLoggedIn({
+        promptMessage:
+          "Sign in to save your listing. Your draft stays on this page.",
+      });
+
+      if (!authenticated) {
+        toast.warning(
+          "Sign in to save your listing. Your draft is still here.",
+        );
+        return false;
+      }
+    }
+
+    const loadingMessage = isEditMode ? "Saving changes..." : "Creating listing...";
+    const successMessage = isEditMode
+      ? "Listing updated successfully"
+      : "Listing created successfully";
+    const errorFallback = isEditMode
+      ? "Failed to update listing"
+      : "Failed to create listing";
+
+    setIsSubmitting(true);
+    const toastId = toast.loading(loadingMessage);
+
+    try {
+      if (!isEditMode) {
+        const hasShippingAddress = await ensureShippingAddressForCreate();
+        if (!hasShippingAddress) {
+          toast.dismiss(toastId);
+          setIsSubmitting(false);
+          return false;
+        }
+      }
+
+      const res = await submitListingRequest();
+      toast.success(successMessage, { id: toastId });
+
+      const savedListing = res?.data;
+      const savedListingId =
+        savedListing?.publicId ?? (isEditMode ? listingId : null);
+
+      if (savedListingId) {
+        navigate(
+          buildListingPath({
+            ...listing,
+            ...savedListing,
+            publicId: savedListingId,
+          }),
+          { replace: true },
+        );
+        return true;
+      }
+
+      toast.error("Listing saved but could not open the item page.");
+      return false;
+    } catch (err) {
+      if (isAuthRequiredError(err)) {
+        toast.dismiss(toastId);
+        const loggedIn = await promptReauthentication(err);
+
+        if (loggedIn) {
+          setIsSubmitting(false);
+          return saveListing({ retryAfterLogin: true });
+        }
+
+        return false;
+      }
+
+      if (!isEditMode && isShippingAddressRequiredError(err)) {
+        toast.dismiss(toastId);
+        toast.warning(
+          getApiErrorMessage(
+            err,
+            "You must add a shipping address before creating a listing.",
+          ),
+        );
+        openShippingAddressDialog(true);
+        return false;
+      }
+
+      toast.error(getApiErrorMessage(err, errorFallback), { id: toastId });
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (isSubmitting) {
+      return;
+    }
+
+    await saveListing();
+  };
+
+  const descriptionLength = listing.description?.length || 0;
+
   if (isEditMode && loading) {
     return (
-      <div className="mt-5 max-w-7xl mx-auto">
-        <div className="text-center">
-          <p className="text-xl">Loading listing...</p>
-        </div>
+      <div className="min-h-screen bg-surface-base px-4 py-12 text-on-surface sm:px-6">
+        <Card className="mx-auto max-w-6xl border-surface-3 bg-surface-2 ring-1 ring-surface-4">
+          <CardContent className="py-12 text-center text-on-surface-muted">
+            Loading listing...
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="mt-5 max-w-7xl mx-auto">
-      {/* MusicBrainz Search Modal */}
-      <Modal
-        show={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        dismissible
-        className="backdrop-blur-sm"
-      >
-        <div className="flex justify-center w-full">
-          <div className="bg-black text-center rounded-md px-5 w-full sm:w-auto min-w-3xl max-w-5xl max-h-[95vh] overflow-y-auto relative">
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-3 right-6 text-white text-2xl hover:text-red-500"
-              aria-label="Close"
-            >
-              ×
-            </button>
+    <div className="mx-auto flex min-h-screen w-full max-w-[100rem] flex-col bg-surface-base px-4 py-4 text-on-surface sm:px-6 lg:max-h-[calc(100dvh-4.5rem)] lg:min-h-0 lg:py-5">
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent
+          showCloseButton
+          className="flex max-h-[85vh] flex-col gap-0 overflow-hidden border-surface-3 bg-surface-1 p-0 text-on-surface ring-surface-4 sm:max-w-6xl"
+        >
+          <DialogHeader className="border-b border-surface-3 px-5 py-4 sm:px-6">
+            <DialogTitle className="text-on-surface">Select release</DialogTitle>
+            <DialogDescription className="text-on-surface-muted">
+              Choose a MusicBrainz release to autofill your listing.
+            </DialogDescription>
+          </DialogHeader>
 
-            <div className="sticky top-0 z-10 bg-black py-4">
-              <h2 className="text-2xl font-bold text-white">Select Release</h2>
-            </div>
+          {!isLoadingMbSearch && hasMbReleases && (
+            <MbReleaseFilterBar
+              filters={mbFilters}
+              bounds={mbFilterBounds}
+              onFiltersChange={setMbFilters}
+              resultCount={searchItems.length}
+              totalCount={mbReleaseCount}
+              hasMoreMbResults={hasMoreMbResults}
+            />
+          )}
 
-            {isLoadingSearch && <p className="text-white">Loading...</p>}
-
-            {!isLoadingSearch && items.length === 0 && (
-              <p className="text-white">No results found.</p>
+          <div
+            ref={mbModalScrollRef}
+            className="flex-1 overflow-y-auto px-5 py-4 sm:px-6"
+          >
+            {isLoadingMbSearch && (
+              <div className={CARD_GRID_CLASS}>
+                {Array(6)
+                  .fill(0)
+                  .map((_, i) => (
+                    <SkeletonCardView key={i} />
+                  ))}
+              </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 justify-items-center py-5">
-              {isLoadingSearch
-                ? Array(6)
-                    .fill(0)
-                    .map((_, i) => <SkeletonCardView key={i} />)
-                : items.map((item) => (
-                    <Card
-                      key={item.id}
-                      item={item}
-                      onSelect={() => selectMbRelease(item)}
-                    />
+            {!isLoadingMbSearch && !hasMbReleases && (
+              <div className="rounded-xl border border-surface-3 bg-surface-2 px-6 py-10 text-center">
+                <p className="font-medium text-on-surface">No results found</p>
+                <p className="mt-2 text-sm text-on-surface-muted">
+                  Try a different album title.
+                </p>
+              </div>
+            )}
+
+            {!isLoadingMbSearch && hasMbReleases && searchItems.length === 0 && (
+                <div className="rounded-xl border border-surface-3 bg-surface-2 px-6 py-10 text-center">
+                  <p className="font-medium text-on-surface">
+                    No releases match your filters
+                  </p>
+                  <p className="mt-2 text-sm text-on-surface-muted">
+                    Adjust or reset filters to see more results.
+                  </p>
+                </div>
+              )}
+
+            {!isLoadingMbSearch && searchItems.length > 0 && (
+              <div className={CARD_GRID_CLASS}>
+                {searchItems.map((item) => (
+                  <ReleaseCard key={item.id} item={item} />
+                ))}
+              </div>
+            )}
+
+            {isLoadingMoreMb && (
+              <div className={cn(CARD_GRID_CLASS, "mt-4")}>
+                {Array(3)
+                  .fill(0)
+                  .map((_, i) => (
+                    <SkeletonCardView key={`mb-load-more-${i}`} />
                   ))}
-            </div>
-
-            <button
-              className="btn btn-sm btn-outline mt-4 mb-4"
-              onClick={() => setIsModalOpen(false)}
-            >
-              Close
-            </button>
+              </div>
+            )}
           </div>
-        </div>
-      </Modal>
 
-      {/* Page Header */}
-      <h2 className="text-3xl font-bold text-left ml-4">
-        {isEditMode ? "Edit Listing" : "Create New Listing"}
-      </h2>
+          <DialogFooter className="mx-0 mb-0 flex flex-row items-center justify-end gap-3 border-t border-surface-3 bg-surface-2/40 px-5 py-4 sm:px-6">
+            <Button type="button" onClick={() => setIsModalOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="p-4 space-y-4 text-left">
-        <div className="grid grid-cols-[0.9fr_0.5fr_1fr_1fr]">
-          <div>
-            <div className="formItem">
-              <h3 className="text-2xl font-bold mb-5">Listing information</h3>
+      <AddressFormDialog
+        open={addressDialogOpen}
+        onOpenChange={setAddressDialogOpen}
+        initialAddress={null}
+        isSaving={isSavingAddress}
+        onSubmit={handleAddressDialogSubmit}
+        title="Add shipping address"
+        description="Sellers need a shipping address so buyers can receive orders."
+        lockAddressType="SHIPPING"
+        submitLabel="Save address"
+      />
 
-              <label className="block mb-1">Album</label>
-              <input
+      <div className="mb-4 shrink-0 text-left lg:mb-5">
+        <h1 className="text-2xl font-bold tracking-tight text-on-surface sm:text-3xl">
+          {isEditMode ? "Edit Listing" : "Create New Listing"}
+        </h1>
+        <p className="mt-1 text-sm text-on-surface-dim">
+          Add release details, pricing, and photos for your vinyl listing.
+        </p>
+      </div>
+
+      <form
+        onSubmit={handleSubmit}
+        className="flex min-h-0 flex-1 flex-col text-left"
+      >
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5 lg:items-stretch">
+          <FormSection
+            title="Listing information"
+            description="Release details, format, and condition."
+          >
+            <Field>
+              <FieldLabel htmlFor="title">Album</FieldLabel>
+              <Input
+                id="title"
                 type="text"
                 name="title"
                 value={listing.title}
                 onChange={handleChange}
-                className="input w-75 input-bordered border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
                 required
               />
-
               {!isEditMode && (
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 w-fit"
                   onClick={checkRelease}
-                  className="bg-indigo-600 rounded mt-2 px-2"
                 >
                   Check Release Info
-                </button>
+                </Button>
               )}
-            </div>
+            </Field>
 
-            <div className="formItem">
-              <label className="block mb-1">Artist / Band</label>
-              <input
+            <Field>
+              <FieldLabel htmlFor="artistName">Artist / Band</FieldLabel>
+              <Input
+                id="artistName"
                 type="text"
                 name="artistName"
                 value={listing.artistName}
                 onChange={handleChange}
-                className="input w-75 input-bordered border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
               />
-            </div>
+            </Field>
 
-            {/* Packaging */}
-            <div className="formItem my-3">
-              <h2 className="mb-2 text-white">Packaging</h2>
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="packaging"
-                  value="SEALED"
-                  checked={listing.packaging === "SEALED"}
-                  onChange={handleChange}
-                  className="radio radio-primary border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
-                  required
-                />
-                <span>Sealed</span>
-                <input
-                  type="radio"
-                  name="packaging"
-                  value="OPENED"
-                  checked={listing.packaging === "OPENED"}
-                  onChange={handleChange}
-                  className="ml-5 radio radio-primary border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
-                />
-                <span>Opened</span>
-              </label>
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="packaging"
-                  value="RESEALED"
-                  checked={listing.packaging === "RESEALED"}
-                  onChange={handleChange}
-                  className="ml-5 radio radio-primary border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
-                />
-                <span>Resealed</span>
-              </label>
-            </div>
-
-            <div className="formItem mt-3">
-              <label className="block mb-1">Release Year</label>
-              <input
-                type="number"
-                name="year"
-                value={listing.year || ""}
-                onChange={(e) =>
-                  handleChange({
-                    target: {
-                      name: "year",
-                      value: Number(e.target.value),
-                    },
-                  })
-                }
-                min={1900}
-                max={new Date().getFullYear()}
-                className="input w-75 input-bordered border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
-              />
-            </div>
-
-            <div className="formItem">
-              <label className="block mb-1">Country</label>
-              <input
-                type="text"
-                name="country"
-                value={listing.country}
+            <Field>
+              <FieldLabel>Packaging</FieldLabel>
+              <RadioGroup
+                name="packaging"
+                value={listing.packaging}
                 onChange={handleChange}
-                className="input w-75 input-bordered border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
+                options={PACKAGING_OPTIONS}
+                required
               />
+            </Field>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="year">Release Year</FieldLabel>
+                <Input
+                  id="year"
+                  type="number"
+                  name="year"
+                  value={listing.year || ""}
+                  min={1900}
+                  max={new Date().getFullYear()}
+                  onChange={(e) =>
+                    handleChange({
+                      target: {
+                        name: "year",
+                        value: Number(e.target.value),
+                      },
+                    })
+                  }
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="country">Country</FieldLabel>
+                <select
+                  id="country"
+                  name="country"
+                  value={listing.country}
+                  onChange={handleChange}
+                  required
+                  disabled={countriesLoading}
+                  className={SELECT_CLASS}
+                >
+                  <option value="">
+                    {countriesLoading ? "Loading countries..." : "Select country"}
+                  </option>
+                  {countryOptions.map(({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
             </div>
 
-            <div className="formItem">
-              <label className="block mb-1">Label</label>
-              <input
+            <Field>
+              <FieldLabel htmlFor="labelName">Label</FieldLabel>
+              <Input
+                id="labelName"
                 type="text"
                 name="labelName"
                 value={listing.labelName}
                 onChange={handleChange}
-                className="input w-75 input-bordered border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
               />
-            </div>
+            </Field>
 
-            <div className="formItem">
-              <label className="block mb-1">Barcode / Catalog No.</label>
-              <input
+            <Field>
+              <FieldLabel htmlFor="barcode">Barcode / Catalog No.</FieldLabel>
+              <Input
+                id="barcode"
                 type="text"
                 name="barcode"
                 value={listing.barcode}
                 onChange={handleChange}
-                className="input w-75 input-bordered border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
               />
+            </Field>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="stockQuantity">Stock</FieldLabel>
+                <Input
+                  id="stockQuantity"
+                  type="number"
+                  name="stockQuantity"
+                  value={listing.stockQuantity}
+                  min={1}
+                  onChange={handleChange}
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="trackCount">Track Count</FieldLabel>
+                <Input
+                  id="trackCount"
+                  type="number"
+                  name="trackCount"
+                  value={listing.trackCount}
+                  min={1}
+                  onChange={handleChange}
+                />
+              </Field>
             </div>
 
-            <div className="formItem">
-              <label className="block mb-1">Stock</label>
-              <input
-                type="number"
-                name="stockQuantity"
-                value={listing.stockQuantity}
-                min={1}
+            <Separator className="bg-surface-4" />
+
+            <MediaInfoFields
+              mediaInfo={listing.mediaInfo}
+              onChange={(mediaInfo) =>
+                setListing((prev) => ({ ...prev, mediaInfo }))
+              }
+            />
+
+            <Field>
+              <FieldLabel>Condition</FieldLabel>
+              <RadioGroup
+                name="condition"
+                value={listing.condition}
                 onChange={handleChange}
-                className="input w-75 input-bordered border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
+                options={CONDITION_OPTIONS}
+                layout="column"
+                required
               />
-            </div>
+            </Field>
+          </FormSection>
 
-            <div className="formItem">
-              <label className="block mb-1">Track Count</label>
-              <input
-                type="number"
-                name="trackCount"
-                value={listing.trackCount}
-                min={1}
-                onChange={handleChange}
-                className="input w-75 input-bordered border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="btn btn-primary border-2 bg-indigo-800 text-white border-amber-50 ring-1 py-2 ring-indigo-800 rounded-md px-2 mt-2"
-            >
-              {isEditMode ? "Submit" : "Create"}
-            </button>
-          </div>
-
-          {/* item condition and format */}
-          <div className="formItem max-w-50 mt-14 ml-1">
-            <label className="block mb-1 font-bold">Format</label>
-
-            <div className="flex flex-col gap-2">
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="format"
-                  value="33"
-                  checked={listing.format === "33"}
-                  onChange={handleChange}
-                  className="radio radio-primary border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
-                  required
-                />
-                <span>LP 12"/ 33 </span>
-              </label>
-
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="format"
-                  value="45"
-                  checked={listing.format === "45"}
-                  onChange={handleChange}
-                  className="radio radio-primary border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
-                />
-                <span>Single 7" / 45 </span>
-              </label>
-
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="format"
-                  value="EP"
-                  checked={listing.format === "EP"}
-                  onChange={handleChange}
-                  className="radio radio-primary border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
-                />
-                <span>EP</span>
-              </label>
-
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="format"
-                  value="Cassette"
-                  checked={listing.format === "Cassette"}
-                  onChange={handleChange}
-                  className="radio radio-primary border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
-                />
-                <span>Cassette</span>
-              </label>
-
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="format"
-                  value="CD"
-                  checked={listing.format === "CD"}
-                  onChange={handleChange}
-                  className="radio radio-primary border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
-                />
-                <span>CD</span>
-              </label>
-
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="format"
-                  value="other"
-                  checked={listing.format === "Other"}
-                  onChange={handleChange}
-                  className="radio radio-primary border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
-                />
-                <span>Other</span>
-              </label>
-            </div>
-
-            {/* Condition */}
-            <label className="block mb-1 mt-5 font-bold">Condition</label>
-
-            <div className="flex flex-col gap-2">
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="condition"
-                  value="P"
-                  checked={listing.condition === "P"}
-                  onChange={handleChange}
-                  className="radio radio-primary border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
-                  required
-                />
-                <span>(P) (F) Poor / Fair</span>
-              </label>
-
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="condition"
-                  value="G"
-                  checked={listing.condition === "G"}
-                  onChange={handleChange}
-                  className="radio radio-primary border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
-                />
-                <span>(G) Good</span>
-              </label>
-
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="condition"
-                  value="VG"
-                  checked={listing.condition === "VG"}
-                  onChange={handleChange}
-                  className="radio radio-primary border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
-                />
-                <span>(VG) Very Good</span>
-              </label>
-
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="condition"
-                  value="VG+"
-                  checked={listing.condition === "VG+"}
-                  onChange={handleChange}
-                  className="radio radio-primary border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
-                />
-                <span>(VG+) Very Good+</span>
-              </label>
-
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="condition"
-                  value="E"
-                  checked={listing.condition === "E"}
-                  onChange={handleChange}
-                  className="radio radio-primary border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
-                />
-                <span>(E) Excellent</span>
-              </label>
-
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="condition"
-                  value="NM"
-                  checked={listing.condition === "NM"}
-                  onChange={handleChange}
-                  className="radio radio-primary border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
-                />
-                <span>(NM) Near Mint</span>
-              </label>
-
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="condition"
-                  value="M"
-                  checked={listing.condition === "M"}
-                  onChange={handleChange}
-                  className="radio radio-primary border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
-                />
-                <span>(M) Mint</span>
-              </label>
-            </div>
-          </div>
-
-          {/* trade related stuff */}
-          <div className="ml-5">
-            <h3 className="text-2xl font-bold">Trade Information</h3>
-            <div className="mt-5">
-              <div className="formItem mt-5 relative">
-                <label className="block mb-1">Direct Sell price</label>
-                <input
+          <FormSection
+            title="Trade information"
+            description="Pricing and optional trade preferences."
+          >
+            <Field>
+              <FieldLabel htmlFor="price">Direct sell price</FieldLabel>
+              <div className="relative">
+                <Input
+                  id="price"
                   type="number"
                   name="price"
                   step="0.01"
                   min={1}
                   value={listing.price}
                   onChange={handleChange}
-                  className="input w-75 input-bordered border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
+                  className="pr-10"
                   required
                 />
-                <span className="absolute text-xl right-12 top-7.5"> ₺</span>
+                <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-on-surface-muted">
+                  ₺
+                </span>
               </div>
+            </Field>
 
-              <label className="inline-flex items-center gap-2 mt-5">
-                <input
-                  type="checkbox"
-                  name="tradeable"
-                  checked={listing.tradeable}
-                  onChange={handleChange}
-                  className="border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
-                />
-                <span>Open to trade</span>
-                <div className="vl -mr-0.5"></div>
-                <label
-                  className={`block ${
-                    !listing.tradeable ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                >
-                  Trade value
-                </label>
-                <input
-                  type="number"
-                  name="tradeValue"
-                  value={listing.tradeValue}
-                  onChange={handleChange}
-                  disabled={!listing.tradeable}
-                  className={`input w-19 input-bordered border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1 ${
-                    !listing.tradeable ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                />
-              </label>
+            <Field orientation="horizontal">
+              <Checkbox
+                id="tradeable"
+                checked={listing.tradeable}
+                onCheckedChange={(checked) =>
+                  setListing((prev) => ({
+                    ...prev,
+                    tradeable: checked === true,
+                    tradePreferences: checked ? prev.tradePreferences : [],
+                  }))
+                }
+              />
+              <div className="space-y-1">
+                <Label htmlFor="tradeable">Open to trade</Label>
+                <FieldDescription>
+                  Enable trade value and preferred swap records.
+                </FieldDescription>
+              </div>
+            </Field>
 
-              {listing.tradeable && (
-                <div className="mt-5">
-                  <div className="items-center justify-between mb-2 relative">
-                    <label className="font-bold">Trade Preferences</label>
+            <Field>
+              <FieldLabel htmlFor="tradeValue">Trade value</FieldLabel>
+              <Input
+                id="tradeValue"
+                type="number"
+                name="tradeValue"
+                value={listing.tradeValue}
+                onChange={handleChange}
+                disabled={!listing.tradeable}
+              />
+            </Field>
 
-                    <button
+            {listing.tradeable && (
+              <>
+                <Separator className="bg-surface-4" />
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <FieldLabel>Trade preferences</FieldLabel>
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="icon-sm"
                       onClick={addPreference}
-                      className="btn btn-sm border border-amber-200 absolute right-11 bottom-0.5"
+                      aria-label="Add trade preference"
                     >
-                      +
-                    </button>
+                      <Plus />
+                    </Button>
                   </div>
+
+                  {listing.tradePreferences.length === 0 && (
+                    <p className="text-sm text-on-surface-muted">
+                      Add records you would accept in a trade.
+                    </p>
+                  )}
 
                   {listing.tradePreferences.map((pref, index) => (
                     <div
                       key={index}
-                      className="mb-3 items-center relative border rounded-md p-1 py-2 -ml-1.5 w-78"
+                      className="relative space-y-3 rounded-lg border border-surface-3 bg-surface-2 p-3"
                     >
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="absolute top-2 right-2 text-danger-fg hover:bg-danger/10 hover:text-danger-fg"
                         onClick={() => removePreference(index)}
-                        className="text-red-500 text-xl text-center absolute right-2 top-1 rounded-full p-0.5 w-7"
+                        aria-label="Remove trade preference"
                       >
-                        x
-                      </button>
+                        <X />
+                      </Button>
 
-                      <input
-                        type="text"
-                        placeholder="Record title"
-                        value={pref.desiredItem}
-                        onChange={(e) =>
-                          handleTradePrefChange(
-                            index,
-                            "desiredItem",
-                            e.target.value,
-                          )
-                        }
-                        className="input w-75 input-bordered border-2 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1 mb-3"
-                      />
-
-                      <div className="mb-1">
-                        <label className="font-bold">Value difference</label>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleTradePrefChange(
-                              index,
-                              "paymentDirection",
-                              "NO_EXTRA",
-                            )
-                          }
-                          className={`px-2 py-1 rounded-md border ${
-                            pref.paymentDirection === "NO_EXTRA"
-                              ? "bg-green-600 text-white"
-                              : "bg-indigo-700"
-                          }`}
-                        >
-                          0
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleTradePrefChange(
-                              index,
-                              "paymentDirection",
-                              "PAY",
-                            )
-                          }
-                          className={`px-2 py-1 rounded-md border ${
-                            pref.paymentDirection === "PAY"
-                              ? "bg-red-600 text-white"
-                              : "bg-indigo-700"
-                          }`}
-                        >
-                          Pay
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleTradePrefChange(
-                              index,
-                              "paymentDirection",
-                              "RECEIVE",
-                            )
-                          }
-                          className={`px-2 py-1 rounded-md border ${
-                            pref.paymentDirection === "RECEIVE"
-                              ? "bg-green-600 text-white"
-                              : "bg-indigo-700"
-                          }`}
-                        >
-                          Receive
-                        </button>
-
-                        <input
-                          type="number"
-                          placeholder="Amount"
-                          value={pref.extraAmount}
+                      <Field>
+                        <FieldLabel htmlFor={`desiredItem-${index}`}>
+                          Desired record
+                        </FieldLabel>
+                        <Input
+                          id={`desiredItem-${index}`}
+                          type="text"
+                          placeholder="Record title"
+                          value={pref.desiredItem}
                           onChange={(e) =>
                             handleTradePrefChange(
                               index,
-                              "extraAmount",
+                              "desiredItem",
                               e.target.value,
                             )
                           }
-                          disabled={pref.paymentDirection === "NO_EXTRA"}
-                          className={`input input-bordered border-3 rounded-md w-33.5 border-white pl-1.5 ${
-                            pref.paymentDirection === "NO_EXTRA"
-                              ? "opacity-50 cursor-not-allowed"
-                              : ""
-                          }`}
                         />
-                      </div>
+                      </Field>
+
+                      <Field>
+                        <FieldLabel>Value difference</FieldLabel>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {PAYMENT_DIRECTIONS.map((direction) => (
+                            <Button
+                              key={direction.value}
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className={paymentDirectionButtonClass(
+                                direction.value,
+                                pref.paymentDirection === direction.value,
+                              )}
+                              onClick={() =>
+                                handleTradePrefChange(
+                                  index,
+                                  "paymentDirection",
+                                  direction.value,
+                                )
+                              }
+                            >
+                              {direction.label}
+                            </Button>
+                          ))}
+
+                          <Input
+                            type="number"
+                            placeholder="Amount"
+                            value={pref.extraAmount}
+                            onChange={(e) =>
+                              handleTradePrefChange(
+                                index,
+                                "extraAmount",
+                                e.target.value,
+                              )
+                            }
+                            disabled={pref.paymentDirection === "NO_EXTRA"}
+                            className="w-28"
+                          />
+                        </div>
+                      </Field>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-          </div>
+              </>
+            )}
+          </FormSection>
 
-          {/* description and image uploader */}
-          <div>
-            <div className="formItem">
-              <label className="block text-2xl font-bold mb-2">
-                Description
-              </label>
-              <textarea
+          <FormSection
+            title="Description & images"
+            description="Notes for buyers and listing photos."
+          >
+            <Field>
+              <FieldLabel htmlFor="description">Description</FieldLabel>
+              <Textarea
+                id="description"
                 name="description"
-                rows="5"
+                rows={3}
                 value={listing.description || ""}
                 onChange={handleChange}
-                maxLength="255"
-                className="input w-87 input-bordered border-2 mt-5 border-amber-50 ring-1 ring-indigo-800 rounded-md pl-2 py-1"
+                maxLength={255}
+                className="min-h-[5.5rem] resize-none lg:max-h-28"
               />
-              <p
-                className="text-right"
-                style={{
-                  color:
-                    (listing.description?.length || 0) <= 255 ? "green" : "red",
-                }}
+              <FieldDescription
+                className={cn(
+                  "text-right",
+                  descriptionLength > 255
+                    ? "text-danger-fg"
+                    : "text-success-fg",
+                )}
               >
-                {listing.description?.length || 0}/255
-              </p>
-            </div>
+                {descriptionLength}/255
+              </FieldDescription>
+            </Field>
 
-            <div>
-              <h3 className="text-2xl font-bold mb-5 mt-5">Upload images</h3>
+            <Field>
+              <FieldLabel>Upload images</FieldLabel>
               <ImageUploader
+                compact
                 images={images}
                 setImages={setImages}
                 existingImages={isEditMode ? listing.imagePaths : undefined}
               />
-            </div>
-          </div>
+            </Field>
+          </FormSection>
+        </div>
+
+        <div className="mt-4 flex shrink-0 flex-col-reverse gap-3 border-t border-surface-4 bg-surface-1/40 pt-4 sm:flex-row sm:justify-end lg:mt-5">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate("/listings")}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isEditMode ? "Save changes" : "Create listing"}
+          </Button>
         </div>
       </form>
     </div>
