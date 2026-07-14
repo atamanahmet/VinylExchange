@@ -23,6 +23,7 @@ export const useSearchStore = create((set, get) => ({
   listingSearchResult: {
     items: [],
   },
+  lastListingQuery: null,
   isLoadingListingSearch: false,
 
   mbSearchResult: {
@@ -36,6 +37,7 @@ export const useSearchStore = create((set, get) => ({
   clearSearch: () =>
     set({
       listingSearchResult: { items: [] },
+      lastListingQuery: null,
       isLoadingListingSearch: false,
     }),
 
@@ -133,12 +135,32 @@ export const useSearchStore = create((set, get) => ({
     }
   },
 
-  searchProducts: async (query) => {
-    set({ isLoadingListingSearch: true });
+  /** Sets active listing search query; MainPage fetches with current sort. */
+  startListingSearch: (query) => {
+    const trimmed = query?.trim() ?? "";
+    if (!trimmed) {
+      return;
+    }
+    set({ lastListingQuery: trimmed });
+  },
+
+  searchProducts: async (query, { sort } = {}) => {
+    const trimmed = (query ?? get().lastListingQuery)?.trim() ?? "";
+    if (!trimmed) {
+      return;
+    }
+
+    set({
+      isLoadingListingSearch: true,
+      lastListingQuery: trimmed,
+    });
     try {
-      const res = await axios.get("/api/listings/search", {
-        params: { query, page: 0, size: 60 },
-      });
+      const params = { query: trimmed, page: 0, size: 60 };
+      if (sort) {
+        params.sort = sort;
+      }
+
+      const res = await axios.get("/api/listings/search", { params });
       if (res.status === 200) {
         set({
           listingSearchResult: {
