@@ -1,12 +1,11 @@
 import { create } from "zustand";
 import axios from "../api/axiosInstance";
+import { mapAuthError } from "../utils/authSession";
+import { navigate } from "../utils/router";
 
 export const useAuthStore = create((set, get) => ({
   user: null,
   isLoading: false,
-  authResponse: null,
-
-  setAuthResponse: (message) => set({ authResponse: message }),
 
   checkAuth: async () => {
     set({ isLoading: true });
@@ -22,19 +21,17 @@ export const useAuthStore = create((set, get) => ({
         return false;
       }
     } catch (error) {
-      set({ user: null }); // Not logged in, continue
-      return;
+      set({ user: null });
+      return false;
     } finally {
       set({ isLoading: false });
     }
   },
 
   loginUser: async (formData) => {
-    const url = "/login";
-
     try {
       const res = await axios.post(
-        url,
+        "/login",
         {
           username: formData.username,
           password: formData.password,
@@ -44,79 +41,111 @@ export const useAuthStore = create((set, get) => ({
 
       if (res.status === 200) {
         const { username, email } = res.data;
-
-        set({
-          user: { username, email },
-          authResponse: "Logged in succesfully. Redirecting...",
-        });
-
-        return true;
+        set({ user: { username, email } });
+        return { success: true };
       }
 
-      console.warn("Unexpected login status:", res.status);
-      return false;
+      return {
+        success: false,
+        message: "Server error. Try again later.",
+        errorType: "server",
+      };
     } catch (error) {
-      console.log(error);
-      set({ authResponse: "Wrong credentials. Try again or register" });
-
-      return false;
+      const mapped = mapAuthError(error, {
+        credentialsMessage: "Wrong credentials. Try again or register.",
+        fallbackMessage: "Could not log in. Try again.",
+      });
+      return { success: false, ...mapped };
     }
   },
 
   registerUser: async (formData) => {
-    const url = "/register";
-
     try {
       const res = await axios.post(
-        url,
+        "/register",
         {
           username: formData.username,
           password: formData.password,
           email: formData.email,
         },
-
         { withCredentials: true },
       );
+
       if (res.status === 201) {
         set({
           user: { username: formData.username, email: formData.email },
-          authResponse: "Account created successfully. Redirecting...",
         });
-        return true;
+        return { success: true };
       }
-      console.warn("Unexpected register status:", res.status);
-      return false;
-    } catch (error) {
-      console.log(error);
-      set({
-        authResponse: "User register issues, try again or change credentials",
-      });
 
-      return false;
+      return {
+        success: false,
+        message: "Server error. Try again later.",
+        errorType: "server",
+      };
+    } catch (error) {
+      const mapped = mapAuthError(error, {
+        credentialsMessage: "Registration failed. Check your details and try again.",
+        fallbackMessage: "Could not create account. Try again.",
+      });
+      return { success: false, ...mapped };
+    }
+  },
+
+  updateEmail: async (email) => {
+    try {
+      const res = await axios.patch(
+        "/api/me/email",
+        { email },
+        { withCredentials: true },
+      );
+
+      if (res.status === 200) {
+        set({ user: res.data });
+        return { success: true };
+      }
+
+      return {
+        success: false,
+        message: "Could not update email. Try again.",
+        errorType: "server",
+      };
+    } catch (error) {
+      const mapped = mapAuthError(error, {
+        credentialsMessage: "Sign in again to update your email.",
+        fallbackMessage: "Could not update email. Try again.",
+      });
+      return { success: false, ...mapped };
     }
   },
 
   logOut: async () => {
-    const url = "/logout";
     try {
-      const res = await axios.post(url, null, {
+      const res = await axios.post("/logout", null, {
         withCredentials: true,
       });
       if (res.status === 204) {
-        console.log("User logged out.");
         sessionStorage.clear();
-        set({
-          user: null,
-          authResponse: "Log out succesfull",
-        });
-        return true;
+        set({ user: null });
+        navigate("/");
+        return { success: true };
       }
-      console.warn("Unexpected log out status:", res.status);
-      return false;
-    } catch (err) {
-      console.log("Error during logout: ", err);
 
-      return false;
+      return {
+        success: false,
+        message: "Could not log out. Try again.",
+        errorType: "error",
+      };
+    } catch (error) {
+      // still clear local session and send home
+      sessionStorage.clear();
+      set({ user: null });
+      navigate("/");
+      const mapped = mapAuthError(error, {
+        credentialsMessage: "Could not log out. Try again.",
+        fallbackMessage: "Could not log out. Try again.",
+      });
+      return { success: false, ...mapped };
     }
   },
 }));
