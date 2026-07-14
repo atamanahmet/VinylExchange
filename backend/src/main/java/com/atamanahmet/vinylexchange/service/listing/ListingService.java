@@ -8,7 +8,9 @@ import com.atamanahmet.vinylexchange.domain.enums.StorageProvider;
 import com.atamanahmet.vinylexchange.dto.listing.CreateListingRequest;
 import com.atamanahmet.vinylexchange.dto.listing.ListingDTO;
 import com.atamanahmet.vinylexchange.dto.listing.ListingFilterCriteria;
+import com.atamanahmet.vinylexchange.dto.listing.ListingPriceHistoryDto;
 import com.atamanahmet.vinylexchange.dto.listing.ListingSummaryDto;
+import com.atamanahmet.vinylexchange.dto.listing.ListingSummaryResponse;
 import com.atamanahmet.vinylexchange.dto.listing.UpdateListingRequest;
 import com.atamanahmet.vinylexchange.event.ListingCreatedEvent;
 import com.atamanahmet.vinylexchange.event.ListingUpdatedEvent;
@@ -16,6 +18,7 @@ import com.atamanahmet.vinylexchange.exception.InsufficientStockException;
 import com.atamanahmet.vinylexchange.exception.InvalidOrderOperationException;
 import com.atamanahmet.vinylexchange.exception.ListingCreationException;
 import com.atamanahmet.vinylexchange.exception.ListingNotFoundException;
+import com.atamanahmet.vinylexchange.exception.RegistrationValidationException;
 import com.atamanahmet.vinylexchange.exception.UnauthorizedActionException;
 import com.atamanahmet.vinylexchange.infrastructure.ImageSource;
 import com.atamanahmet.vinylexchange.infrastructure.ImageUploadResult;
@@ -27,13 +30,16 @@ import com.atamanahmet.vinylexchange.service.media.CoverArtService;
 import com.atamanahmet.vinylexchange.service.media.FileStorageService;
 import com.atamanahmet.vinylexchange.service.media.ImageStorageRouter;
 import com.atamanahmet.vinylexchange.service.order.OrderAccessService;
+import com.atamanahmet.vinylexchange.service.user.UserAddressService;
 import com.atamanahmet.vinylexchange.session.UserUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -54,6 +60,7 @@ public class ListingService {
 
     private final ListingRepository listingRepository;
     private final ListingMapper listingMapper;
+    private final ListingCacheStore listingCacheStore;
     private final ListingPriceHistoryService listingPriceHistoryService;
     private final OrderAccessService orderAccessService;
     private final ImageStorageRouter imageStorageRouter;
@@ -61,14 +68,42 @@ public class ListingService {
     private final CoverArtService coverArtService;
     private final ApplicationEventPublisher eventPublisher;
     private final ListingPriceCalculator priceCalculator;
+    private final UserAddressService userAddressService;
 
     public Page<ListingDTO> getPublicListings(Pageable pageable) {
         return listingRepository.findAllWithStatus(ListingStatus.AVAILABLE, pageable)
                 .map(listingMapper::toDTO);
     }
 
+    public Page<ListingSummaryResponse> getPublicListingsSummary(Pageable pageable) {
+        int page = pageable.getPageNumber();
+        int size = pageable.getPageSize();
+        int from = page * size;
+        int to = from + size;
+
+        List<ListingSummaryDto> cached = listingCacheStore.getTop60ForSort(pageable);
+
+        if (from >= cached.size()) {
+            // request is beyond cache, hit DB directly
+            return listingRepository.findAllWithStatus(ListingStatus.AVAILABLE, pageable)
+                    .map(listingMapper::toSummaryDto)
+                    .map(listingMapper::toResponse);
+        }
+
+        List<ListingSummaryResponse> slice = cached.subList(from, Math.min(to, cached.size()))
+                .stream()
+                .map(listingMapper::toResponse)
+                .toList();
+
+        return new PageImpl<>(slice, pageable, cached.size());
+    }
+
     @Transactional(readOnly = true)
-    public Page<ListingSummaryDto> search(ListingFilterCriteria criteria, Pageable pageable) {
+    public Page<ListingSummaryResponse> search(ListingFilterCriteria criteria, Pageable pageable) {
+        if (criteria.isEmpty()) {
+            return getPublicListingsSummary(pageable);
+        }
+
         Specification<Listing> spec = ListingSpecifications.isPubliclyAvailable()
                 .and(ListingSpecifications.hasCountry(criteria.country()))
                 .and(ListingSpecifications.hasFormat(criteria.format()))
@@ -84,7 +119,8 @@ public class ListingService {
                 .and(ListingSpecifications.hasOwnerUsername(criteria.ownerUsername()));
 
         return listingRepository.findAll(spec, pageable)
-                .map(listingMapper::toSummaryDto);
+                .map(listingMapper::toSummaryDto)
+                .map(listingMapper::toResponse);
     }
 
     public Page<ListingDTO> getAllAvailableListingsByUser(String username, Pageable pageable) {
@@ -116,6 +152,17 @@ public class ListingService {
         return listingMapper.toDTOWithImages(listing, discountPercent);
     }
 
+    @Transactional(readOnly = true)
+    public List<ListingPriceHistoryDto> getPriceHistoryForPublicId(String publicId) {
+        Listing listing = listingRepository.findByPublicId(publicId)
+                .orElseThrow(ListingNotFoundException::new);
+
+        return listingPriceHistoryService.getHistoryForListing(listing.getId())
+                .stream()
+                .map(ListingPriceHistoryDto::from)
+                .toList();
+    }
+
     /**
      * Returns promoted listings excluding ones already in cart
      */
@@ -128,11 +175,17 @@ public class ListingService {
                 .toList();
     }
 
+    @CacheEvict(value = "listings", allEntries = true)
     @Transactional
     public ListingDTO createNewListing(
             CreateListingRequest request,
             List<MultipartFile> images,
             com.atamanahmet.vinylexchange.domain.entity.User owner) {
+
+        if (!userAddressService.hasShippingAddress(owner.getId())) {
+            throw new RegistrationValidationException(
+                    "You must add a shipping address before creating a listing");
+        }
 
         try {
             Listing listing = listingMapper.toEntity(request);
@@ -174,6 +227,7 @@ public class ListingService {
         }
     }
 
+    @CacheEvict(value = "listings", allEntries = true)
     @Transactional
     public ListingDTO updateListing(
             String publicId,
@@ -185,6 +239,7 @@ public class ListingService {
         return updateListing(listing.getId(), request, newImages, userId);
     }
 
+    @CacheEvict(value = "listings", allEntries = true)
     @Transactional
     public ListingDTO updateListing(
             UUID listingId,
@@ -239,12 +294,14 @@ public class ListingService {
         }
     }
 
+    @CacheEvict(value = "listings", allEntries = true)
     public void deleteListing(String publicId) {
         Listing listing = listingRepository.findByPublicId(publicId)
                 .orElseThrow(ListingNotFoundException::new);
         deleteListing(listing.getId());
     }
 
+    @CacheEvict(value = "listings", allEntries = true)
     public void deleteListing(UUID listingId) {
         UUID userId = UserUtil.getCurrentUserId();
 
@@ -268,6 +325,11 @@ public class ListingService {
             Listing listing,
             List<String> keptUrls,
             List<MultipartFile> newImages) throws IOException {
+
+        boolean hasNewImages = newImages != null && !newImages.isEmpty();
+        if (keptUrls == null && !hasNewImages) {
+            return;
+        }
 
         List<ListingImage> toDelete = listing.getImages().stream()
                 .filter(img -> keptUrls == null || !keptUrls.contains(img.getSecureUrl()))
@@ -441,12 +503,14 @@ public class ListingService {
         listingRepository.save(listing);
     }
 
+    @CacheEvict(value = "listings", allEntries = true)
     public void promoteListing(String publicId, Boolean action, UserDetailsImpl currentUser) {
         Listing listing = listingRepository.findByPublicId(publicId)
                 .orElseThrow(() -> new ListingNotFoundException("Listing not found to promote"));
         promoteListing(listing.getId(), action, currentUser);
     }
 
+    @CacheEvict(value = "listings", allEntries = true)
     public void promoteListing(UUID listingId, Boolean action, UserDetailsImpl currentUser) {
         Listing listing = listingRepository.findById(listingId)
                 .orElseThrow(() -> new ListingNotFoundException("Listing not found to promote"));
@@ -457,12 +521,14 @@ public class ListingService {
         listingRepository.save(listing);
     }
 
+    @CacheEvict(value = "listings", allEntries = true)
     public void freezeListing(String publicId, Boolean action, UserDetailsImpl currentUser) {
         Listing listing = listingRepository.findByPublicId(publicId)
                 .orElseThrow(() -> new ListingNotFoundException("Listing not found to freeze"));
         freezeListing(listing.getId(), action, currentUser);
     }
 
+    @CacheEvict(value = "listings", allEntries = true)
     public void freezeListing(UUID listingId, Boolean action, UserDetailsImpl currentUser) {
         Listing listing = listingRepository.findById(listingId)
                 .orElseThrow(() -> new ListingNotFoundException("Listing not found to freeze"));

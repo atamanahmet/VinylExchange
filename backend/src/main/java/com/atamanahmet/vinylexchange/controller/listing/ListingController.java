@@ -53,7 +53,7 @@ public class ListingController {
         private final CartService cartService;
 
         @GetMapping
-        public ResponseEntity<Page<ListingSummaryDto>> getPublicListings(
+        public ResponseEntity<Page<ListingSummaryResponse>> getPublicListings(
                         @RequestParam(required = false) List<String> country,
                         @RequestParam(required = false) List<MediaFormat> format,
                         @RequestParam(required = false) List<Integer> speedRpm,
@@ -66,7 +66,7 @@ public class ListingController {
                         @RequestParam(required = false) Long priceFromKurus,
                         @RequestParam(required = false) Long priceToKurus,
                         @RequestParam(required = false) String ownerUsername,
-                        @PageableDefault(size = 50) Pageable pageable) {
+                        @PageableDefault(size = 20) Pageable pageable) {
 
                 List<Country> resolvedCountries = country == null ? null : country.stream()
                                 .filter(value -> value != null && !value.isBlank())
@@ -92,15 +92,15 @@ public class ListingController {
                                 priceToKurus,
                                 ownerUsername);
 
-                Page<ListingSummaryDto> listings = listingService.search(criteria, pageable);
+                Page<ListingSummaryResponse> listings = listingService.search(criteria, pageable);
 
-                return ResponseEntity
+        return ResponseEntity
                                 .status(HttpStatus.OK)
                                 .body(listings);
         }
 
         @GetMapping("/by-username/{username}")
-        public ResponseEntity<Page<ListingSummaryDto>> getPublicListingsByUsername(
+        public ResponseEntity<Page<ListingSummaryResponse>> getPublicListingsByUsername(
                         @PathVariable String username,
                         @RequestParam(required = false) List<String> country,
                         @RequestParam(required = false) List<MediaFormat> format,
@@ -139,7 +139,7 @@ public class ListingController {
                                 priceToKurus,
                                 username);
 
-                Page<ListingSummaryDto> listings = listingService.search(criteria, pageable);
+                Page<ListingSummaryResponse> listings = listingService.search(criteria, pageable);
 
                 return ResponseEntity.ok(listings);
         }
@@ -208,6 +208,12 @@ public class ListingController {
         @GetMapping("/{publicId}")
         public ResponseEntity<?> getListing(@PathVariable String publicId) {
                 return ResponseEntity.ok(listingService.getListingByPublicId(publicId));
+        }
+
+        @GetMapping("/{publicId}/price-history")
+        public ResponseEntity<List<ListingPriceHistoryDto>> getListingPriceHistory(
+                        @PathVariable String publicId) {
+                return ResponseEntity.ok(listingService.getPriceHistoryForPublicId(publicId));
         }
 
         @DeleteMapping("/{publicId}")

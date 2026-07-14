@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import lombok.RequiredArgsConstructor;
@@ -37,7 +37,9 @@ public class OpenSearchAdapter implements SearchPort {
     private final RestHighLevelClient openSearchClient;
 
     @Override
-    public Page<UUID> searchIds(String query, int page, int size) {
+    public Page<UUID> searchIds(String query, Pageable pageable) {
+        int page = pageable.getPageNumber();
+        int size = pageable.getPageSize();
         try {
             SearchRequest searchRequest = new SearchRequest(INDEX_NAME);
 
@@ -56,7 +58,7 @@ public class OpenSearchAdapter implements SearchPort {
 
             long totalHits = response.getHits().getTotalHits().value;
 
-            return new PageImpl<>(ids, PageRequest.of(page, size), totalHits);
+            return new PageImpl<>(ids, pageable, totalHits);
 
         } catch (Exception e) {
             log.error("OpenSearch search failed", e);

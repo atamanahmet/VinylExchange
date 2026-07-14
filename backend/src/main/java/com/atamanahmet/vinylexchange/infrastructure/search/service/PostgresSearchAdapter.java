@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import com.atamanahmet.vinylexchange.domain.enums.ListingStatus;
@@ -25,7 +25,9 @@ public class PostgresSearchAdapter implements SearchPort {
     private final ListingRepository listingRepository;
 
     @Override
-    public Page<UUID> searchIds(String query, int page, int size) {
+    public Page<UUID> searchIds(String query, Pageable pageable) {
+        int page = pageable.getPageNumber();
+        int size = pageable.getPageSize();
         try {
             int offset = page * size;
 
@@ -33,17 +35,17 @@ public class PostgresSearchAdapter implements SearchPort {
                 List<UUID> ids = listingRepository.findAllAvailableIds(size, offset);
                 long total = listingRepository.countByStatusAndStockQuantityGreaterThanAndOnHoldFalse(
                         ListingStatus.AVAILABLE, 0);
-                return new PageImpl<>(ids, PageRequest.of(page, size), total);
+                return new PageImpl<>(ids, pageable, total);
             }
 
             List<UUID> ids = listingRepository.fullTextSearch(query, size, offset);
             long total = listingRepository.countFullTextSearch(query);
 
-            return new PageImpl<>(ids, PageRequest.of(page, size), total);
+            return new PageImpl<>(ids, pageable, total);
 
         } catch (Exception e) {
             log.error("Postgres search failed", e);
-            return new PageImpl<>(Collections.emptyList(), PageRequest.of(page, size), 0);
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }
     }
 }

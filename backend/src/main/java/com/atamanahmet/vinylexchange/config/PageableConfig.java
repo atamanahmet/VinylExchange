@@ -8,6 +8,6 @@ import org.springframework.data.web.config.PageableHandlerMethodArgumentResolver
 public class PageableConfig {
     @Bean
     PageableHandlerMethodArgumentResolverCustomizer pageableCustomizer() {
-        return resolver -> resolver.setMaxPageSize(75);
+        return resolver -> resolver.setMaxPageSize(60);
     }
 }
