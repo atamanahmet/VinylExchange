@@ -1,67 +1,42 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+
 import "../App.css";
 
-import Card from "../comps/Card";
-import FilterSidebar, { MobileFilterSheet } from "../comps/FilterSidebar";
-import ListView from "../comps/ListView";
-import SkeletonCardView from "../comps/Skeletons/SkeletonCardView";
-import SkeletonListView from "../comps/Skeletons/SkeletonListView";
+import ListingBrowsePanel from "@/components/listing/ListingBrowsePanel";
 
 import { useListingStore } from "../stores/listingStore";
 import { useAuthStore } from "../stores/authStore";
-import { useUIStore } from "../stores/uiStore";
 import { useCartStore } from "../stores/cartStore";
-import { useMessagingStore } from "../stores/messagingStore";
-import useWishlistStore from "../stores/wishlistStore";
 import { useSearchStore } from "../stores/searchStore";
 
-import { mbReleaseToCardItem } from "../adapters/mbReleaseToCardItem";
 import { mapListingsToCardItems } from "../adapters/mapListingToCardItems";
-import { LayoutGrid, List } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { cn } from "@/lib/utils";
 import {
-  applyListingFilters,
-  countActiveFilters,
-  createInitialFilters,
-  getListingBounds,
+  buildListingFilterParams,
+  DEFAULT_LISTING_SORT,
+  resetFilters,
 } from "../utils/listingFilters";
-
-function useMinWidth(minWidth) {
-  const [matches, setMatches] = useState(() =>
-    typeof window !== "undefined"
-      ? window.matchMedia(`(min-width: ${minWidth}px)`).matches
-      : false,
-  );
-
-  useEffect(() => {
-    const media = window.matchMedia(`(min-width: ${minWidth}px)`);
-    const onChange = (event) => setMatches(event.matches);
-
-    setMatches(media.matches);
-    media.addEventListener("change", onChange);
-    return () => media.removeEventListener("change", onChange);
-  }, [minWidth]);
-
-  return matches;
-}
 
 export default function MainPage() {
   const PAGE_SIZE = 20;
-  const [page, setPage] = useState(1);
-  const [visibleItems, setVisibleItems] = useState([]);
-  const [filters, setFilters] = useState(createInitialFilters());
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-  const isLargeScreen = useMinWidth(1024);
+
+  const [page, setPage] = useState(0);
+  const [sort, setSort] = useState(DEFAULT_LISTING_SORT);
+  const [draftFilters, setDraftFilters] = useState(() => resetFilters());
+  const [appliedFilters, setAppliedFilters] = useState(() => resetFilters());
 
   const navigate = useNavigate();
 
-  const searchResult = useSearchStore((state) => state.searchResult);
+  const listingSearchResult = useSearchStore(
+    (state) => state.listingSearchResult,
+  );
+  const lastListingQuery = useSearchStore((state) => state.lastListingQuery);
+  const isLoadingListingSearch = useSearchStore(
+    (state) => state.isLoadingListingSearch,
+  );
+  const searchProducts = useSearchStore((state) => state.searchProducts);
 
   const user = useAuthStore((state) => state.user);
-
-  const isInWishlist = useWishlistStore((state) => state.isInWishlist);
-  const toggleToWishlist = useWishlistStore((state) => state.toggleToWishlist);
 
   const isFetchingPublic = useListingStore((state) => state.isFetchingPublic);
   const fetchPublicListings = useListingStore(
@@ -69,232 +44,113 @@ export default function MainPage() {
   );
   const publicListings = useListingStore((state) => state.publicListings);
 
-  const layout = useUIStore((state) => state.layout);
-  const setLayout = useUIStore((state) => state.setLayout);
-
   const cart = useCartStore((state) => state.cart);
   const addToCart = useCartStore((state) => state.addToCart);
   const removeFromCart = useCartStore((state) => state.removeFromCart);
 
-  const startConversation = useMessagingStore(
-    (state) => state.startConversation,
-  );
+  const isSearchActive = Boolean(lastListingQuery);
 
   useEffect(() => {
-    if (!searchResult.items?.length) {
-      fetchPublicListings();
-    }
+    if (isSearchActive) return;
+
+    // sort alone → Redis top-60 per Sort; filters → DB
+    const params = buildListingFilterParams(appliedFilters, {
+      page,
+      size: PAGE_SIZE,
+      sort,
+    });
+
+    fetchPublicListings(params);
+  }, [appliedFilters, page, sort, isSearchActive, fetchPublicListings]);
+
+  useEffect(() => {
+    if (!lastListingQuery) return;
+    // text search IDs from FTS/OS; sort applied after hydrate (not Redis browse cache)
+    searchProducts(lastListingQuery, { sort });
+  }, [lastListingQuery, sort, searchProducts]);
+
+  const handleSortChange = useCallback((nextSort) => {
+    setSort(nextSort);
+    setPage(0);
   }, []);
 
-  const currentData = useMemo(() => {
-    if (searchResult.items?.length > 0) return searchResult;
-    return { dataType: "listing", items: publicListings.items };
-  }, [searchResult, publicListings]);
-
-  const bounds = useMemo(
-    () => getListingBounds(currentData.items),
-    [currentData.items],
-  );
-
-  useEffect(() => {
-    if (!currentData.items?.length) return;
-    setFilters((prev) => {
-      if (prev.priceRange && prev.yearRange) return prev;
-      return createInitialFilters(currentData.items);
+  const handleApplyFilters = useCallback(() => {
+    setAppliedFilters({
+      ...draftFilters,
+      priceRange: [...draftFilters.priceRange],
+      yearRange: [...draftFilters.yearRange],
+      formats: [...draftFilters.formats],
+      speedRpm: [...(draftFilters.speedRpm ?? [])],
+      vinylSubtype: [...(draftFilters.vinylSubtype ?? [])],
+      conditions: [...draftFilters.conditions],
+      countries: [...(draftFilters.countries ?? [])],
+      genreIds: [...(draftFilters.genreIds ?? [])],
     });
-  }, [currentData.items]);
+    setPage(0);
+  }, [draftFilters]);
 
-  const filteredListings = useMemo(() => {
-    if (currentData.dataType !== "listing") return currentData.items;
-    return applyListingFilters(currentData.items, filters, bounds);
-  }, [currentData, filters, bounds]);
+  const handleResetFilters = useCallback(() => {
+    const defaults = resetFilters();
+    setDraftFilters(defaults);
+    setAppliedFilters(defaults);
+    setPage(0);
+  }, []);
 
-  const activeFilterCount = useMemo(
-    () => countActiveFilters(filters, bounds),
-    [filters, bounds],
-  );
+  const listingItems = useMemo(() => {
+    if (isSearchActive) {
+      return listingSearchResult.items;
+    }
+    return publicListings.items ?? [];
+  }, [isSearchActive, listingSearchResult.items, publicListings.items]);
+
+  const pagination = isSearchActive ? null : publicListings.pagination;
 
   const cartItemByListingId = useMemo(() => {
     const map = new Map();
     cart?.items?.forEach((item) => {
-      map.set(String(item.listingId), item.id);
+      map.set(String(item.publicId), item.id);
     });
     return map;
   }, [cart?.items]);
 
   const items = useMemo(() => {
-    if (!filteredListings?.length) return [];
+    if (!listingItems?.length) return [];
 
-    if (currentData.dataType === "listing") {
-      return mapListingsToCardItems(filteredListings, {
-        user,
-        cartItemByListingId,
-        addToCart,
-        removeFromCart,
-        navigate,
-        startConversation,
-      });
-    }
-
-    if (currentData.dataType === "mb") {
-      return filteredListings.map((release) =>
-        mbReleaseToCardItem(release, isInWishlist, toggleToWishlist),
-      );
-    }
-
-    return [];
+    return mapListingsToCardItems(listingItems, {
+      user,
+      cartItemByListingId,
+      addToCart,
+      removeFromCart,
+      navigate,
+    });
   }, [
-    filteredListings,
-    currentData.dataType,
+    listingItems,
     cartItemByListingId,
     user,
     addToCart,
     removeFromCart,
     navigate,
-    startConversation,
   ]);
 
-  useEffect(() => {
-    if (!currentData?.items) return;
-    setPage(1);
-    setVisibleItems(items.slice(0, PAGE_SIZE));
-  }, [items]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollTop = window.scrollY;
-      const windowHeight = window.innerHeight;
-      const fullHeight = document.documentElement.scrollHeight;
-      if (scrollTop + windowHeight >= fullHeight * 0.75) {
-        loadNextPage();
-      }
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [visibleItems.length, items, page]);
-
-  const loadNextPage = () => {
-    const nextPage = page + 1;
-    const nextItems = items.slice(0, nextPage * PAGE_SIZE);
-    if (nextItems.length > visibleItems.length) {
-      setVisibleItems(nextItems);
-      setPage(nextPage);
-    }
-  };
-
-  const showListLayout = layout === "list" && isLargeScreen;
-  const showGridLayout = layout === "grid" || !isLargeScreen;
-  const isLoading = isFetchingPublic && !searchResult.items?.length;
-
-  const viewToggleClass = (active) =>
-    cn(
-      "inline-flex size-9 shrink-0 items-center justify-center rounded-md border p-1.5 transition-colors",
-      active
-        ? "border-brand-active bg-brand text-on-surface"
-        : "border-surface-4 bg-surface-2 text-brand-fg hover:bg-surface-3",
-    );
+  const isLoading =
+    (isFetchingPublic || isLoadingListingSearch) && listingItems.length === 0;
 
   return (
-    <div className="min-h-screen w-full bg-surface-base text-on-surface">
-      <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
-        <div className="flex flex-col gap-4 transition-[gap] duration-100 ease-in-out lg:flex-row lg:items-start lg:gap-6">
-          <FilterSidebar
-            filters={filters}
-            bounds={bounds}
-            onFiltersChange={setFilters}
-            collapsed={sidebarCollapsed}
-            onCollapsedChange={setSidebarCollapsed}
-          />
-
-          <main className="min-w-0 flex-1 transition-[flex-basis,width] duration-100 ease-in-out">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-5">
-              <div className="flex flex-wrap items-center gap-3">
-                <MobileFilterSheet
-                  filters={filters}
-                  bounds={bounds}
-                  onFiltersChange={setFilters}
-                  activeCount={activeFilterCount}
-                />
-                <p className="text-sm text-on-surface-muted">
-                  {isLoading ? "Loading..." : `${items.length} results`}
-                </p>
-              </div>
-
-              <div
-                className="flex items-center gap-1 rounded-lg border border-surface-4 bg-surface-1 p-1"
-                role="group"
-                aria-label="Change listing view"
-              >
-                <button
-                  type="button"
-                  onClick={() => setLayout("list")}
-                  className={viewToggleClass(layout === "list")}
-                  aria-label="List view"
-                  aria-pressed={layout === "list"}
-                >
-                  <List className="size-4" strokeWidth={2.5} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLayout("grid")}
-                  className={viewToggleClass(layout === "grid")}
-                  aria-label="Grid view"
-                  aria-pressed={layout === "grid"}
-                >
-                  <LayoutGrid className="size-4" strokeWidth={2.5} />
-                </button>
-              </div>
-            </div>
-
-            {!isLoading && visibleItems.length === 0 && (
-              <div className="rounded-xl border border-surface-3 bg-surface-1 px-6 py-12 text-center">
-                <p className="text-lg font-medium text-on-surface">
-                  No listings found
-                </p>
-                <p className="mt-2 text-sm text-on-surface-muted">
-                  Try adjusting your filters or search terms.
-                </p>
-              </div>
-            )}
-
-            {showListLayout && visibleItems.length > 0 && (
-              <div className="overflow-hidden rounded-xl border border-surface-3">
-                <div className="grid grid-cols-7 border-b border-surface-3 bg-surface-2 px-2 py-3 text-left text-xs font-medium uppercase tracking-wide text-on-surface-muted sm:text-sm">
-                  <p className="text-center">Cover</p>
-                  <p>Title</p>
-                  <p>Artist</p>
-                  <p>Year</p>
-                  <p>Format</p>
-                  <p>Price</p>
-                  <p className="text-center">Actions</p>
-                </div>
-
-                <div>
-                  {isLoading
-                    ? Array(5)
-                        .fill(0)
-                        .map((_, i) => <SkeletonListView key={i} />)
-                    : visibleItems.map((item) => (
-                        <ListView key={item.id} item={item} />
-                      ))}
-                </div>
-              </div>
-            )}
-
-            {showGridLayout && visibleItems.length > 0 && (
-              <div className="grid gap-3 transition-[grid-template-columns,gap] duration-100 ease-in-out [grid-template-columns:repeat(auto-fill,minmax(min(100%,8.5rem),1fr))] sm:gap-4 sm:[grid-template-columns:repeat(auto-fill,minmax(min(100%,11.5rem),1fr))] lg:[grid-template-columns:repeat(auto-fill,minmax(min(100%,12.5rem),1fr))] xl:[grid-template-columns:repeat(auto-fill,minmax(min(100%,13rem),1fr))]">
-                {isLoading
-                  ? Array(8)
-                      .fill(0)
-                      .map((_, i) => <SkeletonCardView key={i} />)
-                  : visibleItems.map((item) => (
-                      <Card key={item.id} item={item} />
-                    ))}
-              </div>
-            )}
-          </main>
-        </div>
-      </div>
-    </div>
+    <ListingBrowsePanel
+      items={items}
+      pagination={pagination}
+      page={page}
+      onPageChange={setPage}
+      isLoading={isLoading}
+      isFetching={isFetchingPublic || isLoadingListingSearch}
+      draftFilters={draftFilters}
+      onDraftFiltersChange={setDraftFilters}
+      onApplyFilters={handleApplyFilters}
+      onResetFilters={handleResetFilters}
+      sort={sort}
+      onSortChange={handleSortChange}
+      showSort
+      showPagination={!isSearchActive}
+    />
   );
 }

@@ -1,4 +1,27 @@
-export const FORMAT_OPTIONS = ["33", "45", "EP", "Cassette", "CD", "Other"];
+export const FORMAT_OPTIONS = [
+  "VINYL",
+  "CASSETTE",
+  "CD",
+  "EIGHT_TRACK",
+  "OTHER",
+];
+
+export const FORMAT_LABELS = {
+  VINYL: "Vinyl",
+  CASSETTE: "Cassette",
+  CD: "CD",
+  EIGHT_TRACK: "8-Track",
+  OTHER: "Other",
+};
+
+export const RPM_OPTIONS = [33, 45, 78];
+
+export const VINYL_SUBTYPE_OPTIONS = [
+  { value: "LP", label: "LP" },
+  { value: "EP", label: "EP" },
+  { value: "SINGLE", label: "Single" },
+  { value: "MAXI_SINGLE", label: "Maxi-Single" },
+];
 
 export const CONDITION_OPTIONS = [
   { value: "M", label: "Mint" },
@@ -10,132 +33,104 @@ export const CONDITION_OPTIONS = [
   { value: "P", label: "Poor" },
 ];
 
+export const SLIDER_BOUNDS = {
+  minPrice: 0,
+  maxPrice: 5000,
+  minYear: 1900,
+  maxYear: new Date().getFullYear(),
+};
+
 export const DEFAULT_FILTERS = {
   formats: [],
+  speedRpm: [],
+  vinylSubtype: [],
   conditions: [],
   countries: [],
-  priceRange: null,
-  yearRange: null,
+  genreIds: [],
+  priceRange: [SLIDER_BOUNDS.minPrice, SLIDER_BOUNDS.maxPrice],
+  yearRange: [SLIDER_BOUNDS.minYear, SLIDER_BOUNDS.maxYear],
   tradeableOnly: false,
 };
 
-export function getCountryOptions(listings = []) {
-  const countries = new Set();
+/** Spring Pageable sort values — unfiltered browse uses Redis cache per sort key. */
+export const DEFAULT_LISTING_SORT = "createdAt,desc";
 
-  for (const listing of listings) {
-    const country = listing.country?.toString().trim();
-    if (country) {
-      countries.add(country);
-    }
-  }
+export const LISTING_SORT_OPTIONS = [
+  { value: "createdAt,desc", label: "Latest" },
+  { value: "year,asc", label: "Year: old to new" },
+  { value: "year,desc", label: "Year: new to old" },
+  { value: "priceKurus,asc", label: "Price: low to high" },
+  { value: "priceKurus,desc", label: "Price: high to low" },
+];
 
-  return [...countries].sort((a, b) => a.localeCompare(b));
-}
-
-export function getListingBounds(listings = []) {
-  if (!listings.length) {
-    return {
-      minPrice: 0,
-      maxPrice: 1000,
-      minYear: 1950,
-      maxYear: new Date().getFullYear(),
-      countries: [],
-    };
-  }
-
-  let minPrice = Infinity;
-  let maxPrice = 0;
-  let minYear = Infinity;
-  let maxYear = 0;
-
-  for (const listing of listings) {
-    const price = Number(listing.price) || 0;
-    minPrice = Math.min(minPrice, price);
-    maxPrice = Math.max(maxPrice, price);
-    minYear = Math.min(minYear, listing.year || minYear);
-    maxYear = Math.max(maxYear, listing.year || maxYear);
-  }
-
-  return {
-    minPrice: Math.floor(minPrice),
-    maxPrice: Math.ceil(maxPrice),
-    minYear: minYear === Infinity ? 1950 : minYear,
-    maxYear: maxYear === 0 ? new Date().getFullYear() : maxYear,
-    countries: getCountryOptions(listings),
-  };
-}
-
-export function resetFilters(bounds) {
+export function resetFilters() {
   return {
     ...DEFAULT_FILTERS,
-    priceRange: [bounds.minPrice, bounds.maxPrice],
-    yearRange: [bounds.minYear, bounds.maxYear],
+    priceRange: [...DEFAULT_FILTERS.priceRange],
+    yearRange: [...DEFAULT_FILTERS.yearRange],
   };
 }
 
-export function createInitialFilters(listings = []) {
-  const bounds = getListingBounds(listings);
-  return resetFilters(bounds);
-}
-
-export function countActiveFilters(filters, bounds) {
+export function countActiveFilters(filters) {
   let count = 0;
   if (filters.formats.length) count += 1;
+  if (filters.speedRpm?.length) count += 1;
+  if (filters.vinylSubtype?.length) count += 1;
   if (filters.conditions.length) count += 1;
   if (filters.countries?.length) count += 1;
+  if (filters.genreIds?.length) count += 1;
   if (filters.tradeableOnly) count += 1;
   if (
     filters.priceRange &&
-    (filters.priceRange[0] > bounds.minPrice ||
-      filters.priceRange[1] < bounds.maxPrice)
+    (filters.priceRange[0] > SLIDER_BOUNDS.minPrice ||
+      filters.priceRange[1] < SLIDER_BOUNDS.maxPrice)
   ) {
     count += 1;
   }
   if (
     filters.yearRange &&
-    (filters.yearRange[0] > bounds.minYear ||
-      filters.yearRange[1] < bounds.maxYear)
+    (filters.yearRange[0] > SLIDER_BOUNDS.minYear ||
+      filters.yearRange[1] < SLIDER_BOUNDS.maxYear)
   ) {
     count += 1;
   }
   return count;
 }
 
-export function applyListingFilters(listings = [], filters, bounds) {
-  if (!listings.length) return [];
+export function buildListingFilterParams(filters, { page, size, sort, ownerUsername } = {}) {
+  const params = {};
 
-  const [minPrice, maxPrice] = filters.priceRange ?? [
-    bounds.minPrice,
-    bounds.maxPrice,
-  ];
-  const [minYear, maxYear] = filters.yearRange ?? [
-    bounds.minYear,
-    bounds.maxYear,
-  ];
+  if (filters.formats.length) params.format = filters.formats;
+  if (filters.speedRpm?.length) params.speedRpm = filters.speedRpm;
+  if (filters.vinylSubtype?.length) params.vinylSubtype = filters.vinylSubtype;
+  if (filters.conditions.length) params.condition = filters.conditions;
+  if (filters.countries?.length) params.country = filters.countries;
+  if (filters.genreIds?.length) params.genreIds = filters.genreIds;
 
-  return listings.filter((listing) => {
-    const price = Number(listing.price) || 0;
-    if (price < minPrice || price > maxPrice) return false;
-    if (listing.year < minYear || listing.year > maxYear) return false;
-    if (filters.tradeableOnly && !listing.tradeable) return false;
-    if (
-      filters.formats.length &&
-      !filters.formats.includes(listing.format)
-    ) {
-      return false;
-    }
-    if (
-      filters.conditions.length &&
-      !filters.conditions.includes(listing.condition)
-    ) {
-      return false;
-    }
-    if (filters.countries?.length) {
-      const country = listing.country?.toString().trim();
-      if (!country || !filters.countries.includes(country)) {
-        return false;
-      }
-    }
-    return true;
-  });
+  const [minPrice, maxPrice] = filters.priceRange;
+  if (minPrice > SLIDER_BOUNDS.minPrice) {
+    params.priceFromKurus = Math.round(minPrice * 100);
+  }
+  if (maxPrice < SLIDER_BOUNDS.maxPrice) {
+    params.priceToKurus = Math.round(maxPrice * 100);
+  }
+
+  const [minYear, maxYear] = filters.yearRange;
+  if (minYear > SLIDER_BOUNDS.minYear) {
+    params.yearFrom = minYear;
+  }
+  if (maxYear < SLIDER_BOUNDS.maxYear) {
+    params.yearTo = maxYear;
+  }
+
+  if (filters.tradeableOnly) {
+    params.tradeable = true;
+  }
+
+  if (page != null) params.page = page;
+  if (size != null) params.size = size;
+  if (sort) params.sort = sort;
+  if (ownerUsername) params.ownerUsername = ownerUsername;
+
+  return params;
 }
