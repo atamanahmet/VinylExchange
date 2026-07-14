@@ -28,6 +28,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -74,6 +76,7 @@ public class DemoDataInitializer implements ApplicationRunner {
         private final FileStorageService fileStorageService;
         private final GenreRepository genreRepository;
         private final ListingPriceCalculator priceCalculator;
+        private final CacheManager cacheManager;
 
         @Override
         @Transactional
@@ -140,12 +143,15 @@ public class DemoDataInitializer implements ApplicationRunner {
                 return adminUser.get();
         }
 
+
         private void seedMockListings(User adminUser) {
                 log.info("seeding_mock_listings");
 
+                int createdCount = 0;
                 for (DemoListingCatalog.DemoListing demo : DemoListingCatalog.ALL) {
                         if (!listingRepository.existsById(demo.id())) {
                                 insertDemoListingRow(demo, adminUser);
+                                createdCount++;
                                 log.info("demo_listing_created id={} title={}", demo.id(), demo.title());
                         }
 
@@ -159,7 +165,22 @@ public class DemoDataInitializer implements ApplicationRunner {
                         });
                 }
 
-                log.info("mock_listings_seeded");
+                if (createdCount > 0) {
+                        // create-drop / empty DB: new NanoId publicIds invalidate any Redis listing entries
+                        evictListingsCache(createdCount);
+                }
+
+                log.info("mock_listings_seeded created={}", createdCount);
+        }
+
+        private void evictListingsCache(int createdCount) {
+                Cache cache = cacheManager.getCache("listings");
+                if (cache == null) {
+                        log.warn("listings_cache_missing skip_evict after_demo_seed created={}", createdCount);
+                        return;
+                }
+                cache.clear();
+                log.info("listings_cache_cleared reason=demo_listings_created count={}", createdCount);
         }
 
         /**
