@@ -33,8 +33,8 @@ public interface ListingRepository extends JpaRepository<Listing, UUID>, JpaSpec
          * Single query fetch with all images joined
          * Used only on detail page
          */
-        @Query("SELECT DISTINCT l FROM Listing l LEFT JOIN FETCH l.images LEFT JOIN FETCH l.genres WHERE l.id = :id")
-        Optional<Listing> findByIdWithImages(@Param("id") UUID id);
+@Query("SELECT DISTINCT l FROM Listing l LEFT JOIN FETCH l.images WHERE l.id = :id")
+Optional<Listing> findByIdWithImages(@Param("id") UUID id);
 
         List<Listing> findByPromoteTrue();
 

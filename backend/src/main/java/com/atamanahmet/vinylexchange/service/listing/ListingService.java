@@ -27,7 +27,6 @@ import com.atamanahmet.vinylexchange.repository.listing.ListingRepository;
 import com.atamanahmet.vinylexchange.repository.listing.ListingSpecifications;
 import com.atamanahmet.vinylexchange.security.principal.UserDetailsImpl;
 import com.atamanahmet.vinylexchange.service.media.CoverArtService;
-import com.atamanahmet.vinylexchange.service.media.FileStorageService;
 import com.atamanahmet.vinylexchange.service.media.ImageStorageRouter;
 import com.atamanahmet.vinylexchange.service.order.OrderAccessService;
 import com.atamanahmet.vinylexchange.service.user.UserAddressService;
@@ -64,7 +63,6 @@ public class ListingService {
     private final ListingPriceHistoryService listingPriceHistoryService;
     private final OrderAccessService orderAccessService;
     private final ImageStorageRouter imageStorageRouter;
-    private final FileStorageService fileStorageService;
     private final CoverArtService coverArtService;
     private final ApplicationEventPublisher eventPublisher;
     private final ListingPriceCalculator priceCalculator;
@@ -222,8 +220,8 @@ public class ListingService {
             return listingMapper.toDTOWithImages(savedListing, discountPercent);
 
         } catch (Exception e) {
-            log.error("Listing creation failed for user {}: {}", owner.getUsername(), e.getMessage());
-            throw new ListingCreationException("Listing creation failed for user: ", owner.getUsername());
+            log.error("Listing creation failed for user {}", owner.getUsername(), e);
+            throw new ListingCreationException("Listing creation failed for user: ", owner.getUsername(), e);
         }
     }
 
@@ -289,8 +287,8 @@ public class ListingService {
             return listingMapper.toDTOWithImages(savedListing, discountPercent);
 
         } catch (Exception e) {
-            log.error("Error updating listing {}: {}", listingId, e.getMessage());
-            throw new ListingCreationException("Listing update failed for listingId: ", listingId.toString());
+            log.error("Error updating listing {}", listingId, e);
+            throw new ListingCreationException("Listing update failed for listingId: ", listingId.toString(), e);
         }
     }
 
@@ -363,44 +361,24 @@ public class ListingService {
     }
 
     /**
-     * When seller uploads no photos, attach cached cover-art-archive image under
-     * /uploads/placeholders/{mbId}/ so the UI can show the placeholder badge.
+     * Fetches the cover URL directly and stores it as an external reference, does not download or save locally.
      */
-    private void attachPlaceholderCover(Listing listing, UUID mbId) throws IOException {
-        List<String> placeholderPaths = fileStorageService.getPlaceholderImagePaths(mbId);
-
-        if (placeholderPaths.isEmpty()) {
-            String coverUrl = coverArtService.fetchCoverUrl(mbId);
-            if (coverUrl == null) {
-                return;
-            }
-
-            ImageSource imageSource = fileStorageService.downloadExternalImage(coverUrl);
-            if (imageSource == null) {
-                return;
-            }
-
-            fileStorageService.savePlaceholderImage(imageSource, mbId);
-            placeholderPaths = fileStorageService.getPlaceholderImagePaths(mbId);
-        }
-
-        if (placeholderPaths.isEmpty()) {
+    private void attachPlaceholderCover(Listing listing, UUID mbId) {
+        String coverUrl = coverArtService.fetchCoverUrl(mbId);
+        if (coverUrl == null) {
             return;
         }
 
-        int position = 0;
-        for (String url : placeholderPaths) {
-            listing.getImages().add(ListingImage.builder()
-                    .publicId(url)
-                    .secureUrl(url)
-                    .position(position++)
-                    .provider(StorageProvider.LOCAL)
-                    .uploadedAt(LocalDateTime.now())
-                    .listing(listing)
-                    .build());
-        }
+        listing.getImages().add(ListingImage.builder()
+                .publicId(coverUrl)
+                .secureUrl(coverUrl)
+                .position(0)
+                .provider(StorageProvider.EXTERNAL)
+                .uploadedAt(LocalDateTime.now())
+                .listing(listing)
+                .build());
 
-        listing.setMainImageUrl(placeholderPaths.get(0));
+        listing.setMainImageUrl(coverUrl);
     }
 
     /**
@@ -427,7 +405,7 @@ public class ListingService {
         return files.stream().map(file -> {
             try {
                 return new ImageSource(
-                        file.getInputStream(),
+                        file.getBytes(),
                         file.getOriginalFilename(),
                         file.getContentType(),
                         file.getSize());
