@@ -1,0 +1,2 @@
+export const CARD_GRID_CLASS =
+  "grid gap-3 transition-[grid-template-columns,gap] duration-100 ease-in-out [grid-template-columns:repeat(auto-fill,minmax(min(100%,8.5rem),1fr))] sm:gap-4 sm:[grid-template-columns:repeat(auto-fill,minmax(min(100%,11.5rem),1fr))] lg:[grid-template-columns:repeat(auto-fill,minmax(min(100%,12.5rem),1fr))] xl:[grid-template-columns:repeat(auto-fill,minmax(min(100%,13rem),1fr))]";

@@ -1,34 +1,95 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { LayoutGrid, List, Search } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
+
+import Card from "@/components/listing/Card";
+import ListView from "@/components/listing/ListView";
+import ListViewHeader from "@/components/listing/ListViewHeader";
+import MbReleaseFilterBar from "@/components/listing/MbReleaseFilterBar";
+import SkeletonCardView from "@/components/shared/skeletons/SkeletonCardView";
+import SkeletonListView from "@/components/shared/skeletons/SkeletonListView";
+import { mbReleaseToWishlistItem } from "../adapters/mbReleaseToWishlistItem";
+import { wishlistItemToCardItem } from "../adapters/wishlistItemToCardItem";
+import { MB_SEARCH_SCOPES, useSearchStore } from "../stores/searchStore";
+import { useMbReleaseFilters } from "../hooks/useMbReleaseFilters";
+import { useMbScrollLoadMore } from "../hooks/useMbScrollLoadMore";
+import { useListingStore } from "../stores/listingStore";
 import useWishlistStore from "../stores/wishlistStore";
 import { useUIStore } from "../stores/uiStore";
-import SkeletonCardView from "../comps/Skeletons/SkeletonCardView";
-import SkeletonListView from "../comps/Skeletons/SkeletonListView";
-import Card from "../comps/Card";
-import ListView from "../comps/ListView";
-import { wishlistItemToCardItem } from "../adapters/wishlistItemToCardItem";
-import { useSearchStore } from "../stores/searchStore";
-import { mbReleaseToWishlistItem } from "../adapters/mbReleaseToWishlistItem";
+import { CARD_GRID_CLASS } from "../utils/cardLayout";
+import { findMatchingListing } from "../utils/wishlistListingMatch";
+
+function useMinWidth(minWidth) {
+  const [matches, setMatches] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia(`(min-width: ${minWidth}px)`).matches
+      : false,
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia(`(min-width: ${minWidth}px)`);
+    const onChange = (event) => setMatches(event.matches);
+
+    setMatches(media.matches);
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, [minWidth]);
+
+  return matches;
+}
 
 export default function WishlistPage() {
+  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [wishlistHolder, setWishlistHolder] = useState([]);
+  const [query, setQuery] = useState("");
+  const [searchScope, setSearchScope] = useState(MB_SEARCH_SCOPES.TITLE);
+
+  const isLargeScreen = useMinWidth(1024);
 
   const wishlist = useWishlistStore((state) => state.wishlist);
   const isLoading = useWishlistStore((state) => state.isLoading);
-  const addToWishlist = useWishlistStore((state) => state.addToWishlist);
   const addToWishlistBulk = useWishlistStore(
     (state) => state.addToWishlistBulk,
   );
   const isInWishlist = useWishlistStore((state) => state.isInWishlist);
-  const toggleToWishlist = useWishlistStore((state) => state.toggleToWishlist);
   const fetchWishlist = useWishlistStore((state) => state.fetchWishlist);
   const removeFromWishlist = useWishlistStore(
     (state) => state.removeFromWishlist,
   );
 
   const searchMusicBrainz = useSearchStore((state) => state.searchMusicBrainz);
-  const searchResult = useSearchStore((state) => state.searchResult);
-  const isLoadingSearch = useSearchStore((state) => state.isLoadingSearch);
+  const mbSearchResult = useSearchStore((state) => state.mbSearchResult);
+  const mbSearchContext = useSearchStore((state) => state.mbSearchContext);
+  const isLoadingMbSearch = useSearchStore((state) => state.isLoadingMbSearch);
+  const isLoadingMoreMb = useSearchStore((state) => state.isLoadingMoreMb);
+  const hasMoreMbResults = useSearchStore((state) => state.hasMoreMbResults);
+  const mbModalScrollRef = useRef(null);
+  useMbScrollLoadMore(mbModalScrollRef);
+  const fetchPublicListings = useListingStore((state) => state.fetchPublicListings);
+  const publicListings = useListingStore((state) => state.publicListings.items);
+
+  const layout = useUIStore((state) => state.layout);
+  const setLayout = useUIStore((state) => state.setLayout);
+
+  useEffect(() => {
+    fetchWishlist();
+    fetchPublicListings({ page: 0, size: 200 });
+  }, [fetchWishlist, fetchPublicListings]);
 
   const isInWishlistHolder = (item) => {
     if (!item || item.id == null) return false;
@@ -42,6 +103,10 @@ export default function WishlistPage() {
     }
   };
 
+  const removeFromWishlistHolder = (item) => {
+    setWishlistHolder((prev) => prev.filter((entry) => entry?.id !== item.id));
+  };
+
   const handleModalClose = async () => {
     if (wishlistHolder.length > 0) {
       await addToWishlistBulk(wishlistHolder);
@@ -51,177 +116,289 @@ export default function WishlistPage() {
     setIsModalOpen(false);
   };
 
-  const [query, setQuery] = useState("");
-
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      handleSearch(e);
+  const handleOpenChange = (open) => {
+    if (open) {
+      setIsModalOpen(true);
+      return;
     }
+
+    void handleModalClose();
   };
 
   const handleSearch = async (e) => {
-    if (e) e.preventDefault();
-    if (!query) {
-    } else {
-      await searchMusicBrainz(query);
-      setIsModalOpen(true);
+    e?.preventDefault();
+    if (!query.trim()) {
+      return;
     }
+
+    await searchMusicBrainz(query.trim(), searchScope);
+    setIsModalOpen(true);
   };
 
-  const layout = useUIStore((state) => state.layout);
-  const setLayout = useUIStore((state) => state.setLayout);
-
-  useEffect(() => {
-    fetchWishlist();
-  }, []);
-
-  const items = wishlist?.map((item) =>
-    wishlistItemToCardItem(item, isInWishlist, removeFromWishlist),
+  const items = useMemo(
+    () =>
+      wishlist?.map((item) =>
+        wishlistItemToCardItem(
+          item,
+          isInWishlist,
+          removeFromWishlist,
+          findMatchingListing(item, publicListings),
+          navigate,
+        ),
+      ) ?? [],
+    [wishlist, isInWishlist, removeFromWishlist, publicListings, navigate],
   );
 
-  const searchItems = searchResult?.items?.map((item) =>
-    mbReleaseToWishlistItem(item, isInWishlistHolder, addToWishlistHolder),
+  const mbReleases = mbSearchResult?.items;
+
+  const {
+    filters: mbFilters,
+    setFilters: setMbFilters,
+    bounds: mbFilterBounds,
+    filteredReleases: filteredMbReleases,
+    hasReleases: hasMbReleases,
+    releaseCount: mbReleaseCount,
+  } = useMbReleaseFilters(mbReleases, {
+    isLoadingSearch: isLoadingMbSearch,
+    searchContext: mbSearchContext,
+  });
+
+  const searchItems = useMemo(
+    () =>
+      filteredMbReleases.map((item) =>
+        mbReleaseToWishlistItem(
+          item,
+          isInWishlistHolder,
+          addToWishlistHolder,
+          removeFromWishlistHolder,
+        ),
+      ),
+    [filteredMbReleases, wishlistHolder],
   );
+
+  const showListLayout = layout === "list" && isLargeScreen;
+  const showGridLayout = layout === "grid" || !isLargeScreen;
+  const selectedCount = wishlistHolder.length;
+
+  const viewToggleClass = (active) =>
+    cn(
+      "inline-flex size-9 shrink-0 items-center justify-center rounded-md border p-1.5 transition-colors",
+      active
+        ? "border-brand-active bg-brand text-on-surface"
+        : "border-surface-4 bg-surface-2 text-brand-fg hover:bg-surface-3",
+    );
 
   return (
-    <>
-      <div className="max-w-7xl mx-auto flex flex-col gap-5 justify-start">
-        <div className="px-5">
-          <h2 className="text-3xl font-bold text-left ml-4 mt-10  ">
+    <div className="min-h-screen w-full bg-surface-base text-on-surface">
+      <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
+        <div className="mb-5 flex flex-col gap-4 sm:mb-6">
+          <h1 className="text-2xl font-semibold tracking-tight text-on-surface sm:text-3xl">
             Wishlist
-          </h2>
-        </div>
-        <input
-          type="search"
-          className="mx-auto w-1/2 p-2.5 pl-10 text-sm text-heading border-2  rounded-base bg-neutral-primary focus:ring-accent-primary focus:border-accent-primary placeholder-body rounded-xl"
-          placeholder="Find albums on MusicBrainz..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyPress}
-        />
+          </h1>
 
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-black rounded-md p-6 max-w-4xl w-full overflow-y-auto max-h-[80vh] relative ">
-              <button
-                onClick={() => handleModalClose()}
-                className="  absolute top-3 right-6 text-white text-2xl hover:text-red-500"
-                aria-label="Close"
+          <form
+            className="mx-auto flex w-full max-w-xl flex-col gap-3"
+            onSubmit={handleSearch}
+          >
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="wishlist-mb-search" className="text-on-surface-dim">
+                Search in
+              </Label>
+              <Tabs
+                value={searchScope}
+                onValueChange={setSearchScope}
+                className="gap-0"
               >
-                ×
-              </button>
-              <h2 className="text-xl font-bold mb-4">Search Results</h2>
-              {isLoadingSearch && <p>Loading...</p>}
-              {!searchItems.length && (
-                <p className="mt-10">No results found.</p>
-              )}
-              <div className="grid grid-cols-3 gap-3">
-                {searchItems &&
-                  searchItems.map((item) => <Card key={item.id} item={item} />)}
-              </div>
-              <button
-                className="btn btn-sm btn-outline mt-4"
-                onClick={() => handleModalClose()}
-              >
-                Close
-              </button>
+                <TabsList className="w-full border border-surface-3 bg-surface-2">
+                  <TabsTrigger value={MB_SEARCH_SCOPES.TITLE} className="flex-1">
+                    Title
+                  </TabsTrigger>
+                  <TabsTrigger value={MB_SEARCH_SCOPES.ARTIST} className="flex-1">
+                    Artist
+                  </TabsTrigger>
+                  <TabsTrigger value={MB_SEARCH_SCOPES.BOTH} className="flex-1">
+                    Both
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
-          </div>
-        )}
 
-        {/* layout selection */}
-        <div className="flex flex-row gap-2 self-end max-w-7xl px-10 ">
-          <button className="" onClick={() => setLayout("list")}>
-            <svg
-              className="border border-indigo-500 w-8 h-8 p-1 rounded-md bg-black"
-              viewBox="0 0 24 24"
-              fill="#FFFFFF"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M8 6.00067L21 6.00139M8 12.0007L21 12.0015M8 18.0007L21 18.0015M3.5 6H3.51M3.5 12H3.51M3.5 18H3.51M4 6C4 6.27614 3.77614 6.5 3.5 6.5C3.22386 6.5 3 6.27614 3 6C3 5.72386 3.22386 5.5 3.5 5.5C3.77614 5.5 4 5.72386 4 6ZM4 12C4 12.2761 3.77614 12.5 3.5 12.5C3.22386 12.5 3 12.2761 3 12C3 11.7239 3.22386 11.5 3.5 11.5C3.77614 11.5 4 11.7239 4 12ZM4 18C4 18.2761 3.77614 18.5 3.5 18.5C3.22386 18.5 3 18.2761 3 18C3 17.7239 3.22386 17.5 3.5 17.5C3.77614 17.5 4 17.7239 4 18Z"
-                stroke="oklch(0.585 0.233 277.117)"
-                fill="#FFFFFF"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            <div className="flex items-center gap-2">
+              <Input
+                id="wishlist-mb-search"
+                type="search"
+                placeholder="Find albums on MusicBrainz..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="min-w-0 flex-1 border-surface-3 bg-surface-form text-on-surface placeholder:text-on-surface-muted"
               />
-            </svg>
-          </button>
-          <button className="" onClick={() => setLayout("grid")}>
-            <svg
-              className="border border-indigo-500 w-8 h-8 p-1 rounded-md bg-black"
-              viewBox="0 -0.5 21 21"
-              version="1.1"
-              xmlns="http://www.w3.org/2000/svg"
-              xmlnsXlink="http://www.w3.org/1999/xlink"
-            >
-              <g id="Page-1" stroke="#FFFFFF" strokeWidth="0" fill="#FFFFFF">
-                <g
-                  id="Dribbble-Light-Preview"
-                  transform="translate(-219.000000, -200.000000)"
-                  fill="oklch(0.585 0.233 277.117)"
-                >
-                  <g id="icons" transform="translate(56.000000, 160.000000)">
-                    <path
-                      d="M181.9,54 L179.8,54 C178.63975,54 177.7,54.895 177.7,56 L177.7,58 C177.7,59.105 178.63975,60 179.8,60 L181.9,60 C183.06025,60 184,59.105 184,58 L184,56 C184,54.895 183.06025,54 181.9,54 M174.55,54 L172.45,54 C171.28975,54 170.35,54.895 170.35,56 L170.35,58 C170.35,59.105 171.28975,60 172.45,60 L174.55,60 C175.71025,60 176.65,59.105 176.65,58 L176.65,56 C176.65,54.895 175.71025,54 174.55,54 M167.2,54 L165.1,54 C163.93975,54 163,54.895 163,56 L163,58 C163,59.105 163.93975,60 165.1,60 L167.2,60 C168.36025,60 169.3,59.105 169.3,58 L169.3,56 C169.3,54.895 168.36025,54 167.2,54 M181.9,47 L179.8,47 C178.63975,47 177.7,47.895 177.7,49 L177.7,51 C177.7,52.105 178.63975,53 179.8,53 L181.9,53 C183.06025,53 184,52.105 184,51 L184,49 C184,47.895 183.06025,47 181.9,47 M174.55,47 L172.45,47 C171.28975,47 170.35,47.895 170.35,49 L170.35,51 C170.35,52.105 171.28975,53 172.45,53 L174.55,53 C175.71025,53 176.65,52.105 176.65,51 L176.65,49 C176.65,47.895 175.71025,47 174.55,47 M167.2,47 L165.1,47 C163.93975,47 163,47.895 163,49 L163,51 C163,52.105 163.93975,53 165.1,53 L167.2,53 C168.36025,53 169.3,52.105 169.3,51 L169.3,49 C169.3,47.895 168.36025,47 167.2,47 M181.9,40 L179.8,40 C178.63975,40 177.7,40.895 177.7,42 L177.7,44 C177.7,45.105 178.63975,46 179.8,46 L181.9,46 C183.06025,46 184,45.105 184,44 L184,42 C184,40.895 183.06025,40 181.9,40 M174.55,40 L172.45,40 C171.28975,40 170.35,40.895 170.35,42 L170.35,44 C170.35,45.105 171.28975,46 172.45,46 L174.55,46 C175.71025,46 176.65,45.105 176.65,44 L176.65,42 C176.65,40.895 175.71025,40 174.55,40 M169.3,42 L169.3,44 C169.3,45.105 168.36025,46 167.2,46 L165.1,46 C163.93975,46 163,45.105 163,44 L163,42 C163,40.895 163.93975,40 165.1,40 L167.2,40 C168.36025,40 169.3,40.895 169.3,42"
-                      id="grid-[#1526]"
-                    ></path>
-                  </g>
-                </g>
-              </g>
-            </svg>
-          </button>
-        </div>
-        {layout == "list" && (
-          <div>
-            <div className="bg-neutral-primary-soft border-b border-default grid grid-cols-7 items-center text-white justify-start max-w-7xl mx-auto">
-              <p>Cover</p>
-              <p>Title</p>
-              <p>Band/Artist</p>
-              <p>Release Date</p>
-              <p>Format</p>
-              <p>Price</p>
+              <Button
+                type="submit"
+                size="icon"
+                disabled={!query.trim() || isLoadingMbSearch}
+                aria-label="Search MusicBrainz"
+              >
+                <Search />
+              </Button>
             </div>
-            <div className="max-w-7xl mx-auto">
-              {isLoading &&
-                Array(8)
-                  .fill(0)
-                  .map((_, i) => <SkeletonListView key={i} />)}
+          </form>
+        </div>
 
-              {!isLoading &&
-                items &&
-                items.length > 0 &&
-                items.map((item) => <ListView key={item.id} item={item} />)}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-5">
+          <p className="text-sm text-on-surface-muted">
+            {isLoading ? "Loading..." : `${items.length} saved albums`}
+          </p>
 
-              {!isLoading && (!items || items.length === 0) && (
-                <p className="col-span-full text-center text-gray-500 mt-20">
-                  Wishlist is empty
-                </p>
-              )}
+          <div
+            className="flex items-center gap-1 rounded-lg border border-surface-4 bg-surface-1 p-1"
+            role="group"
+            aria-label="Change wishlist view"
+          >
+            <button
+              type="button"
+              onClick={() => setLayout("list")}
+              className={viewToggleClass(layout === "list")}
+              aria-label="List view"
+              aria-pressed={layout === "list"}
+            >
+              <List className="size-4" strokeWidth={2.5} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setLayout("grid")}
+              className={viewToggleClass(layout === "grid")}
+              aria-label="Grid view"
+              aria-pressed={layout === "grid"}
+            >
+              <LayoutGrid className="size-4" strokeWidth={2.5} />
+            </button>
+          </div>
+        </div>
+
+        {!isLoading && items.length === 0 && (
+          <div className="rounded-xl border border-surface-3 bg-surface-1 px-6 py-12 text-center">
+            <p className="text-lg font-medium text-on-surface">Wishlist is empty</p>
+            <p className="mt-2 text-sm text-on-surface-muted">
+              Search MusicBrainz above to add albums you want to track.
+            </p>
+          </div>
+        )}
+
+        {showListLayout && items.length > 0 && (
+          <div className="overflow-hidden rounded-xl border border-surface-3">
+            <ListViewHeader showPrice={false} />
+
+            <div>
+              {isLoading
+                ? Array(5)
+                    .fill(0)
+                    .map((_, i) => (
+                      <SkeletonListView key={i} showPrice={false} />
+                    ))
+                : items.map((item) => <ListView key={item.id} item={item} />)}
             </div>
           </div>
         )}
-        {layout == "grid" && (
-          <div className=" grid min-[850px]:grid-cols-3 min-[1100px]:grid-cols-4 min-[670px]:grid-cols-2 mt-5 gap-5 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-            {isLoading &&
-              Array(8)
-                .fill(0)
-                .map((_, i) => <SkeletonCardView key={i} />)}
 
-            {!isLoading &&
-              items &&
-              items.length > 0 &&
-              items.map((item) => <Card key={item.id} item={item} />)}
-
-            {!isLoading && (!items || items.length === 0) && (
-              <p className="col-span-full text-center text-gray-500 mt-20">
-                Wishlist is empty
-              </p>
-            )}
+        {showGridLayout && items.length > 0 && (
+          <div className={CARD_GRID_CLASS}>
+            {isLoading
+              ? Array(8)
+                  .fill(0)
+                  .map((_, i) => <SkeletonCardView key={i} />)
+              : items.map((item) => <Card key={item.id} item={item} />)}
           </div>
         )}
       </div>
-    </>
+
+      <Dialog open={isModalOpen} onOpenChange={handleOpenChange}>
+        <DialogContent
+          showCloseButton
+          className="flex max-h-[85vh] flex-col gap-0 overflow-hidden border-surface-3 bg-surface-1 p-0 text-on-surface ring-surface-4 sm:max-w-6xl"
+        >
+          <DialogHeader className="border-b border-surface-3 px-5 py-4 sm:px-6">
+            <DialogTitle className="text-on-surface">Search results</DialogTitle>
+            <DialogDescription className="text-on-surface-muted">
+              Add albums to your wishlist. Selected items save when you close.
+            </DialogDescription>
+          </DialogHeader>
+
+          {!isLoadingMbSearch && hasMbReleases && (
+            <MbReleaseFilterBar
+              filters={mbFilters}
+              bounds={mbFilterBounds}
+              onFiltersChange={setMbFilters}
+              resultCount={searchItems.length}
+              totalCount={mbReleaseCount}
+              hasMoreMbResults={hasMoreMbResults}
+            />
+          )}
+
+          <div
+            ref={mbModalScrollRef}
+            className="flex-1 overflow-y-auto px-5 py-4 sm:px-6"
+          >
+            {isLoadingMbSearch && (
+              <div className={CARD_GRID_CLASS}>
+                {Array(6)
+                  .fill(0)
+                  .map((_, i) => (
+                    <SkeletonCardView key={i} />
+                  ))}
+              </div>
+            )}
+
+            {!isLoadingMbSearch && !hasMbReleases && (
+              <div className="rounded-xl border border-surface-3 bg-surface-2 px-6 py-10 text-center">
+                <p className="font-medium text-on-surface">No results found</p>
+                <p className="mt-2 text-sm text-on-surface-muted">
+                  Try another query or search scope.
+                </p>
+              </div>
+            )}
+
+            {!isLoadingMbSearch && hasMbReleases && searchItems.length === 0 && (
+              <div className="rounded-xl border border-surface-3 bg-surface-2 px-6 py-10 text-center">
+                <p className="font-medium text-on-surface">
+                  No releases match your filters
+                </p>
+                <p className="mt-2 text-sm text-on-surface-muted">
+                  Adjust or reset filters to see more results.
+                </p>
+              </div>
+            )}
+
+            {!isLoadingMbSearch && searchItems.length > 0 && (
+              <div className={CARD_GRID_CLASS}>
+                {searchItems.map((item) => (
+                  <Card key={item.id} item={item} />
+                ))}
+              </div>
+            )}
+
+            {isLoadingMoreMb && (
+              <div className={cn(CARD_GRID_CLASS, "mt-4")}>
+                {Array(3)
+                  .fill(0)
+                  .map((_, i) => (
+                    <SkeletonCardView key={`mb-load-more-${i}`} />
+                  ))}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="mx-0 mb-0 flex flex-row items-center justify-end gap-3 border-t border-surface-3 bg-surface-2/40 px-5 py-4 sm:px-6">
+            {selectedCount > 0 && (
+              <p className="mr-auto text-sm text-on-surface-dim">
+                {selectedCount} selected
+              </p>
+            )}
+            <Button type="button" onClick={() => void handleModalClose()}>
+              {selectedCount > 0 ? "Save and close" : "Close"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
