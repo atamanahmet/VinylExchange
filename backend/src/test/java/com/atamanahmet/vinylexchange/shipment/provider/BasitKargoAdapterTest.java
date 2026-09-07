@@ -1,6 +1,6 @@
 package com.atamanahmet.vinylexchange.shipment.provider;
 
-import com.atamanahmet.vinylexchange.infrastructure.BasitKargoAdapter;
+import com.atamanahmet.vinylexchange.infrastructure.shipment.BasitKargoAdapter;
 import com.atamanahmet.vinylexchange.dto.shipment.CarrierOption;
 import com.atamanahmet.vinylexchange.dto.shipment.CreateShipmentRequest;
 import com.atamanahmet.vinylexchange.dto.shipment.CreateShipmentResponse;
