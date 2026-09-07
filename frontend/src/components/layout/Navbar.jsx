@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router";
+import { useNavigate } from "react-router";
 import { AuthModal } from "@/components/auth/AuthModal";
 import Notification from "@/components/shared/Notification";
 import SkeletonNavbar from "@/components/shared/skeletons/SkeletonNavbar";
@@ -9,11 +9,8 @@ import { useUIStore } from "@/stores/uiStore";
 import { useMessagingStore } from "@/stores/messagingStore";
 import { useNotificationStore } from "@/stores/notificationStore";
 import { useSearchStore } from "@/stores/searchStore";
-import { useListingStore } from "@/stores/listingStore";
 
 export default function Navbar() {
-  const location = useLocation();
-
   const navigate = useNavigate();
 
   const cartItemCount = useCartStore((state) => state.cartItemCount);
@@ -24,10 +21,6 @@ export default function Navbar() {
 
   const clearSearch = useSearchStore((state) => state.clearSearch);
   const startListingSearch = useSearchStore((state) => state.startListingSearch);
-
-  const fetchPublicListings = useListingStore(
-    (state) => state.fetchPublicListings,
-  );
 
   const openLogin = useUIStore((state) => state.openLogin);
   const navbarActive = useUIStore((state) => state.navbarActive);
@@ -82,11 +75,7 @@ export default function Navbar() {
 
   const handleLogoClick = () => {
     clearSearch();
-    if (location.pathname === "/") {
-      fetchPublicListings();
-    } else {
-      navigate("/");
-    }
+    navigate("/", { state: { resetBrowse: true } });
   };
 
   if (isLoading) {

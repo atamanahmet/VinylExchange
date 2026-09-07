@@ -8,24 +8,24 @@ import { useListingStore } from "../stores/listingStore";
 import { useAuthStore } from "../stores/authStore";
 import { useCartStore } from "../stores/cartStore";
 import { useSearchStore } from "../stores/searchStore";
+import { useUserPreferenceStore } from "../stores/userPreferenceStore";
 
 import { mapListingsToCardItems } from "../adapters/mapListingToCardItems";
-import { useNavigate } from "react-router-dom";
-import {
-  buildListingFilterParams,
-  DEFAULT_LISTING_SORT,
-  resetFilters,
-} from "../utils/listingFilters";
+import { useLocation, useNavigate } from "react-router-dom";
+import { buildListingFilterParams, resetFilters } from "../utils/listingFilters";
 
 export default function MainPage() {
   const PAGE_SIZE = 20;
 
   const [page, setPage] = useState(0);
-  const [sort, setSort] = useState(DEFAULT_LISTING_SORT);
   const [draftFilters, setDraftFilters] = useState(() => resetFilters());
   const [appliedFilters, setAppliedFilters] = useState(() => resetFilters());
 
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const sort = useUserPreferenceStore((state) => state.sort);
+  const setSort = useUserPreferenceStore((state) => state.setSort);
 
   const listingSearchResult = useSearchStore(
     (state) => state.listingSearchResult,
@@ -51,6 +51,16 @@ export default function MainPage() {
   const isSearchActive = Boolean(lastListingQuery);
 
   useEffect(() => {
+    if (!location.state?.resetBrowse) return;
+
+    const defaults = resetFilters();
+    setDraftFilters(defaults);
+    setAppliedFilters(defaults);
+    setPage(0);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.state, location.pathname, navigate]);
+
+  useEffect(() => {
     if (isSearchActive) return;
 
     // sort alone → Redis top-60 per Sort; filters → DB
@@ -69,10 +79,13 @@ export default function MainPage() {
     searchProducts(lastListingQuery, { sort });
   }, [lastListingQuery, sort, searchProducts]);
 
-  const handleSortChange = useCallback((nextSort) => {
-    setSort(nextSort);
-    setPage(0);
-  }, []);
+  const handleSortChange = useCallback(
+    (nextSort) => {
+      setSort(nextSort);
+      setPage(0);
+    },
+    [setSort],
+  );
 
   const handleApplyFilters = useCallback(() => {
     setAppliedFilters({
