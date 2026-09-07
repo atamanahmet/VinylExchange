@@ -1,6 +1,6 @@
 package com.atamanahmet.vinylexchange;
 
-import com.atamanahmet.vinylexchange.config.DotenvApplicationContextInitializer;
+import com.atamanahmet.vinylexchange.config.MusicBrainzProperties;
 import com.atamanahmet.vinylexchange.infrastructure.payment.IyzicoProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -11,13 +11,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableAsync
 @EnableScheduling
 @SpringBootApplication
-@EnableConfigurationProperties(IyzicoProperties.class)
+@EnableConfigurationProperties({ IyzicoProperties.class, MusicBrainzProperties.class })
 public class VinylExchangeApplication {
 
 	public static void main(String[] args) {
-		SpringApplication app = new SpringApplication(VinylExchangeApplication.class);
-		app.addInitializers(new DotenvApplicationContextInitializer());
-		app.run(args);
+		SpringApplication.run(VinylExchangeApplication.class, args);
 	}
 
 }
