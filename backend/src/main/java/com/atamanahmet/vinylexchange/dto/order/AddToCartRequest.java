@@ -1,11 +1,9 @@
 package com.atamanahmet.vinylexchange.dto.order;
 
-import java.util.UUID;
-
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 
 public record AddToCartRequest(
-        @NotNull UUID listingId,
+        @NotBlank String publicId,
         @Min(1) int quantity) {
 }

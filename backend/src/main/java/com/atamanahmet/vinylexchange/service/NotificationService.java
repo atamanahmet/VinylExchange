@@ -1,11 +1,16 @@
 package com.atamanahmet.vinylexchange.service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import com.atamanahmet.vinylexchange.domain.entity.Notification;
 import com.atamanahmet.vinylexchange.domain.NotificationCommand;
+import com.atamanahmet.vinylexchange.domain.entity.Listing;
 import com.atamanahmet.vinylexchange.repository.NotificationRepository;
+import com.atamanahmet.vinylexchange.repository.listing.ListingRepository;
 import com.atamanahmet.vinylexchange.service.user.UserService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,11 +25,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final ListingRepository listingRepository;
     // private final UserService userService;
 
-    public NotificationService(NotificationRepository notificationRepository, UserService userService) {
+    public NotificationService(
+            NotificationRepository notificationRepository,
+            ListingRepository listingRepository,
+            UserService userService) {
 
         this.notificationRepository = notificationRepository;
+        this.listingRepository = listingRepository;
         // this.userService = userService;
     }
 
@@ -88,13 +98,22 @@ public class NotificationService {
 
     public List<NotificationDTO> convertToDTO(List<Notification> notifications) {
 
+        List<UUID> listingIds = notifications.stream()
+                .map(Notification::getRelatedListingId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        Map<UUID, String> publicIdByListingId = listingRepository.findAllByIdIn(listingIds).stream()
+                .collect(Collectors.toMap(Listing::getId, Listing::getPublicId));
+
         return notifications.stream().map(notification -> NotificationDTO.builder()
                 .id(notification.getId())
                 .title(notification.getTitle())
                 .message(notification.getMessage())
                 .read(notification.isRead())
                 .createdAt(notification.getCreatedAt())
-                .relatedListingId(notification.getRelatedListingId())
+                .publicId(publicIdByListingId.get(notification.getRelatedListingId()))
                 .build())
                 .toList();
     }

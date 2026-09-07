@@ -1,7 +1,6 @@
 package com.atamanahmet.vinylexchange.controller;
 
 import java.util.Set;
-import java.util.UUID;
 
 import com.atamanahmet.vinylexchange.service.listing.FavoriteService;
 import com.atamanahmet.vinylexchange.session.UserUtil;
@@ -25,7 +24,7 @@ public class FavoriteController {
     @GetMapping
     public ResponseEntity<?> getFavorites() {
 
-        Set<UUID> favorites = favoriteService.getUserFavorites(UserUtil.getCurrentUserId());
+        Set<String> favorites = favoriteService.getUserFavorites(UserUtil.getCurrentUserId());
 
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -36,18 +35,18 @@ public class FavoriteController {
     public ResponseEntity<?> addFavorite(
             @RequestBody FavoriteRequest request) {
 
-        favoriteService.addToFavorites(UserUtil.getCurrentUserId(), request.listingId());
+        favoriteService.addToFavorites(UserUtil.getCurrentUserId(), request.publicId());
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .build();
     }
 
-    @DeleteMapping("/{listingId}")
+    @DeleteMapping("/{publicId}")
     public ResponseEntity<?> removeFavorite(
-            @PathVariable(name = "listingId", required = true) UUID listingId) {
+            @PathVariable(name = "publicId", required = true) String publicId) {
 
-        favoriteService.removeFromFavorites(UserUtil.getCurrentUserId(), listingId);
+        favoriteService.removeFromFavorites(UserUtil.getCurrentUserId(), publicId);
 
         return ResponseEntity
                 .status(HttpStatus.OK)

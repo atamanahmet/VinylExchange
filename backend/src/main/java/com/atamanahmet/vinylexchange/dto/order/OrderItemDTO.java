@@ -2,11 +2,9 @@ package com.atamanahmet.vinylexchange.dto.order;
 
 import lombok.Builder;
 
-import java.util.UUID;
-
 @Builder
 public record OrderItemDTO(
-        UUID listingId,
+        String publicId,
         String listingTitle,
         String listingMainImageUrl,
         Long unitPriceKurus,

@@ -12,5 +12,5 @@ public record NotificationDTO(
         String message,
         boolean read,
         LocalDateTime createdAt,
-        UUID relatedListingId
+        String publicId
 ) {}

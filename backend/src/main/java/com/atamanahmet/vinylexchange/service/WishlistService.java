@@ -42,30 +42,32 @@ public class WishlistService {
 
         List<WishlistItemDTO> wishlistDTO = new ArrayList<>();
 
-        for (AddToWishlistRequest eachRequest : requests.getBulkRequest()) {
+        for (AddToWishlistRequest eachRequest : requests.bulkRequest()) {
 
             try {
                 WishlistItemDTO itemDTO = addToWishlist(userId, eachRequest);
 
                 wishlistDTO.add(itemDTO);
             } catch (Exception e) {
-                logger.warn("Duplicate wishlist item for: {}- reason: {}", eachRequest.getTitle(), e.getMessage());
+                logger.warn("Duplicate wishlist item for: {} - reason: {}", eachRequest.title(), e.getMessage());
             }
         }
 
         return wishlistDTO;
     }
-
-    // checks item year only while creation,
-    // notification will send even when release year is diffirent
+    
+    /**
+     * Checks item year only while creation
+     * Notification will send even when release year is diffirent
+     */
     @Transactional
     public WishlistItemDTO addToWishlist(UUID userId, AddToWishlistRequest request) {
 
-        System.err.println(request.getExternalCoverUrl());
+        System.err.println(request.externalCoverUrl());
 
-        String title = request.getTitle();
-        String artist = request.getArtist();
-        Integer year = request.getYear();
+        String title = request.title();
+        String artist = request.artist();
+        Integer year = request.year();
 
         if (wishlistItemRepository.existsByUserIdAndTitleAndArtistAndYear(
                 userId, title, artist, year)) {
@@ -81,11 +83,11 @@ public class WishlistService {
         wishlistItem.setTitle(title);
         wishlistItem.setArtist(artist);
         wishlistItem.setYear(year);
-        wishlistItem.setCountry(request.getCountry());
-        wishlistItem.setLabel(request.getLabel());
-        wishlistItem.setBarcode(request.getBarcode());
-        wishlistItem.setExternalCoverUrl(request.getExternalCoverUrl());
-        wishlistItem.setFormat(request.getFormat());
+        wishlistItem.setCountry(request.country());
+        wishlistItem.setLabel(request.label());
+        wishlistItem.setBarcode(request.barcode());
+        wishlistItem.setExternalCoverUrl(request.externalCoverUrl());
+        wishlistItem.setFormat(request.format());
 
         WishlistItem savedWishlistItem = wishlistItemRepository.save(wishlistItem);
 

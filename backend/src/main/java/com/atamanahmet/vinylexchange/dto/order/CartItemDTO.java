@@ -29,7 +29,7 @@ public class CartItemDTO {
 
     private UUID id;
 
-    private UUID listingId;
+    private String publicId;
 
     @JsonProperty("quantity")
     private int orderQuantity;

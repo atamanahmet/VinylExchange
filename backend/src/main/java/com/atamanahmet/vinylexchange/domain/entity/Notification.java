@@ -60,6 +60,6 @@ public class Notification {
     @Enumerated(EnumType.STRING)
     private NotificationType type;
 
-    @Column(name = "relatedListing")
+    @Column(name = "related_listing")
     private UUID relatedListingId;
 }

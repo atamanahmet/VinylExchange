@@ -1,7 +1,7 @@
 package com.atamanahmet.vinylexchange.dto.listing;
 
-import java.util.UUID;
+import jakarta.validation.constraints.NotBlank;
 
-public record FavoriteRequest(UUID listingId) {
+public record FavoriteRequest(@NotBlank String publicId) {
 
 }

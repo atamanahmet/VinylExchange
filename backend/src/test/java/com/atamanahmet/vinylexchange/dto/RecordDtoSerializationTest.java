@@ -87,21 +87,21 @@ class RecordDtoSerializationTest {
     @Test
     void notificationDto_builderAndJson() throws Exception {
         UUID id = UUID.randomUUID();
-        UUID listingId = UUID.randomUUID();
+        String publicId = "abc123xyz789";
         NotificationDTO original = NotificationDTO.builder()
                 .id(id)
                 .title("Match")
                 .message("Your wishlist item is listed")
                 .read(false)
                 .createdAt(LocalDateTime.of(2025, 1, 15, 10, 0))
-                .relatedListingId(listingId)
+                .publicId(publicId)
                 .build();
 
         NotificationDTO restored = mapper.readValue(mapper.writeValueAsString(original), NotificationDTO.class);
 
         assertThat(restored.id()).isEqualTo(id);
         assertThat(restored.read()).isFalse();
-        assertThat(restored.relatedListingId()).isEqualTo(listingId);
+        assertThat(restored.publicId()).isEqualTo(publicId);
     }
 
     @Test
@@ -123,7 +123,7 @@ class RecordDtoSerializationTest {
         UUID cartItemId = UUID.randomUUID();
         CartValidationIssue original = CartValidationIssue.builder()
                 .cartItemId(cartItemId)
-                .listingId(UUID.randomUUID())
+                .publicId("abc123xyz789")
                 .type(IssueType.LISTING_DELETED)
                 .message("sold out")
                 .build();
@@ -137,7 +137,7 @@ class RecordDtoSerializationTest {
     void cartValidationResult_builderCreatesRecord() {
         CartValidationIssue issue = CartValidationIssue.builder()
                 .cartItemId(UUID.randomUUID())
-                .listingId(UUID.randomUUID())
+                .publicId("abc123xyz789")
                 .type(IssueType.LISTING_DELETED)
                 .message("unavailable")
                 .build();

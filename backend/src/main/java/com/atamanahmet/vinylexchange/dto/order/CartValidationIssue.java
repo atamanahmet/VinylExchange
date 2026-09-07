@@ -9,7 +9,7 @@ import lombok.Builder;
 @Builder
 public record CartValidationIssue(
         UUID cartItemId,
-        UUID listingId,
+        String publicId,
         IssueType type,
         ErrorType errorType,
         String message

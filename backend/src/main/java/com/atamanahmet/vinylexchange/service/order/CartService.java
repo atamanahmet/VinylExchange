@@ -74,11 +74,12 @@ public class CartService {
         return buildCartDTO(cart, listingMap);
     }
 
-    public CartDTO addToCart(UUID userId, UUID listingId, int quantity) {
+    public CartDTO addToCart(UUID userId, String publicId, int quantity) {
+
+        Listing listing = listingService.findListingByPublicId(publicId);
+        UUID listingId = listing.getId();
 
         Cart cart = getOrCreateCart(userId);
-
-        Listing listing = listingService.findListingById(listingId);
 
         Optional<CartItem> existingItem = cart.getCartItems()
                 .stream()
@@ -142,16 +143,17 @@ public class CartService {
         cartRepository.save(cart);
     }
 
-    public CartDTO updateCartItemQuantity(UUID userId, UUID cartItemId, UpdateCartItemRequest request) {
+    public CartDTO updateCartItemQuantity(UUID userId, String publicId, UpdateCartItemRequest request) {
+
+        Listing listing = listingService.findListingByPublicId(publicId);
+        UUID listingId = listing.getId();
 
         Cart cart = getOrCreateCart(userId);
 
         CartItem cartItem = cart.getCartItems().stream()
-                .filter(item -> item.getCartItemId().equals(cartItemId))
+                .filter(item -> item.getListingId().equals(listingId))
                 .findFirst()
                 .orElseThrow(() -> new CartItemNotFoundException("Cart item not found"));
-
-        Listing listing = listingService.findListingById(cartItem.getListingId());
 
         listing.hasEnoughStock(request.quantity());
 
@@ -161,7 +163,10 @@ public class CartService {
         return getCartDTO(userId);
     }
 
-    public CartDTO decreaseItemQuantity(UUID userId, UUID listingId) {
+    public CartDTO decreaseItemQuantity(UUID userId, String publicId) {
+
+        Listing listing = listingService.findListingByPublicId(publicId);
+        UUID listingId = listing.getId();
 
         Cart cart = getOrCreateCart(userId);
 
@@ -169,8 +174,6 @@ public class CartService {
                 .filter(item -> item.getListingId().equals(listingId))
                 .findFirst()
                 .orElseThrow(() -> new CartItemNotFoundException("Cart item not found"));
-
-        Listing listing = listingService.findListingById(listingId);
 
         int currentOrderQuantity = cartItem.getOrderQuantity();
 
@@ -197,13 +200,13 @@ public class CartService {
 
         for (CartItem cartItem : cart.getCartItems()) {
 
-            Listing listing = listingService.findListingById(cartItem.getListingId());
+            Listing listing = listingMap.get(cartItem.getListingId());
 
             if (listing == null) {
 
                 issues.add(CartValidationIssue.builder()
                         .cartItemId(cartItem.getCartItemId())
-                        .listingId(cartItem.getListingId())
+                        .publicId(null)
                         .type(IssueType.LISTING_DELETED)
                         .message("This item is no longer on sale or removed entirely")
                         .build());
@@ -216,7 +219,7 @@ public class CartService {
 
                 issues.add(CartValidationIssue.builder()
                         .cartItemId(cartItem.getCartItemId())
-                        .listingId(cartItem.getListingId())
+                        .publicId(listing.getPublicId())
                         .type(IssueType.LISTING_DELETED)
                         .message("This item is sold out")
                         .build());
@@ -230,7 +233,7 @@ public class CartService {
                 String reason = listing.getStatus() == ListingStatus.SOLD ? "soldout" : "not available anymore";
                 issues.add(CartValidationIssue.builder()
                         .cartItemId(cartItem.getCartItemId())
-                        .listingId(cartItem.getListingId())
+                        .publicId(listing.getPublicId())
                         .type(IssueType.LISTING_DELETED)
                         .message("This item is " + reason)
                         .build());
@@ -243,7 +246,7 @@ public class CartService {
 
                 issues.add(CartValidationIssue.builder()
                         .cartItemId(cartItem.getCartItemId())
-                        .listingId(cartItem.getListingId())
+                        .publicId(listing.getPublicId())
                         .type(IssueType.LISTING_DELETED)
                         .message("Stock is not enough to fulfill order, quantity adjusted")
                         .build());
@@ -287,7 +290,7 @@ public class CartService {
 
             CartItemDTO cartItemDTO = CartItemDTO.builder()
                     .id(cartItem.getCartItemId())
-                    .listingId(listing.getId())
+                    .publicId(listing.getPublicId())
                     .title(listing.getTitle())
                     .artistName(listing.getArtistName())
                     .pricePerUnit(listing.getPriceKurus())
