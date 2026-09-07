@@ -10,6 +10,7 @@ function renderAction(action, buttonClass, nowrap) {
 
   return (
     <CardActionButton
+      key={action.label}
       data-card-action-btn
       label={action.label}
       onClick={action.onClick}
@@ -29,22 +30,26 @@ export default function CardActionButtons({
 }) {
   const hasTwo = Boolean(primaryAction && secondaryAction);
   const isList = layout === "list";
-  const stack = stackActions;
+  const stackOnCard = stackActions && !isList;
+  const useVerticalStack = isList || stackOnCard;
 
-  const buttonClass = stack
-    ? "mt-0 h-9 min-h-9 w-full min-w-0 px-3 text-xs sm:text-sm"
-    : isList
-      ? "mt-0 h-9 min-h-9 min-w-0 flex-1 basis-[calc(50%-0.25rem)] px-3 text-xs sm:text-sm"
-      : cn(
-          "mt-0 w-full min-h-[2rem] @sm/card:min-h-[2.25rem] @lg/card:min-h-[2.5rem]",
-          hasTwo && !stack && "min-w-0 flex-1 basis-0",
-        );
+  const buttonClass = useVerticalStack
+    ? cn(
+        "mt-0 h-9 min-h-9 min-w-0 px-3 py-2 text-xs sm:text-sm",
+        isList ? "w-full max-w-[8.5rem]" : "w-full",
+      )
+    : cn(
+        "mt-0 w-full min-h-[2rem] @sm/card:min-h-[2.25rem] @lg/card:min-h-[2.5rem]",
+        hasTwo && "min-w-0 flex-1 basis-0",
+      );
 
-  const nowrap = (isList || hasTwo) && !stack;
+  const nowrap = isList || (hasTwo && !useVerticalStack);
 
-  const actions = stack && secondaryAction
-    ? [secondaryAction, primaryAction]
-    : [primaryAction, secondaryAction];
+  const actions = isList
+    ? [primaryAction, secondaryAction]
+    : stackOnCard && secondaryAction
+      ? [secondaryAction, primaryAction]
+      : [primaryAction, secondaryAction];
 
   return (
     <CardFooter
@@ -56,16 +61,14 @@ export default function CardActionButtons({
       <div
         className={cn(
           "flex w-full min-w-0",
-          stack
-            ? "flex-col gap-2"
-            : isList
-              ? "flex-row flex-wrap gap-2"
-              : cn(
-                  "gap-2",
-                  hasTwo
-                    ? "flex-row @max-[11rem]/card:flex-col"
-                    : "flex-col",
-                ),
+          useVerticalStack
+            ? cn("flex-col gap-2", isList && "items-center")
+            : cn(
+                "gap-2",
+                hasTwo
+                  ? "flex-row @max-[11rem]/card:flex-col"
+                  : "flex-col",
+              ),
         )}
       >
         {actions.map(

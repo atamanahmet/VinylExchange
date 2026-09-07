@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import SkeletonAboutPage from "../comps/Skeletons/SkeletonAboutPage";
+import SkeletonAboutPage from "@/components/shared/skeletons/SkeletonAboutPage";
 
 export default function About() {
   const [pageContent, setPageContent] = useState(null);
@@ -31,12 +31,12 @@ export default function About() {
 
   if (!pageContent) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+      <div className="min-h-screen flex items-center justify-center bg-surface-1">
         <div className="text-center">
-          <p className="text-white text-xl mb-4">Failed to load content</p>
+          <p className="text-on-surface text-xl mb-4">Failed to load content</p>
           <button
             onClick={fetchAboutPageContent}
-            className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            className="px-6 py-3 bg-brand text-on-surface rounded-lg hover:bg-brand-hover"
           >
             Retry
           </button>
@@ -61,20 +61,20 @@ export default function About() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-20 lg:py-32 -mt-5">
         <div className="max-w-4xl">
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-8 leading-tight">
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-on-surface mb-8 leading-tight">
             {pageContent.header}
           </h1>
 
-          <div className="w-24 h-1 bg-indigo-600 mb-8"></div>
+          <div className="w-24 h-1 bg-brand mb-8"></div>
 
-          <p className="text-xl md:text-2xl text-gray-200 leading-relaxed mb-12 font-light">
+          <p className="text-xl md:text-2xl text-on-surface-bright leading-relaxed mb-12 font-light">
             {pageContent.textContent}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4">
             <a
               href="/"
-              className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105"
+              className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-on-surface bg-brand rounded-lg hover:bg-brand-hover transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105"
             >
               Browse Collection
               <svg
@@ -94,53 +94,53 @@ export default function About() {
 
             <a
               href="/contact"
-              className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-white border-2 border-white/30 rounded-lg hover:bg-white/10 hover:border-white/50 transition-all duration-200"
+              className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold text-on-surface border-2 border-on-surface/30 rounded-lg hover:bg-on-surface/10 hover:border-on-surface/50 transition-all duration-200"
             >
               Get in Touch
             </a>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-15">
-            <div className="bg-white/10 backdrop-blur-sm p-6 rounded-lg border border-white/20">
-              <div className="text-indigo-400 text-3xl mb-3 flex justify-center">
+            <div className="bg-on-surface/10 backdrop-blur-sm p-6 rounded-lg border border-on-surface/20">
+              <div className="text-brand-fg text-3xl mb-3 flex justify-center">
                 <svg
                   width="50px"
                   height="50px"
                   viewBox="0 0 24 24"
-                  fill="#4f46e5"
+                  fill="currentColor"
                   xmlns="http://www.w3.org/2000/svg"
                 >
                   <path
                     fillRule="evenodd"
                     clipRule="evenodd"
                     d="M10.0905 11.9629L19.3632 8.63087L20.9996 7.95235V7.49236C20.9996 6.37238 20.9996 5.4331 20.9118 4.68472C20.8994 4.57895 20.8848 4.4738 20.8686 4.37569C20.7841 3.86441 20.6348 3.38745 20.3465 2.98917C20.2024 2.79002 20.0235 2.61055 19.8007 2.45628C19.7589 2.42736 19.7156 2.39932 19.6707 2.3722L19.6617 2.36679C18.8901 1.90553 18.0228 1.93852 17.1293 2.14305C16.2652 2.34086 15.194 2.74368 13.8803 3.23763L11.5959 4.09656C10.9801 4.32806 10.4584 4.52419 10.049 4.72734C9.61332 4.94348 9.23805 5.1984 8.95662 5.57828C8.67519 5.95817 8.55831 6.36756 8.50457 6.81203C8.45406 7.22978 8.45408 7.7378 8.4541 8.33743V12.6016L10.0905 11.9629Z"
-                    fill="#4f46e5"
+                    fill="currentColor"
                   />
                   <g opacity="0.5">
                     <path
                       d="M8.45455 16.1305C7.90347 15.8136 7.24835 15.6298 6.54545 15.6298C4.58735 15.6298 3 17.0558 3 18.8148C3 20.5738 4.58735 21.9998 6.54545 21.9998C8.50355 21.9998 10.0909 20.5738 10.0909 18.8148L10.0909 11.9627L8.45455 12.6014V16.1305Z"
-                      fill="#4f46e5"
+                      fill="currentColor"
                     />
                     <path
                       d="M19.3636 8.63067V14.1705C18.8126 13.8536 18.1574 13.6698 17.4545 13.6698C15.4964 13.6698 13.9091 15.0958 13.9091 16.8548C13.9091 18.6138 15.4964 20.0398 17.4545 20.0398C19.4126 20.0398 21 18.6138 21 16.8548L21 7.95215L19.3636 8.63067Z"
-                      fill="#4f46e5"
+                      fill="currentColor"
                     />
                   </g>
                 </svg>
               </div>
-              <h3 className="text-white font-semibold text-lg mb-2">
+              <h3 className="text-on-surface font-semibold text-lg mb-2">
                 Rare Finds
               </h3>
-              <p className="text-gray-300 text-sm">
+              <p className="text-on-surface-dim text-sm">
                 Discover unique pressings you won't find anywhere else
               </p>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-sm p-6 rounded-lg border border-white/20">
-              <div className="text-indigo-400 text-3xl mb-3 flex justify-center">
+            <div className="bg-on-surface/10 backdrop-blur-sm p-6 rounded-lg border border-on-surface/20">
+              <div className="text-brand-fg text-3xl mb-3 flex justify-center">
                 {" "}
                 <svg
-                  fill="#4f46e5"
+                  fill="currentColor"
                   version="1.1"
                   id="Capa_1"
                   xmlns="http://www.w3.org/2000/svg"
@@ -194,16 +194,16 @@ export default function About() {
                   </g>
                 </svg>
               </div>
-              <h3 className="text-white font-semibold text-lg mb-2">
+              <h3 className="text-on-surface font-semibold text-lg mb-2">
                 Trade & Swap
               </h3>
-              <p className="text-gray-300 text-sm">
+              <p className="text-on-surface-dim text-sm">
                 Connect with collectors who share your passion
               </p>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-sm p-6 rounded-lg border border-white/20">
-              <div className="text-indigo-400 text-3xl mb-3 flex justify-center">
+            <div className="bg-on-surface/10 backdrop-blur-sm p-6 rounded-lg border border-on-surface/20">
+              <div className="text-brand-fg text-3xl mb-3 flex justify-center">
                 <svg
                   version="1.0"
                   xmlns="http://www.w3.org/2000/svg"
@@ -214,7 +214,7 @@ export default function About() {
                 >
                   <g
                     transform="translate(0.000000,1000.000000) scale(0.100000,-0.100000)"
-                    fill="#4338ca"
+                    fill="currentColor"
                     stroke="none"
                   >
                     <path
@@ -268,10 +268,10 @@ export default function About() {
                   </g>
                 </svg>
               </div>
-              <h3 className="text-white font-semibold text-lg mb-2">
+              <h3 className="text-on-surface font-semibold text-lg mb-2">
                 No Nonsense
               </h3>
-              <p className="text-gray-300 text-sm">
+              <p className="text-on-surface-dim text-sm">
                 Just records, music, and pure vinyl obsession
               </p>
             </div>

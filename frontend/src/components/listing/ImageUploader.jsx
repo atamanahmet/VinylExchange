@@ -1,27 +1,48 @@
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 
+import { cn } from "@/lib/utils";
+
 const MAX_FILE_SIZE = 38 * 1024 * 1024; // 38MB in bytes
 
 export default function ImageUploader({
   images,
   setImages,
   existingImages = [],
+  compact = false,
 }) {
   const [error, setError] = useState(null);
 
-  //for edit only
+  // Seed existing listing images in edit mode when parent provides paths.
   useEffect(() => {
-    if (existingImages.length > 0 && images.length === 0) {
+    if (!Array.isArray(existingImages) || existingImages.length === 0) {
+      return;
+    }
+
+    setImages((prev) => {
+      const newUploads = prev.filter((img) => !img.isExisting);
+      const loadedExistingUrls = prev
+        .filter((img) => img.isExisting)
+        .map((img) => img.url);
+
+      const alreadyLoaded =
+        loadedExistingUrls.length === existingImages.length &&
+        loadedExistingUrls.every((url, index) => url === existingImages[index]);
+
+      if (alreadyLoaded) {
+        return prev;
+      }
+
       const existingImageObjects = existingImages.map((url, index) => ({
         preview: url,
         isExisting: true,
-        url: url,
+        url,
         name: `existing-image-${index}`,
       }));
-      setImages(existingImageObjects);
-    }
-  }, [existingImages, images.length, setImages]);
+
+      return [...existingImageObjects, ...newUploads];
+    });
+  }, [existingImages, setImages]);
 
   useEffect(() => {
     return () => {
@@ -82,62 +103,63 @@ export default function ImageUploader({
   };
 
   return (
-    <div className="space-y-4 max-w-100">
+    <div className={cn("w-full", compact ? "space-y-3" : "space-y-4")}>
       {error && (
-        <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded">
+        <div className="rounded-lg border border-danger bg-danger/10 px-4 py-3 text-danger-fg">
           {error}
         </div>
       )}
 
-      {/* DROPZONE */}
       <div
         {...getRootProps()}
-        className={`
-          border-2 border-dashed rounded-xl p-8 text-center cursor-pointer 
-          transition
-          ${isDragActive ? "bg-neutral-800 border-white" : "border-neutral-700"}
-        `}
+        className={cn(
+          "cursor-pointer rounded-xl border-2 border-dashed text-center transition-colors",
+          compact ? "p-4" : "p-8",
+          isDragActive
+            ? "border-brand bg-surface-2"
+            : "border-surface-4 bg-surface-2/50 hover:border-brand/60",
+        )}
       >
         <input {...getInputProps()} />
 
-        <p className="text-gray-300">
+        <p className={cn("text-on-surface", compact && "text-sm")}>
           {isDragActive
             ? "Drop images here…"
             : "Drag & drop or click to upload images"}
         </p>
-        <p className="text-gray-500 text-sm mt-2">
+        <p className="mt-1 text-xs text-on-surface-muted sm:text-sm">
           Max file size: 38MB per image
         </p>
       </div>
 
       {images.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        <div
+          className={cn(
+            "grid grid-cols-2 gap-2",
+            compact ? "sm:grid-cols-2" : "gap-4 sm:grid-cols-3 md:grid-cols-4",
+          )}
+        >
           {images.map((img, index) => (
-            <div key={index} className="relative group">
+            <div key={index} className="group relative">
               <img
                 src={img.preview}
                 alt={`preview ${index + 1}`}
-                className="w-full h-30 object-cover rounded-lg"
+                className={cn(
+                  "w-full rounded-lg object-cover",
+                  compact ? "h-20" : "h-30",
+                )}
               />
 
               {img.isExisting && (
-                <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
+                <div className="absolute top-2 left-2 rounded bg-brand px-2 py-1 text-xs text-on-surface">
                   Existing
                 </div>
               )}
 
-              {/* REMOVE BUTTON */}
               <button
                 type="button"
                 onClick={() => removeImage(index)}
-                className="
-                  absolute top-0.5 right-0.5 
-                  w-10 h-10
-                  bg-indigo-600 hover:bg-red-700 
-                  text-white p-0 rounded-full
-                  opacity-50 group-hover:opacity-100 transition
-                  flex items-center justify-center
-                "
+                className="absolute top-1 right-1 flex size-8 items-center justify-center rounded-full bg-surface-3 text-on-surface opacity-80 transition hover:bg-danger hover:text-on-surface group-hover:opacity-100"
                 aria-label={`Remove image ${index + 1}`}
               >
                 ×

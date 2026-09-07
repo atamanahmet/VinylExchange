@@ -1,10 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import React from "react";
 import "../App.css";
-import { ThemeProvider } from "@material-tailwind/react";
-import Card from "../comps/Card";
-import axios from "axios";
-import ListingItem from "../comps/ListingItem";
+import ListingItem from "@/components/listing/ListingItem";
+import SkeletonListingItem from "@/components/listing/SkeletonListingItem";
 import { useListingStore } from "../stores/listingStore";
 import { useNavigate } from "react-router-dom";
 import { mapListingsToCardItems } from "../adapters/mapListingToCardItems";
@@ -15,34 +13,30 @@ export default function ListingsPage() {
 
   const user = useAuthStore((state) => state.user);
 
-  const publicListings = useListingStore((state) => state.publicListings);
-  const isFetching = useListingStore((state) => state.isFetching);
+  const myListings = useListingStore((state) => state.myListings);
+  const isFetchingMine = useListingStore((state) => state.isFetchingMine);
 
   const fetchMyActiveListings = useListingStore(
     (state) => state.fetchMyActiveListings,
-  );
-
-  const fetchListingsByUser = useListingStore(
-    (state) => state.fetchListingsByUser,
   );
 
   const deleteListing = useListingStore((state) => state.deleteListing);
 
   useEffect(() => {
     fetchMyActiveListings();
-  }, []);
+  }, [fetchMyActiveListings]);
 
   const myListingCards = useMemo(() => {
-    return mapListingsToCardItems(publicListings.items, {
+    return mapListingsToCardItems(myListings.items, {
       user,
       navigate,
       onDelete: deleteListing,
     });
-  }, [publicListings, user]);
+  }, [myListings.items, user, navigate, deleteListing]);
 
   return (
     <>
-      <div className="min-h-screen max-w-7xl mx-auto min-w-300 bg-black text-white">
+      <div className="min-h-screen max-w-7xl mx-auto min-w-300 bg-surface-base text-on-surface">
         <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
           <div className="">
             <h2 className="text-3xl font-semibold mb-5">My listings</h2>
@@ -56,12 +50,14 @@ export default function ListingsPage() {
             <p>Created At</p>
           </div>
           <div className="mt-6">
-            {publicListings.isFetching ? (
+            {isFetchingMine ? (
               Array(5)
                 .fill(0)
                 .map((_, i) => <SkeletonListingItem key={i} />)
             ) : myListingCards.length === 0 ? (
-              <p className="text-gray-400">You have no active listings.</p>
+              <p className="text-on-surface-muted">
+                You have no active listings.
+              </p>
             ) : (
               myListingCards.map((item) => (
                 <ListingItem key={item.id} item={item} />

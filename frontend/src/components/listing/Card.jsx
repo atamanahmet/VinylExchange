@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 
+import { buildListingPath } from "@/utils/listingPath";
+
 import {
   Card as ShadcnCard,
   CardContent,
@@ -41,8 +43,8 @@ export default function Card({ item, onSelect, className }) {
     <ShadcnCard
       className={cn(
         "@container/card flex h-full w-full min-w-0 flex-col gap-0 overflow-hidden rounded-xl border border-surface-3 bg-surface-1 p-2.5 shadow-xs ring-0",
-        "transition-[transform,width,padding] duration-100 ease-in-out @sm/card:rounded-2xl @sm/card:p-3 @lg/card:p-4",
-        "hover:-translate-y-0.5 @md/card:hover:-translate-y-1",
+        "transition-[transform,box-shadow,width,padding] duration-100 ease-in-out @sm/card:rounded-2xl @sm/card:p-3 @lg/card:p-4",
+        "hover:-translate-y-0.5 hover:shadow-md @md/card:hover:-translate-y-1 @md/card:hover:shadow-lg",
         className,
       )}
       onClick={onSelect ? () => onSelect(item) : undefined}
@@ -50,7 +52,7 @@ export default function Card({ item, onSelect, className }) {
     >
       <CardContent className="p-0">
         {linkToListing ? (
-          <Link to={`/listing/${item.id}`} className="cursor-pointer">
+          <Link to={buildListingPath(item)} className="cursor-pointer">
             <CardImage src={imageSrc} alt={item.title} />
           </Link>
         ) : (
@@ -74,10 +76,14 @@ export default function Card({ item, onSelect, className }) {
           {item.artist}
         </CardText>
 
-        <CardText centered={centered}>{item.format || "Unknown Format"}</CardText>
+        <CardText centered={centered} title={item.format}>
+          {item.format || "—"}
+        </CardText>
         <CardText centered={centered}>{item.year || "Unknown Year"}</CardText>
         <CardText centered={centered}>{country}</CardText>
-        <CardText centered={centered}>{item.label || "Unknown Label"}</CardText>
+        <CardText centered={centered} title={item.label}>
+          {item.label || "—"}
+        </CardText>
         <CardText className="hidden @lg/card:block" centered={centered}>
           {item.barcode || "Unknown Barcode"}
         </CardText>

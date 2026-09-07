@@ -1,4 +1,4 @@
-import CardImage from "../CardImage";
+import CardImage from "@/components/listing/CardImage";
 
 export default function SkeletonCardView() {
   return (

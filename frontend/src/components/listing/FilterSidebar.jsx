@@ -6,6 +6,8 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 
+import CountryFilterOptions from "@/components/listing/CountryFilterOptions";
+import GenreFilterOptions from "@/components/listing/GenreFilterOptions";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -26,13 +28,37 @@ import {
 import { cn } from "@/lib/utils";
 import {
   CONDITION_OPTIONS,
+  FORMAT_LABELS,
   FORMAT_OPTIONS,
-  createInitialFilters,
-  resetFilters,
+  RPM_OPTIONS,
+  SLIDER_BOUNDS,
+  VINYL_SUBTYPE_OPTIONS,
 } from "@/utils/listingFilters";
+import { useCountryOptions } from "@/hooks/useCountryOptions";
+import { useGenreOptions } from "@/hooks/useGenreOptions";
 
-function countryFilterId(country) {
-  return `country-${country.replace(/[^a-zA-Z0-9]+/g, "-")}`;
+function FilterResetButton({ onClick, className }) {
+  return (
+    <Button
+      variant="ghost"
+      size="xs"
+      className={cn("h-6 py-0", className)}
+      onClick={onClick}
+    >
+      Reset
+    </Button>
+  );
+}
+
+function FilterActionBar({ onReset, onApply, className }) {
+  return (
+    <div className={cn("flex items-center justify-between gap-2 py-1", className)}>
+      <FilterResetButton onClick={onReset} />
+      <Button size="sm" onClick={onApply}>
+        Apply
+      </Button>
+    </div>
+  );
 }
 
 function FilterSection({ title, defaultOpen = true, children }) {
@@ -58,12 +84,19 @@ function FilterSection({ title, defaultOpen = true, children }) {
 
 export function FilterPanel({
   filters,
-  bounds,
   onFiltersChange,
+  onApply,
   onReset,
   className,
   showHeader = true,
 }) {
+  const { options: countryOptions, loading: countriesLoading } = useCountryOptions("en");
+  const [includeLocalGenres, setIncludeLocalGenres] = useState(true);
+  const { options: genreOptions, loading: genresLoading } = useGenreOptions(
+    "en",
+    includeLocalGenres,
+  );
+
   const toggleArrayValue = (key, value) => {
     const current = filters[key] ?? [];
     const next = current.includes(value)
@@ -72,16 +105,28 @@ export function FilterPanel({
     onFiltersChange({ ...filters, [key]: next });
   };
 
+  const toggleFormat = (format) => {
+    const current = filters.formats ?? [];
+    const nextFormats = current.includes(format)
+      ? current.filter((item) => item !== format)
+      : [...current, format];
+
+    const next = { ...filters, formats: nextFormats };
+    if (!nextFormats.includes("VINYL")) {
+      next.speedRpm = [];
+      next.vinylSubtype = [];
+    }
+    onFiltersChange(next);
+  };
+
+  const vinylSelected = filters.formats.includes("VINYL");
+
   return (
     <div className={cn("flex flex-col gap-1", className)}>
       {showHeader && (
         <>
-          <div className="flex items-center justify-between pb-2">
-            <h2 className="text-base font-semibold text-foreground">Filters</h2>
-            <Button variant="ghost" size="sm" onClick={onReset}>
-              Reset
-            </Button>
-          </div>
+          <h2 className="pb-1 text-base font-semibold text-foreground">Filters</h2>
+          <FilterActionBar onReset={onReset} onApply={onApply} />
           <Separator />
         </>
       )}
@@ -93,14 +138,57 @@ export function FilterPanel({
               <Checkbox
                 id={`format-${format}`}
                 checked={filters.formats.includes(format)}
-                onCheckedChange={() => toggleArrayValue("formats", format)}
+                onCheckedChange={() => toggleFormat(format)}
               />
               <Label htmlFor={`format-${format}`} className="font-normal">
-                {format === "33" ? '12" (33 RPM)' : format === "45" ? '7" (45 RPM)' : format}
+                {FORMAT_LABELS[format] ?? format}
               </Label>
             </div>
           ))}
         </div>
+
+        {vinylSelected && (
+          <>
+            <div className="space-y-2 pt-2">
+              <p className="text-xs font-medium text-muted-foreground">RPM</p>
+              {RPM_OPTIONS.map((rpm) => (
+                <div key={rpm} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`rpm-${rpm}`}
+                    checked={filters.speedRpm.includes(rpm)}
+                    onCheckedChange={() => toggleArrayValue("speedRpm", rpm)}
+                  />
+                  <Label htmlFor={`rpm-${rpm}`} className="font-normal">
+                    {rpm} RPM
+                  </Label>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                Vinyl Subtype
+              </p>
+              {VINYL_SUBTYPE_OPTIONS.map(({ value, label }) => (
+                <div key={value} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`vinyl-subtype-${value}`}
+                    checked={filters.vinylSubtype.includes(value)}
+                    onCheckedChange={() =>
+                      toggleArrayValue("vinylSubtype", value)
+                    }
+                  />
+                  <Label
+                    htmlFor={`vinyl-subtype-${value}`}
+                    className="font-normal"
+                  >
+                    {label}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </FilterSection>
 
       <Separator />
@@ -124,33 +212,35 @@ export function FilterPanel({
 
       <Separator />
 
-      {bounds.countries?.length > 0 && (
-        <>
-          <FilterSection title="Country" defaultOpen={false}>
-            <div className="max-h-48 space-y-2 overflow-y-auto overscroll-contain pr-1">
-              {bounds.countries.map((country) => (
-                <div key={country} className="flex items-center gap-2">
-                  <Checkbox
-                    id={countryFilterId(country)}
-                    checked={(filters.countries ?? []).includes(country)}
-                    onCheckedChange={() => toggleArrayValue("countries", country)}
-                  />
-                  <Label htmlFor={countryFilterId(country)} className="font-normal">
-                    {country}
-                  </Label>
-                </div>
-              ))}
-            </div>
-          </FilterSection>
-          <Separator />
-        </>
-      )}
+      <FilterSection title="Country" defaultOpen={false}>
+        <CountryFilterOptions
+          options={countryOptions}
+          selected={filters.countries ?? []}
+          onToggle={(value) => toggleArrayValue("countries", value)}
+          loading={countriesLoading}
+        />
+      </FilterSection>
+
+      <Separator />
+
+      <FilterSection title="Genre" defaultOpen={false}>
+        <GenreFilterOptions
+          options={genreOptions}
+          selected={filters.genreIds ?? []}
+          onToggle={(value) => toggleArrayValue("genreIds", value)}
+          loading={genresLoading}
+          includeLocal={includeLocalGenres}
+          onIncludeLocalChange={setIncludeLocalGenres}
+        />
+      </FilterSection>
+
+      <Separator />
 
       <FilterSection title="Price (TL)">
         <div className="space-y-3 px-1">
           <Slider
-            min={bounds.minPrice}
-            max={bounds.maxPrice}
+            min={SLIDER_BOUNDS.minPrice}
+            max={SLIDER_BOUNDS.maxPrice}
             step={1}
             value={filters.priceRange}
             onValueChange={(priceRange) =>
@@ -169,8 +259,8 @@ export function FilterPanel({
       <FilterSection title="Release Year">
         <div className="space-y-3 px-1">
           <Slider
-            min={bounds.minYear}
-            max={bounds.maxYear}
+            min={SLIDER_BOUNDS.minYear}
+            max={SLIDER_BOUNDS.maxYear}
             step={1}
             value={filters.yearRange}
             onValueChange={(yearRange) =>
@@ -200,20 +290,35 @@ export function FilterPanel({
           </Label>
         </div>
       </FilterSection>
+
+      <Separator />
+
+      <FilterActionBar onReset={onReset} onApply={onApply} />
     </div>
   );
 }
 
 export function MobileFilterSheet({
   filters,
-  bounds,
   onFiltersChange,
+  onApply,
+  onReset,
   activeCount = 0,
 }) {
-  const handleReset = () => onFiltersChange(resetFilters(bounds));
+  const [open, setOpen] = useState(false);
+
+  const handleApply = () => {
+    onApply();
+    setOpen(false);
+  };
+
+  const handleReset = () => {
+    onReset();
+    setOpen(false);
+  };
 
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2 lg:hidden">
           <SlidersHorizontal className="size-4" />
@@ -234,8 +339,8 @@ export function MobileFilterSheet({
         </SheetHeader>
         <FilterPanel
           filters={filters}
-          bounds={bounds}
           onFiltersChange={onFiltersChange}
+          onApply={handleApply}
           onReset={handleReset}
           className="px-1"
         />
@@ -246,13 +351,12 @@ export function MobileFilterSheet({
 
 export default function FilterSidebar({
   filters,
-  bounds,
   onFiltersChange,
+  onApply,
+  onReset,
   collapsed,
   onCollapsedChange,
 }) {
-  const handleReset = () => onFiltersChange(resetFilters(bounds));
-
   return (
     <aside
       className={cn(
@@ -294,17 +398,16 @@ export default function FilterSidebar({
         aria-hidden={collapsed}
       >
         <div className="flex w-64 min-h-0 flex-1 flex-col">
-          <div className="flex shrink-0 justify-end px-4 pt-4 pb-2">
-            <Button variant="ghost" size="sm" onClick={handleReset}>
-              Reset
-            </Button>
+          <div className="flex shrink-0 flex-col gap-1 px-4 pt-1">
+            <FilterActionBar onReset={onReset} onApply={onApply} />
+            <Separator />
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 pb-4">
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 pb-4 pt-1">
             <FilterPanel
               filters={filters}
-              bounds={bounds}
               onFiltersChange={onFiltersChange}
-              onReset={handleReset}
+              onApply={onApply}
+              onReset={onReset}
               showHeader={false}
             />
           </div>

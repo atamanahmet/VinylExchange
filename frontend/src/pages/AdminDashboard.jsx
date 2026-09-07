@@ -1,7 +1,7 @@
 import axios from "axios";
 import { useState, useEffect } from "react";
-import ListingItem from "../comps/ListingItem";
-import AdminItem from "../comps/AdminItem";
+import ListingItem from "@/components/listing/ListingItem";
+import AdminItem from "@/components/admin/AdminItem";
 
 export default function AdminDashboard() {
   const [listings, setListings] = useState([]);
@@ -68,7 +68,7 @@ export default function AdminDashboard() {
   }
   return (
     <>
-      <div className="min-h-screen min-w-300 bg-black text-white mt-15 rounded-3xl">
+      <div className="min-h-screen min-w-300 bg-surface-base text-on-surface mt-15 rounded-3xl">
         <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
           <div className="">
             <h2 className="text-3xl font-semibold mb-5">All listings</h2>

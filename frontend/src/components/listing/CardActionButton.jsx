@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 const iconByLabel = {
   Trade: MessageSquare,
   Edit: Pencil,
-  "Add to cart": ShoppingCart,
+  "Add": ShoppingCart,
   Remove: Trash2,
   Delete: Trash2,
   "Add to Wishlist": Heart,

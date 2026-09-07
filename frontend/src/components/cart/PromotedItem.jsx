@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useCartStore } from "../stores/cartStore";
+import { useCartStore } from "@/stores/cartStore";
 
 export default function PromotedItem({ item }) {
   const addtoCart = useCartStore((state) => state.addtoCart);
