@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useCartStore } from "../stores/cartStore";
 import { useOrderStore } from "../stores/orderStore";
+
+function shippingConfirmationLine(summary) {
+  if (!summary) return null;
+  const parts = summary.split(", ").map((part) => part.trim()).filter(Boolean);
+  if (parts.length < 2) {
+    return `Shipping to: ${summary}`;
+  }
+  return `Shipping to: ${parts[0]}, ${parts[1]}`;
+}
 
 export default function PaymentPage() {
   const navigate = useNavigate();
@@ -8,6 +18,8 @@ export default function PaymentPage() {
 
   const pendingOrderIds = useOrderStore((state) => state.pendingOrderIds);
   const initiatePayment = useOrderStore((state) => state.initiatePayment);
+  const checkoutResult = useCartStore((state) => state.checkoutResult);
+  const shippingLine = shippingConfirmationLine(checkoutResult?.shippingAddressSummary);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -109,6 +121,10 @@ export default function PaymentPage() {
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white sm:text-2xl mb-6">
           Complete Payment
         </h2>
+
+        {shippingLine && (
+          <p className="text-gray-500 dark:text-gray-400 mb-6">{shippingLine}</p>
+        )}
 
         {loading && (
           <div className="flex items-center justify-center py-20">

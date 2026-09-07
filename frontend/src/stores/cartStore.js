@@ -31,28 +31,35 @@ export const useCartStore = create((set, get) => ({
     }
   },
 
-  addToCart: async (listingId) => {
-    const user = useAuthStore.getState().user;
+  addToCart: async (publicId, quantity = 1) => {
+    let user = useAuthStore.getState().user;
 
     if (!user) {
       const isLoggedIn = await useUIStore.getState().waitForLogin();
-      if (!isLoggedIn) return;
+      if (!isLoggedIn) return false;
+      user = useAuthStore.getState().user;
+      if (!user) return false;
     }
+
+    const safeQuantity = Math.max(1, Number(quantity) || 1);
 
     try {
       const res = await axios.post("/api/cart/items", {
-        listingId,
-        quantity: 1,
+        publicId,
+        quantity: safeQuantity,
       });
       if (res.status === 200) {
         await get().fetchCart();
+        return true;
       }
+      return false;
     } catch (e) {
-      console.log(e);
+      console.error(e);
+      return false;
     }
   },
 
-  decreaseFromCart: async (cartItemId) => {
+  decreaseFromCart: async (publicId) => {
     const user = useAuthStore.getState().user;
 
     if (!user) {
@@ -61,7 +68,7 @@ export const useCartStore = create((set, get) => ({
     }
 
     try {
-      const res = await axios.patch(`/api/cart/items/${cartItemId}`, {});
+      const res = await axios.patch(`/api/cart/items/${publicId}`, {});
       if (res.status === 200) {
         await get().fetchCart();
       }
@@ -88,9 +95,9 @@ export const useCartStore = create((set, get) => ({
     }
   },
 
-  checkout: async () => {
+  checkout: async (shippingAddressId) => {
     try {
-      const res = await axios.post("/api/cart/checkout");
+      const res = await axios.post("/api/cart/checkout", { shippingAddressId });
       if (res.status === 201) {
         const orderIds = res.data.orders.map((o) => o.orderId);
         set({ cart: null, cartItemCount: 0, checkoutResult: res.data });

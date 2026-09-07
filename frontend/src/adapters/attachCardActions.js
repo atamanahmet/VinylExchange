@@ -5,32 +5,38 @@ export function attachCardActions(cardData, context) {
     addToCart,
     removeFromCart,
     navigate,
-    startConversation,
     onDelete,
   } = context;
 
-  const isOwner = user?.username === cardData.ownerUsername;
+  const isOwner = Boolean(
+    user?.username &&
+      cardData.ownerUsername &&
+      user.username === cardData.ownerUsername,
+  );
   const listingKey = String(cardData.id);
   const cartItemId = cartItemByListingId.get(listingKey);
   const inCart = cartItemByListingId.has(listingKey);
 
   const actions = {};
 
-  if (!isOwner && startConversation) {
+  if (!isOwner && navigate) {
     actions.primaryAction = {
       label: "Trade",
-      onClick: () => startConversation(cardData.id),
+      onClick: () => navigate(`/messaging/${cardData.id}`),
     };
   } else if (isOwner && navigate) {
     actions.primaryAction = {
       label: "Edit",
-      onClick: () => navigate(`/edit/${cardData.id}`),
+      onClick: () => {
+        if (!user) return;
+        navigate(`/edit/${cardData.id}`);
+      },
     };
   }
 
   if (!isOwner && addToCart && removeFromCart) {
     actions.secondaryAction = {
-      label: inCart ? "Remove" : "Add to cart",
+      label: inCart ? "Remove" : "Add",
       onClick: () =>
         inCart && cartItemId
           ? removeFromCart(cartItemId)
