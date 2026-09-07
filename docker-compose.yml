@@ -21,35 +21,35 @@ services:
     ports:
       - "6379:6379"
 
-  opensearch:
-    image: opensearchproject/opensearch:2.19.4
-    container_name: opensearch-local
-    environment:
-      - discovery.type=single-node
-      - plugins.security.disabled=false
-      - plugins.security.allow_unsafe_democertificates=true
-      - plugins.security.allow_default_init_securityindex=true
-      - plugins.security.authcz.admin_dn=CN=admin,OU=SSL,O=Test,L=Test,C=DE
-      - OPENSEARCH_JAVA_OPTS=-Xms256m -Xmx256m
-      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_PASSWORD}
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-    ports:
-      - "${OPENSEARCH_PORT}:9200"
-    volumes:
-      - opensearch-data:/usr/share/opensearch/data
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "curl -sk https://localhost:9200 -u ${OPENSEARCH_USERNAME}:${OPENSEARCH_PASSWORD} | grep -q opensearch",
-        ]
-      interval: 15s
-      timeout: 10s
-      retries: 10
-      start_period: 60s
+  # opensearch:
+  #   image: opensearchproject/opensearch:2.19.4
+  #   container_name: opensearch-local
+  #   environment:
+  #     - discovery.type=single-node
+  #     - plugins.security.disabled=false
+  #     - plugins.security.allow_unsafe_democertificates=true
+  #     - plugins.security.allow_default_init_securityindex=true
+  #     - plugins.security.authcz.admin_dn=CN=admin,OU=SSL,O=Test,L=Test,C=DE
+  #     - OPENSEARCH_JAVA_OPTS=-Xms256m -Xmx256m
+  #     - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_PASSWORD}
+  #   ulimits:
+  #     memlock:
+  #       soft: -1
+  #       hard: -1
+  #   ports:
+  #     - "${OPENSEARCH_PORT}:9200"
+  #   volumes:
+  #     - opensearch-data:/usr/share/opensearch/data
+  #   healthcheck:
+  #     test:
+  #       [
+  #         "CMD-SHELL",
+  #         "curl -sk https://localhost:9200 -u ${OPENSEARCH_USERNAME}:${OPENSEARCH_PASSWORD} | grep -q opensearch",
+  #       ]
+  #     interval: 15s
+  #     timeout: 10s
+  #     retries: 10
+  #     start_period: 60s
 
   backend:
     build: ./backend/vinyl-exchange
@@ -57,8 +57,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      opensearch:
-        condition: service_started
     env_file: ./.env
     ports:
       - "${SERVER_PORT}:8080"
@@ -84,20 +82,6 @@ services:
     ports:
       - "80:80"
 
-  vault:
-    image: hashicorp/vault:1.17.0
-    container_name: vault-local
-    cap_add:
-      - IPC_LOCK
-    environment:
-      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_TOKEN}
-      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
-    command: server -dev
-    ports:
-      - "8200:8200"
-
 volumes:
-  opensearch-data:
   postgres-data:
   uploads-data:
-  vault-data:

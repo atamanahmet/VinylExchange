@@ -4,6 +4,8 @@ HELP.md
 *.secrets
 .env.vault
 .env.old
+.env.neon-test
+
 
 ### STS ###
 .apt_generated
@@ -32,3 +34,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Cursor ###
+.cursor
+.cursorignore
+skills-lock.json

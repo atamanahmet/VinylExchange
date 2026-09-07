@@ -3,6 +3,7 @@ target/
 uploads/
 .env
 src/main/resources/application.yml
+src/main/resources/demo/
 .mvn/
 
 ### IntelliJ IDEA ###

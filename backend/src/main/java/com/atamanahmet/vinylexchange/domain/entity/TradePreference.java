@@ -34,6 +34,7 @@ public class TradePreference {
 
     @NotNull(message = "Payment direction is required")
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private PaymentDirection paymentDirection = PaymentDirection.NO_EXTRA;
 
     @ManyToOne

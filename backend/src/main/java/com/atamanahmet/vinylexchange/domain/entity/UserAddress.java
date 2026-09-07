@@ -43,25 +43,27 @@ public class UserAddress extends BaseEntity {
     private String label;
 
     @Convert(converter = PiiAttributeConverter.class)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String fullName;
 
     @Convert(converter = PiiAttributeConverter.class)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String phone;
 
     @Convert(converter = PiiAttributeConverter.class)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String addressLine;
 
-    @Column(nullable = false)
+    @Convert(converter = PiiAttributeConverter.class)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String district;
 
-    @Column(nullable = false)
+    @Convert(converter = PiiAttributeConverter.class)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String city;
 
     @Convert(converter = PiiAttributeConverter.class)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String postalCode;
 
     @Builder.Default

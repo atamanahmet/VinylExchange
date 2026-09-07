@@ -16,8 +16,15 @@ payment:
     base-url: ${IYZICO_BASE_URL}
     callback-url: ${IYZICO_CALLBACK_URL}
 
+file:
+  upload-listing-dir: /app/uploads/listings/
+  upload-cms-dir: /app/uploads/cms/
+
 app:
   frontend-url: ${FRONTEND_URL}
 
-opensearch:
-  password: ${OPENSEARCH_PASSWORD}
+# Paid MusicBrainz tier example:
+# musicbrainz:
+#   rate-limit:
+#     enabled: true
+#     min-interval-ms: 100

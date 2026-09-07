@@ -1,18 +1,20 @@
-.PHONY: start stop dev dev-backend dev-frontend dev-stop help
+.PHONY: start stop dev dev-backend dev-backend-neon dev-frontend dev-stop help
 
 include .env
+include .env.secrets
 export
 
 help:
 	@echo ""
 	@echo "  Vinyl Exchange — available commands"
 	@echo "  ──────────────────────────────────────────────"
-	@echo "  make start         Full stack in Docker (demo)"
-	@echo "  make stop          Stop full stack"
-	@echo "  make dev           Start infrastructure only"
-	@echo "  make dev-backend   Run backend locally"
-	@echo "  make dev-frontend  Run frontend locally"
-	@echo "  make dev-stop      Stop dev infrastructure"
+	@echo "  make start             Full stack in Docker (demo)"
+	@echo "  make stop              Stop full stack"
+	@echo "  make dev               Start infrastructure only"
+	@echo "  make dev-backend       Run backend locally"
+	@echo "  make dev-backend-neon  Run backend locally against Neon (test)"
+	@echo "  make dev-frontend      Run frontend locally"
+	@echo "  make dev-stop          Stop dev infrastructure"
 	@echo "  ──────────────────────────────────────────────"
 	@echo ""
 
@@ -47,7 +49,16 @@ dev:
 	@echo "==============================="
 
 dev-backend:
-	cd backend && DB_HOST=localhost OPENSEARCH_HOST=localhost mvn spring-boot:run
+	cd backend && DB_HOST=localhost mvn spring-boot:run
+
+dev-backend-neon:
+	cd backend && \
+	set -a && \
+	. ../.env && \
+	. ../.env.secrets && \
+	. ../.env.neon-test && \
+	set +a && \
+	mvn spring-boot:run
 
 dev-frontend:
 	cd frontend && npm run dev
