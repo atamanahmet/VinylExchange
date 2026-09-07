@@ -28,6 +28,8 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
 
         Optional<Conversation> findByRelatedListingId(UUID listingId);
 
+        Optional<Conversation> findByPublicId(String publicId);
+
         @Query("SELECT COALESCE(SUM(CASE WHEN c.initiatorId = :userId THEN c.initiatorUnreadCount " +
                         "WHEN c.participantId = :userId THEN c.participantUnreadCount ELSE 0 END), 0) " +
                         "FROM Conversation c WHERE c.initiatorId = :userId OR c.participantId = :userId")

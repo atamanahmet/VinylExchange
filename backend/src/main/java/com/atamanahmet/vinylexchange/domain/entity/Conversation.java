@@ -12,13 +12,18 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+
+import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "conversations")
+@Table(name = "conversations", uniqueConstraints = @UniqueConstraint(
+        name = "uq_conversation_participants",
+        columnNames = { "initiator_id", "participant_id", "related_listing_id" }))
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
@@ -27,6 +32,9 @@ public class Conversation {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @Column(name = "public_id", nullable = false, unique = true, updatable = false)
+    private String publicId;
 
     @Column(nullable = false)
     private UUID initiatorId;
@@ -64,6 +72,7 @@ public class Conversation {
         this.participantId = participantId;
         this.participantUsername = participantUsername;
         this.relatedListingId = relatedListingId;
+        this.publicId = NanoIdUtils.randomNanoId();
         this.createdAt = LocalDateTime.now();
         this.lastMessageAt = LocalDateTime.now();
     }

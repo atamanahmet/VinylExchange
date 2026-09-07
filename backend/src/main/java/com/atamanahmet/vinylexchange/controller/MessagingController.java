@@ -1,7 +1,6 @@
 package com.atamanahmet.vinylexchange.controller;
 
 import java.util.List;
-import java.util.UUID;
 
 import com.atamanahmet.vinylexchange.service.MessagingService;
 import com.atamanahmet.vinylexchange.session.UserUtil;
@@ -9,13 +8,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import com.atamanahmet.vinylexchange.dto.messaging.ConversationDTO;
 import com.atamanahmet.vinylexchange.dto.messaging.MessageDTO;
 import com.atamanahmet.vinylexchange.dto.messaging.MessagePageResponse;
 import com.atamanahmet.vinylexchange.dto.messaging.SendMessageRequest;
+import com.atamanahmet.vinylexchange.dto.messaging.SendMessageResponse;
 import com.atamanahmet.vinylexchange.dto.messaging.StartConversationRequest;
 import com.atamanahmet.vinylexchange.dto.messaging.UnreadCountResponse;
 
@@ -30,44 +29,42 @@ public class MessagingController {
         public ResponseEntity<?> sendMessage(
                         @RequestBody SendMessageRequest request) {
 
-                MessageDTO messageDTO = messagingService.sendMessage(
-                        UserUtil.getCurrentUserId(),
+                SendMessageResponse response = messagingService.sendMessage(
+                                UserUtil.getCurrentUserId(),
                                 UserUtil.getCurrentUserUsername(),
-                                request.getConversationId(),
-                                request.getRelatedListingId(),
-                                request.getContent(), null);
+                                request.getConversationPublicId(),
+                                request.getPublicId(),
+                                request.getContent(), request.getMessageType());
 
                 return ResponseEntity
                                 .status(HttpStatus.OK)
-                                .body(messageDTO);
+                                .body(response);
         }
 
         @PostMapping("/start")
         public ResponseEntity<?> startConversation(
                         @RequestBody StartConversationRequest request) {
 
-                // only when starting convo
                 ConversationDTO conversationDTO = messagingService.startConversation(
                                 UserUtil.getCurrentUserId(),
                                 UserUtil.getCurrentUserUsername(),
-                                request.relatedListingId());
+                                request.publicId());
 
                 return ResponseEntity
                                 .status(HttpStatus.CREATED)
                                 .body(conversationDTO);
         }
 
-        @GetMapping("/conversation/{converstaionId}")
+        @GetMapping("/conversation/{conversationId}")
         public ResponseEntity<?> getMessagesByConversationId(
-                        @PathVariable(name = "converstaionId") UUID converstaionId
-        // @RequestParam(defaultValue = "0") int page,
-        // @RequestParam(defaultValue = "50") int size
-        ) {
-                // checking if user participant with userId
-                ConversationDTO conversationDTO = messagingService.getConversationDTO(converstaionId,
+                        @PathVariable(name = "conversationId") String conversationId) {
+                ConversationDTO conversationDTO = messagingService.getConversationDTO(conversationId,
                                 UserUtil.getCurrentUserId());
 
-                Page<MessageDTO> messagePage = messagingService.getMessages(UserUtil.getCurrentUserId(), converstaionId, 0,
+                Page<MessageDTO> messagePage = messagingService.getMessages(
+                                UserUtil.getCurrentUserId(),
+                                conversationId,
+                                0,
                                 50);
 
                 return ResponseEntity
@@ -80,7 +77,8 @@ public class MessagingController {
         @GetMapping("/conversations")
         public ResponseEntity<?> getConversations() {
 
-                List<ConversationDTO> conversationsDTO = messagingService.getUserConversations(UserUtil.getCurrentUserId());
+                List<ConversationDTO> conversationsDTO = messagingService
+                                .getUserConversations(UserUtil.getCurrentUserId());
 
                 return ResponseEntity
                                 .status(HttpStatus.OK)
@@ -99,9 +97,8 @@ public class MessagingController {
 
         @DeleteMapping("/conversation/{conversationId}")
         public ResponseEntity<?> deleteThisConversation(
-                        @PathVariable(name = "conversationId", required = true) UUID conversationId) {
-
-                messagingService.deleteThisConversation(UserUtil.getCurrentUserId(), conversationId);
+                        @PathVariable(name = "conversationId", required = true) String conversationId) {
+                messagingService.deleteThisConversation(conversationId, UserUtil.getCurrentUserId());
 
                 return ResponseEntity
                                 .status(HttpStatus.NO_CONTENT)

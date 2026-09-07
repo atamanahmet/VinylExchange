@@ -1,7 +1,6 @@
 package com.atamanahmet.vinylexchange.dto.messaging;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 import com.atamanahmet.vinylexchange.domain.entity.Message;
 import com.atamanahmet.vinylexchange.domain.enums.MessageType;
@@ -22,8 +21,6 @@ import lombok.Setter;
 public class MessageDTO {
 
     private long id;
-    private UUID conversationId;
-    private UUID senderId;
     private String senderUsername;
     private String receiverUsername;
 
@@ -37,7 +34,6 @@ public class MessageDTO {
     public MessageDTO from(Message message) {
 
         return MessageDTO.builder()
-                .conversationId(message.getConversationId())
                 .id(message.getId())
                 .senderUsername(message.getSenderUsername())
                 .receiverUsername(message.getReceiverUsername())

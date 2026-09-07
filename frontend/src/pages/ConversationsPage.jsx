@@ -4,6 +4,7 @@ import { useAuthStore } from "../stores/authStore";
 import { useMessagingStore } from "../stores/messagingStore";
 import { useUIStore } from "../stores/uiStore";
 import { useListingStore } from "../stores/listingStore";
+import { buildListingPath } from "../utils/listingPath";
 
 export default function ConversationsPage() {
   const navigate = useNavigate();
@@ -57,26 +58,56 @@ export default function ConversationsPage() {
 
   /** fetch listing info when active conversation changes */
   useEffect(() => {
-    if (!activeConversation?.conversation?.relatedListingId) return;
-    fetchListing(activeConversation.conversation.relatedListingId);
+    if (!activeConversation?.conversation?.listingPublicId) return;
+    fetchListing(activeConversation.conversation.listingPublicId);
   }, [activeConversation]);
+
+  useEffect(() => {
+    if (listingId) {
+      fetchListing(listingId);
+    }
+  }, [listingId, fetchListing]);
 
   /** resolve which username is the other party */
   useEffect(() => {
-    if (!activeConversation?.conversation || !user) return;
-    const convo = activeConversation.conversation;
-    setParticipantUsername(
-      convo.initiatorUsername === user.username
-        ? convo.participantUsername
-        : convo.initiatorUsername,
-    );
-  }, [activeConversation, user]);
+    if (!user) return;
+
+    if (activeConversation?.conversation) {
+      const convo = activeConversation.conversation;
+      setParticipantUsername(
+        convo.initiatorUsername === user.username
+          ? convo.participantUsername
+          : convo.initiatorUsername,
+      );
+      return;
+    }
+
+    if (
+      currentListing?.ownerUsername &&
+      currentListing.ownerUsername !== user.username
+    ) {
+      setParticipantUsername(currentListing.ownerUsername);
+    }
+  }, [activeConversation, user, currentListing]);
 
   const handleSend = async () => {
-    if (!activeConversation?.conversation?.id || !newMessage.trim()) return;
+    if (!newMessage.trim()) return;
+    const convoPublicId = activeConversation?.conversation?.publicId ?? null;
+    const listingPublicId =
+      activeConversation?.conversation?.listingPublicId ?? listingId;
+    if (!listingPublicId) return;
+
     try {
-      await sendMessage(activeConversation, newMessage);
-      await fetchMessages(activeConversation.conversation.id);
+      const result = await sendMessage(listingPublicId, convoPublicId, newMessage);
+      if (!activeConversation?.conversation) {
+        setActiveConversation({
+          conversation: result.conversation,
+          messages: [result.message],
+        });
+        setActiveConvoId(result.conversation.publicId);
+      } else {
+        await fetchMessages(activeConversation.conversation.publicId);
+      }
     } catch (error) {
       console.log(error);
     }
@@ -89,6 +120,13 @@ export default function ConversationsPage() {
       handleSend();
     }
   };
+
+  const visibleConversations = conversations.filter(
+    (c) => c.lastMessagePreview !== "No messages yet",
+  );
+
+  const showChat =
+    user && (activeConversation?.messages || listingId);
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
@@ -147,15 +185,15 @@ export default function ConversationsPage() {
         </header>
 
         <div className="flex-1 overflow-y-auto">
-          {conversations && conversations.length > 0 ? (
-            conversations.map((convo) => (
+          {visibleConversations && visibleConversations.length > 0 ? (
+            visibleConversations.map((convo) => (
               <div
-                key={convo.id}
+                key={convo.publicId}
                 className="group px-3 py-2 border-b border-neutral-secondary hover:bg-neutral-secondary-soft transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <button
-                    onClick={() => setActiveConvoId(convo.id)}
+                    onClick={() => setActiveConvoId(convo.publicId)}
                     className="flex items-center gap-3 flex-1 min-w-0 text-left"
                   >
                     <div className="w-12 h-12 bg-neutral-secondary-medium rounded-full shrink-0 overflow-hidden">
@@ -180,7 +218,7 @@ export default function ConversationsPage() {
                   {/* per-conversation delete */}
                   <button
                     onClick={() =>
-                      setDeleteTarget({ id: convo.id, type: "one" })
+                      setDeleteTarget({ id: convo.publicId, type: "one" })
                     }
                     className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-gray-500 hover:text-red-500 p-1"
                     aria-label="Delete conversation"
@@ -212,7 +250,7 @@ export default function ConversationsPage() {
 
       {/* main chat area */}
       <div className="flex-1 flex flex-col bg-neutral-primary">
-        {user && activeConversation?.messages ? (
+        {showChat ? (
           <>
             {/* chat header — shows participant + related listing */}
             <header className="bg-neutral-primary border-b border-neutral-secondary p-3 flex items-center justify-between shrink-0">
@@ -230,7 +268,7 @@ export default function ConversationsPage() {
               {/* related listing link */}
               {currentListing && (
                 <button
-                  onClick={() => navigate(`/listing/${currentListing.id}`)}
+                  onClick={() => navigate(buildListingPath(currentListing))}
                   className="flex items-center gap-2 text-sm text-amber-500 hover:text-amber-400 border border-neutral-700 rounded-md px-3 py-1.5 hover:bg-neutral-800 transition-colors"
                 >
                   {currentListing.imagePaths?.[0] && (
@@ -268,7 +306,7 @@ export default function ConversationsPage() {
 
             {/* messages */}
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-              {activeConversation.messages.map((message) => (
+              {(activeConversation?.messages ?? []).map((message) => (
                 <div
                   key={message.id}
                   className={`flex ${

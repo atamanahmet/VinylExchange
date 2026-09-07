@@ -1,7 +1,7 @@
 package com.atamanahmet.vinylexchange.dto.messaging;
 
-import java.util.UUID;
+import jakarta.validation.constraints.NotBlank;
 
-public record StartConversationRequest(UUID relatedListingId) {
+public record StartConversationRequest(@NotBlank String publicId) {
 
 }

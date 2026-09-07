@@ -1,8 +1,6 @@
 import { create } from "zustand";
 import axios from "../api/axiosInstance";
 import { useAuthStore } from "./authStore";
-import { useUIStore } from "./uiStore";
-import { navigate } from "../utils/router";
 
 export const useMessagingStore = create((set, get) => ({
   activeConvoId: null,
@@ -25,28 +23,6 @@ export const useMessagingStore = create((set, get) => ({
       set({ unreadCount: res.data.unreadCount });
     } catch (error) {
       console.error("Failed to fetch unread count:", error);
-    }
-  },
-
-  startConversation: async (relatedListingId) => {
-    const user = useAuthStore.getState().user;
-
-    if (!user) {
-      const isLoggedIn = await useUIStore.getState().waitForLogin();
-      if (!isLoggedIn) return;
-    }
-
-    try {
-      const res = await axios.post("/api/messages/start", { relatedListingId });
-      if (res.status === 201) {
-        set({ activeConvoId: res.data.id });
-        navigate(`/messaging/${relatedListingId}`);
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.log("convo starting error:", error);
-      return false;
     }
   },
 
@@ -73,9 +49,6 @@ export const useMessagingStore = create((set, get) => ({
         const currentUser = useAuthStore.getState().user;
         const convo = res.data.conversationDTO;
 
-        /**
-         * Resolve other party's username by comparing against current user
-         */
         const participantUsername =
           convo.initiatorUsername === currentUser?.username
             ? convo.participantUsername
@@ -94,16 +67,13 @@ export const useMessagingStore = create((set, get) => ({
     }
   },
 
-  sendMessage: async (activeConversation, message) => {
-    try {
-      await axios.post("/api/messages", {
-        conversationId: activeConversation.conversation.id,
-        relatedListingId: activeConversation.conversation.relatedListingId,
-        content: message,
-      });
-    } catch (error) {
-      console.log(error);
-    }
+  sendMessage: async (listingPublicId, conversationPublicId, content) => {
+    const res = await axios.post("/api/messages", {
+      publicId: listingPublicId,
+      conversationPublicId: conversationPublicId ?? null,
+      content,
+    });
+    return res.data;
   },
 
   deleteConversation: async (conversationId) => {
@@ -114,7 +84,7 @@ export const useMessagingStore = create((set, get) => ({
       if (res.status === 204) {
         set((state) => ({
           conversations: state.conversations.filter(
-            (c) => c.id !== conversationId,
+            (c) => c.publicId !== conversationId,
           ),
           activeConvoId:
             state.activeConvoId === conversationId ? null : state.activeConvoId,

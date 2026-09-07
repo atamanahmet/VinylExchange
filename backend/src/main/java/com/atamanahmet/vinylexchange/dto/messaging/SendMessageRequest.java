@@ -1,10 +1,8 @@
 package com.atamanahmet.vinylexchange.dto.messaging;
 
-import java.util.UUID;
-
 import com.atamanahmet.vinylexchange.domain.enums.MessageType;
 
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,13 +17,10 @@ import lombok.Setter;
 @NoArgsConstructor
 public class SendMessageRequest {
 
-    private UUID conversationId;
+    private String conversationPublicId;
 
-    // @NotNull(message = "Receiver id is required")
-    private UUID receiverId;
-
-    @NotNull(message = "Related Listing id is required")
-    private UUID relatedListingId;
+    @NotBlank(message = "Listing publicId is required")
+    private String publicId;
 
     @Size(min = 2, max = 2000, message = "Message must be between 2 and 2000 characters")
     private String content;
