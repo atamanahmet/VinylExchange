@@ -11,8 +11,6 @@ import com.atamanahmet.vinylexchange.domain.entity.Order;
 import com.atamanahmet.vinylexchange.domain.entity.UserAddress;
 import com.atamanahmet.vinylexchange.domain.snapshot.AddressSnapshot;
 import com.atamanahmet.vinylexchange.service.user.UserAddressService;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +22,6 @@ public class ShipmentService {
 
     private final ShipmentProvider shipmentProvider;
     private final UserAddressService userAddressService;
-    private final ObjectMapper objectMapper;
 
     /**
      * Creates a shipment for a paid order. Deserializes address snapshots, builds
@@ -32,10 +29,16 @@ public class ShipmentService {
      * order.
      */
     public Order createShipmentForOrder(Order order, String handlerCode, UserAddress sellerAddress) {
-        AddressSnapshot buyerSnapshot = deserializeSnapshot(order.getShippingAddressSnapshot());
+        AddressSnapshot buyerSnapshot = order.getShippingAddressSnapshot();
+        if (buyerSnapshot == null) {
+            throw new IllegalStateException("Address snapshot is missing on order");
+        }
         AddressSnapshot sellerSnapshot = userAddressService.toSnapshot(sellerAddress);
+        if (sellerSnapshot == null) {
+            throw new IllegalStateException("Seller address snapshot could not be built");
+        }
 
-        order.setSellerAddressSnapshot(userAddressService.serializeSnapshot(sellerSnapshot));
+        order.setSellerAddressSnapshot(sellerSnapshot);
 
         CreateShipmentRequest request = CreateShipmentRequest.builder()
                 .handlerCode(handlerCode)
@@ -67,17 +70,5 @@ public class ShipmentService {
         order.setShipmentLabelGeneratedAt(LocalDateTime.now());
 
         return order;
-    }
-
-    private AddressSnapshot deserializeSnapshot(String snapshotJson) {
-        if (snapshotJson == null || snapshotJson.isBlank()) {
-            throw new IllegalStateException("Address snapshot is missing on order");
-        }
-
-        try {
-            return objectMapper.readValue(snapshotJson, AddressSnapshot.class);
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException("Failed to deserialize address snapshot", e);
-        }
     }
 }

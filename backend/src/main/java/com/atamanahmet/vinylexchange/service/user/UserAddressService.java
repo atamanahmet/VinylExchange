@@ -15,8 +15,6 @@ import com.atamanahmet.vinylexchange.dto.address.AddressResponse;
 import com.atamanahmet.vinylexchange.exception.ResourceNotFoundException;
 import com.atamanahmet.vinylexchange.mapper.AddressMapper;
 import com.atamanahmet.vinylexchange.repository.UserAddressRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 
@@ -25,7 +23,6 @@ import lombok.RequiredArgsConstructor;
 public class UserAddressService {
 
     private final UserAddressRepository userAddressRepository;
-    private final ObjectMapper objectMapper;
 
     /** Returns all addresses for a user filtered by type. */
     @Transactional(readOnly = true)
@@ -110,18 +107,6 @@ public class UserAddressService {
                 address.getCity(),
                 address.getPostalCode(),
                 address.getCountry());
-    }
-
-    /**
-     * Serializes AddressSnapshot to JSON string. Returns encrypted-ready string via
-     * ObjectMapper.
-     */
-    public String serializeSnapshot(AddressSnapshot snapshot) {
-        try {
-            return objectMapper.writeValueAsString(snapshot);
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException("Failed to serialize address snapshot", e);
-        }
     }
 
     private void clearDefaultFlags(UUID userId, AddressType addressType, UUID exceptAddressId) {

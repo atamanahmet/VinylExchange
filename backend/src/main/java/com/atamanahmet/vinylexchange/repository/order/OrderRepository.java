@@ -36,11 +36,11 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     boolean existsByOrderItems_ListingIdAndStatusIn(UUID listingId, Set<OrderStatus> statuses);
 
-    @Query("SELECT o.id FROM Order o WHERE o.status IN :statuses AND o.updatedAt < :cutoff AND (o.shippingAddressSnapshot IS NOT NULL OR o.billingAddressSnapshot IS NOT NULL)")
+    @Query("SELECT o.id FROM Order o WHERE o.status IN :statuses AND o.updatedAt < :cutoff AND (o.shippingAddressSnapshot IS NOT NULL OR o.billingAddressSnapshot IS NOT NULL OR o.sellerAddressSnapshot IS NOT NULL)")
     List<UUID> findIdsForKvkkPurge(@Param("statuses") List<OrderStatus> statuses, @Param("cutoff") LocalDateTime cutoff);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE Order o SET o.shippingAddressSnapshot = NULL, o.billingAddressSnapshot = NULL WHERE o.id IN :ids")
+    @Query("UPDATE Order o SET o.shippingAddressSnapshot = NULL, o.billingAddressSnapshot = NULL, o.sellerAddressSnapshot = NULL WHERE o.id IN :ids")
     void nullifyAddressSnapshots(@Param("ids") List<UUID> ids);
 
     Optional<Order> findByShipmentOrderId(String shipmentOrderId);

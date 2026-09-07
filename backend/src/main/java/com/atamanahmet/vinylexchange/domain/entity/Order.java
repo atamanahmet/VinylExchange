@@ -8,7 +8,8 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.atamanahmet.vinylexchange.config.json.PriceTlSerializer;
 import com.atamanahmet.vinylexchange.domain.enums.OrderStatus;
 import com.atamanahmet.vinylexchange.domain.enums.SaleType;
-import com.atamanahmet.vinylexchange.security.encryption.PiiAttributeConverter;
+import com.atamanahmet.vinylexchange.domain.snapshot.AddressSnapshot;
+import com.atamanahmet.vinylexchange.security.encryption.AddressSnapshotConverter;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -109,17 +110,17 @@ public class Order extends BaseEntity {
     @Column(name = "shipment_label_generated_at")
     private LocalDateTime shipmentLabelGeneratedAt;
 
-    @Convert(converter = PiiAttributeConverter.class)
+    @Convert(converter = AddressSnapshotConverter.class)
     @Column(name = "shipping_address_snapshot", columnDefinition = "TEXT")
-    private String shippingAddressSnapshot;
+    private AddressSnapshot shippingAddressSnapshot;
 
-    @Convert(converter = PiiAttributeConverter.class)
+    @Convert(converter = AddressSnapshotConverter.class)
     @Column(name = "billing_address_snapshot", columnDefinition = "TEXT")
-    private String billingAddressSnapshot;
+    private AddressSnapshot billingAddressSnapshot;
 
-    @Convert(converter = PiiAttributeConverter.class)
+    @Convert(converter = AddressSnapshotConverter.class)
     @Column(name = "seller_address_snapshot", columnDefinition = "TEXT")
-    private String sellerAddressSnapshot;
+    private AddressSnapshot sellerAddressSnapshot;
 
     //
     // PAYOUT FIELDS

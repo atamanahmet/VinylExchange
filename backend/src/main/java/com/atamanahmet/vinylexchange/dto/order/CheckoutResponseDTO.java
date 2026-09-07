@@ -7,5 +7,6 @@ import java.util.List;
  */
 public record CheckoutResponseDTO(
         List<OrderDTO> orders,
-        int orderCount
+        int orderCount,
+        String shippingAddressSummary
 ) {}

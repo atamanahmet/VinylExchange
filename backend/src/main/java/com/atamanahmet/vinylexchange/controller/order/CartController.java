@@ -2,9 +2,9 @@ package com.atamanahmet.vinylexchange.controller.order;
 
 import com.atamanahmet.vinylexchange.dto.order.AddToCartRequest;
 import com.atamanahmet.vinylexchange.dto.order.CartDTO;
+import com.atamanahmet.vinylexchange.dto.order.CheckoutRequest;
 import com.atamanahmet.vinylexchange.dto.order.CheckoutResponseDTO;
 import com.atamanahmet.vinylexchange.dto.order.UpdateCartItemRequest;
-import com.atamanahmet.vinylexchange.mapper.OrderMapper;
 import com.atamanahmet.vinylexchange.service.order.CartService;
 import com.atamanahmet.vinylexchange.service.order.CheckOutService;
 import com.atamanahmet.vinylexchange.session.UserUtil;
@@ -23,7 +23,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
-
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/cart")
@@ -41,31 +40,31 @@ public class CartController {
         public ResponseEntity<CartDTO> addToCart(@RequestBody @Valid AddToCartRequest request) {
                 return ResponseEntity.ok(cartService.addToCart(
                         UserUtil.getCurrentUserId(),
-                        request.listingId(),
+                        request.publicId(),
                         request.quantity()));
         }
 
         /**
          * Decrease item quantity by 1, removes item if quantity reaches 0
          */
-        @PatchMapping("/items/{listingId}")
-        public ResponseEntity<CartDTO> decreaseItemQuantity(@PathVariable UUID listingId) {
+        @PatchMapping("/items/{publicId}")
+        public ResponseEntity<CartDTO> decreaseItemQuantity(@PathVariable String publicId) {
                 return ResponseEntity
                         .ok(cartService.decreaseItemQuantity(
                         UserUtil.getCurrentUserId(),
-                        listingId));
+                        publicId));
         }
 
         /**
          * Set exact quantity for a cart item
          */
-        @PutMapping("/items/{listingId}/quantity")
+        @PutMapping("/items/{publicId}/quantity")
         public ResponseEntity<CartDTO> updateItemQuantity(
-                @PathVariable UUID listingId,
+                @PathVariable String publicId,
                 @RequestBody @Valid UpdateCartItemRequest request) {
                 return ResponseEntity.ok(cartService.updateCartItemQuantity(
                         UserUtil.getCurrentUserId(),
-                        listingId,
+                        publicId,
                         request));
         }
 
@@ -85,9 +84,10 @@ public class CartController {
          * Submits cart as orders, one order per seller
          */
         @PostMapping("/checkout")
-        public ResponseEntity<CheckoutResponseDTO> checkout() {
-                CheckoutResponseDTO response = OrderMapper.toCheckoutResponse(
-                        checkOutService.proceedCheckOut(UserUtil.getCurrentUserId()));
+        public ResponseEntity<CheckoutResponseDTO> checkout(@RequestBody @Valid CheckoutRequest request) {
+                CheckoutResponseDTO response = checkOutService.proceedCheckOut(
+                        UserUtil.getCurrentUserId(),
+                        request.shippingAddressId());
                 return ResponseEntity.status(HttpStatus.CREATED).body(response);
         }
 }

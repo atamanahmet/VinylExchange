@@ -21,6 +21,25 @@ public final class AddressSnapshotFormatter {
         }
     }
 
+    public static String toSummary(AddressSnapshot snapshot) {
+        if (snapshot == null) {
+            return null;
+        }
+        return format(snapshot);
+    }
+
+    /** Short checkout confirmation: full name, city, address line. */
+    public static String toCheckoutSummary(AddressSnapshot snapshot) {
+        if (snapshot == null) {
+            return null;
+        }
+        StringBuilder builder = new StringBuilder();
+        appendPart(builder, snapshot.fullName());
+        appendPart(builder, snapshot.city());
+        appendPart(builder, snapshot.addressLine());
+        return builder.isEmpty() ? null : builder.toString();
+    }
+
     private static String format(AddressSnapshot snapshot) {
         StringBuilder builder = new StringBuilder();
         appendPart(builder, snapshot.fullName());
