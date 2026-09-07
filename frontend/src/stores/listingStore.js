@@ -5,11 +5,14 @@ import { normalizeApiResponse } from "../utils/normalizeApiResponse";
 
 export const useListingStore = create((set, get) => ({
   publicListings: { items: [], pagination: null },
+  sellerListings: { items: [], pagination: null },
   myListings: { items: [], pagination: null },
   currentListing: null,
+  currentListingFetchSeq: 0,
   promotedListings: [],
 
   isFetchingPublic: false,
+  isFetchingSeller: false,
   isFetchingMine: false,
   isFetchingCurrent: false,
   isFetchingPromoted: false,
@@ -19,7 +22,12 @@ export const useListingStore = create((set, get) => ({
     set({ isFetchingPublic: true });
 
     try {
-      const res = await axios.get("/api/listings", { params });
+      const res = await axios.get("/api/listings", {
+        params,
+        paramsSerializer: {
+          indexes: null,
+        },
+      });
       if (res.status === 200) {
         const normalized = normalizeApiResponse(res.data);
         set({
@@ -39,6 +47,41 @@ export const useListingStore = create((set, get) => ({
       return false;
     } finally {
       set({ isFetchingPublic: false });
+    }
+  },
+
+  fetchSellerListings: async (username, params = {}) => {
+    if (!username || get().isFetchingSeller) return false;
+    set({ isFetchingSeller: true });
+
+    try {
+      const res = await axios.get(
+        `/api/listings/by-username/${encodeURIComponent(username)}`,
+        {
+          params,
+          paramsSerializer: {
+            indexes: null,
+          },
+        },
+      );
+      if (res.status === 200) {
+        const normalized = normalizeApiResponse(res.data);
+        set({
+          sellerListings: {
+            items: normalized.data,
+            pagination: normalized.pagination,
+          },
+        });
+        return true;
+      }
+      return false;
+    } catch (err) {
+      if (!err.response) {
+        useAppStore.getState().setBackendError(true);
+      }
+      return false;
+    } finally {
+      set({ isFetchingSeller: false });
     }
   },
 
@@ -70,23 +113,35 @@ export const useListingStore = create((set, get) => ({
   },
 
   fetchListing: async (listingId) => {
-    if (get().isFetchingCurrent) return false;
-    set({ isFetchingCurrent: true });
+    const requestSeq = get().currentListingFetchSeq + 1;
+    set({
+      isFetchingCurrent: true,
+      currentListing: null,
+      currentListingFetchSeq: requestSeq,
+    });
 
     try {
       const res = await axios.get(`/api/listings/${listingId}`);
+      if (get().currentListingFetchSeq !== requestSeq) {
+        return false;
+      }
       if (res.status === 200) {
         set({ currentListing: res.data });
         return true;
       }
       return false;
     } catch (err) {
+      if (get().currentListingFetchSeq === requestSeq) {
+        set({ currentListing: null });
+      }
       if (!err.response) {
         useAppStore.getState().setBackendError(true);
       }
       return false;
     } finally {
-      set({ isFetchingCurrent: false });
+      if (get().currentListingFetchSeq === requestSeq) {
+        set({ isFetchingCurrent: false });
+      }
     }
   },
 
