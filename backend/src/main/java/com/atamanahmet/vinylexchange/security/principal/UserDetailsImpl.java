@@ -58,6 +58,10 @@ public class UserDetailsImpl implements UserDetails {
         return user.getEmail();
     }
 
+    public String getPublicId() {
+        return user.getPublicId();
+    }
+
     public Set<RoleName> getRoles() {
 
         return authorities

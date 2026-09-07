@@ -22,18 +22,14 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public UserDetailsImpl loadUserByUsername(String username) {
-
-        User user = userRepository.findByUsername(username)
+        User user = userRepository.findByUsernameWithRoles(username)
                 .orElseThrow(NoCurrentUserException::new);
-
         return new UserDetailsImpl(user);
     }
 
     public UserDetailsImpl loadUserByUserId(UUID userId) {
-
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdWithRoles(userId)
                 .orElseThrow(NoCurrentUserException::new);
-
         return new UserDetailsImpl(user);
     }
 }

@@ -57,8 +57,7 @@ public class AuthService {
                 userPrincipal.getUsername(),
                 userPrincipal.getRoles());
 
-        return new AuthResponse(
-                new UserDTO(userPrincipal.getUsername(), userPrincipal.getEmail()), token);
+        return new AuthResponse(new UserDTO(userPrincipal), token);
     }
 
     public AuthResponse registerUser(RegisterRequest registerRequest, Role role) {
@@ -84,8 +83,7 @@ public class AuthService {
 
         String token = jwtTokenUtil.generateToken(savedUser);
 
-        return new AuthResponse(
-                new UserDTO(savedUser.getUsername(), savedUser.getEmail()), token);
+        return new AuthResponse(new UserDTO(savedUser), token);
     }
 
     public void validateRegistration(RegisterRequest registerRequest) {
