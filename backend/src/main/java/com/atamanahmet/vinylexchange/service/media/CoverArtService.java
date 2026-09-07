@@ -4,6 +4,7 @@ import com.atamanahmet.vinylexchange.dto.musicbrainz.CoverArtResponse;
 import com.atamanahmet.vinylexchange.dto.musicbrainz.ImageMeta;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -21,6 +22,7 @@ public class CoverArtService {
      * Fetches front cover URL from coverartarchive.org
      * Returns null if not found, caller decides what to do
      */
+    @Cacheable(value = "coverArtUrls", key = "#mbId", condition = "#mbId != null")
     public String fetchCoverUrl(UUID mbId) {
         if (mbId == null) return null;
 

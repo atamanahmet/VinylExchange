@@ -26,6 +26,9 @@ public class ListingImage {
     /** url served to frontend */
     private String secureUrl;
 
+    /** local fallback path for demo/seeded listings, null for user uploads */
+    private String fallbackUrl;
+
     /** display order */
     private int position;
 

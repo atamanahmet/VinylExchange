@@ -34,7 +34,7 @@ public class ImageCompressionService {
 
         for (ImageSource image : images) {
 
-            byte[] originalBytes = image.getInputStream().readAllBytes();
+            byte[] originalBytes = image.getData();
 
             System.out.println(image.getSize() + "byte");
 

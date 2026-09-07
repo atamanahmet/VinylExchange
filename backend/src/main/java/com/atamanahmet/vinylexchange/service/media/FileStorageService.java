@@ -1,6 +1,5 @@
 package com.atamanahmet.vinylexchange.service.media;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 import java.nio.charset.StandardCharsets;
@@ -39,13 +38,10 @@ import lombok.RequiredArgsConstructor;
 public class FileStorageService {
 
     @Value("${file.upload-listing-dir}")
-    private String UPLOAD_LISTING_DIR;
-
-    @Value("${file.upload-placeholder-dir}")
-    private String UPLOAD_PLACEHOLDER_DIR;
+    private String uploadListingDir;
 
     @Value("${app.base-url}")
-    private String BASE_URL;
+    private String baseUrl;
 
 
     private final ImageCompressionService imageCompressionService;
@@ -86,7 +82,7 @@ public class FileStorageService {
             List<CompressedImage> compressedImages,
             UUID listingId) throws IOException {
 
-        Path listingFolder = Paths.get(UPLOAD_LISTING_DIR).resolve(listingId.toString()).toAbsolutePath();
+        Path listingFolder = Paths.get(uploadListingDir).resolve(listingId.toString()).toAbsolutePath();
 
         List<String> savedPaths = new ArrayList<>();
 
@@ -100,14 +96,14 @@ public class FileStorageService {
 
                 Files.write(path, image.getImage());
 
-                String fullPath = BASE_URL + "/uploads/listings/"
+                String fullPath = baseUrl + "/uploads/listings/"
                         + listingId + "/" + image.getFileName();
 
                 savedPaths.add(fullPath);
 
             } catch (IOException e) {
                 log.error("Directory create or file write failed: {}", e.getMessage());
-                throw new RuntimeException("COmpressed images save failed: " + e.getMessage());
+                throw new RuntimeException("Compressed images save failed: " + e.getMessage());
             }
         }
         return savedPaths;
@@ -115,7 +111,7 @@ public class FileStorageService {
 
     public List<String> getListingImagePaths(UUID listingId) {
 
-        Path listingFolder = Paths.get(UPLOAD_LISTING_DIR).resolve(listingId.toString()).toAbsolutePath();
+        Path listingFolder = Paths.get(uploadListingDir).resolve(listingId.toString()).toAbsolutePath();
 
         if (!Files.exists(listingFolder)) {
             log.debug("No image folder found for listing: {}", listingId);
@@ -131,7 +127,7 @@ public class FileStorageService {
                     .map(Path::getFileName)
                     .map(Path::toString)
                     .sorted()
-                    .map(filename -> BASE_URL + "/uploads/listings/" + listingId + "/" + filename)
+                    .map(filename -> baseUrl + "/uploads/listings/" + listingId + "/" + filename)
 
                     .collect(Collectors.toList());
         } catch (IOException e) {
@@ -141,12 +137,12 @@ public class FileStorageService {
     }
 
     public void deleteImage(UUID listingId, String filename) throws IOException {
-        Path imagePath = Paths.get(UPLOAD_LISTING_DIR)
+        Path imagePath = Paths.get(uploadListingDir)
                 .resolve(listingId.toString())
                 .resolve(filename)
                 .toAbsolutePath();
 
-        if (!imagePath.startsWith(Paths.get(UPLOAD_LISTING_DIR).toAbsolutePath())) {
+        if (!imagePath.startsWith(Paths.get(uploadListingDir).toAbsolutePath())) {
             throw new SecurityException("Invalid file path");
         }
 
@@ -174,7 +170,7 @@ public class FileStorageService {
     }
 
     public void deleteListingImages(UUID listingId) {
-        Path listingFolder = Paths.get(UPLOAD_LISTING_DIR)
+        Path listingFolder = Paths.get(uploadListingDir)
                 .resolve(listingId.toString())
                 .toAbsolutePath();
 
@@ -193,7 +189,7 @@ public class FileStorageService {
 
     public String getMainImagePath(UUID listingId) {
 
-        Path listingFolder = Paths.get(UPLOAD_LISTING_DIR).resolve(listingId.toString()).toAbsolutePath();
+        Path listingFolder = Paths.get(uploadListingDir).resolve(listingId.toString()).toAbsolutePath();
 
         if (!Files.exists(listingFolder)) {
             log.debug("No image folder found for listing: {}", listingId);
@@ -206,7 +202,7 @@ public class FileStorageService {
                     .filter(path -> isImageFile(path.getFileName().toString()))
                     .sorted()
                     .findFirst() // first image only as a mainImg
-                    .map(path -> BASE_URL + "/uploads/listings/" + listingId + "/" + path.getFileName().toString())
+                    .map(path -> baseUrl + "/uploads/listings/" + listingId + "/" + path.getFileName().toString())
                     .orElse(null); // null if no images found
         } catch (IOException e) {
             log.error("read eror for main image {}: {}", listingId, e.getMessage());
@@ -222,7 +218,7 @@ public class FileStorageService {
 
             return Files.readString(path, StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw new RuntimeException("COntent file read error");
+            throw new RuntimeException("Content file read error");
         }
     }
 
@@ -242,7 +238,7 @@ public class FileStorageService {
                 return null;
 
             return new ImageSource(
-                    new ByteArrayInputStream(bytes),
+                    bytes,
                     "cover.jpg",
                     "image/jpeg",
                     bytes.length);
@@ -252,56 +248,5 @@ public class FileStorageService {
             return null;
         }
     }
-
-    public void savePlaceholderImage(ImageSource imageSource, UUID mbId) throws IOException {
-        if (imageSource == null) return;
-
-        Path placeholderFolder = Paths.get(UPLOAD_PLACEHOLDER_DIR)
-                .resolve(mbId.toString())
-                .toAbsolutePath();
-
-        if (Files.exists(placeholderFolder)) return;
-
-        Files.createDirectories(placeholderFolder);
-
-        Path filePath = placeholderFolder.resolve(imageSource.getOriginalFilename());
-        Files.copy(imageSource.getInputStream(), filePath);
-
-        log.info("Placeholder coverArt saved for mbId: {}", mbId);
-    }
-
-    public List<String> getPlaceholderImagePaths(UUID mbId) {
-
-        if(mbId==null){
-            return Collections.emptyList();
-        }
-
-        Path folder = Paths.get(UPLOAD_PLACEHOLDER_DIR)
-                .resolve(mbId.toString())
-                .toAbsolutePath();
-
-        if (!Files.exists(folder)) {
-            return Collections.emptyList();
-        }
-
-        try (Stream<Path> paths = Files.list(folder)) {
-
-            return paths
-                    .filter(Files::isRegularFile)
-                    .filter(path -> isImageFile(path.getFileName().toString()))
-                    .sorted()
-                    .map(path -> BASE_URL + "/uploads/placeholders/"
-                            + mbId + "/"
-                            + path.getFileName().toString())
-                    .collect(Collectors.toList());
-
-        } catch (IOException e) {
-            log.error("Failed to read placeholder images for mbId {}: {}", mbId, e.getMessage());
-            return Collections.emptyList();
-        }
-    }
-
-
-
 
 }
