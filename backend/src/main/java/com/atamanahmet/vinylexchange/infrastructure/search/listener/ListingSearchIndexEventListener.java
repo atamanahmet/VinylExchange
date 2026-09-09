@@ -1,5 +1,6 @@
 package com.atamanahmet.vinylexchange.infrastructure.search.listener;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "opensearch.enabled", havingValue = "true")
 public class ListingSearchIndexEventListener {
 
     private final OpenSearchIndexService openSearchIndexService;
