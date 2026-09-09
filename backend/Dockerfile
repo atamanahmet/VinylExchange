@@ -9,4 +9,4 @@ FROM amazoncorretto:17
 WORKDIR /app
 COPY --from=build /app/target/vinyl-exchange-0.0.1.jar app.jar
 EXPOSE 10000
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Xmx350m", "-XX:MaxMetaspaceSize=128m", "-jar", "app.jar"]
