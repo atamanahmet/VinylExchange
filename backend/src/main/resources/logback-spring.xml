@@ -1,50 +1,32 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<configuration>
+<springProfile name="prod">
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"service":"${appName}"}</customFields>
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+            <includeMdcKeyName>userId</includeMdcKeyName>
+        </encoder>
+    </appender>
 
-    <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="vinyl-exchange"/>
+    <!-- Loki disabled, no instance running yet, re-enable once one exists
+    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+        <http>
+            <url>${LOKI_URL}/loki/api/v1/push</url>
+            <auth>
+                <username>${LOKI_USERNAME}</username>
+                <password>${LOKI_PASSWORD}</password>
+            </auth>
+        </http>
+        <format>
+            <label>
+                <pattern>service=vinyl-exchange,level=%level,host=${HOSTNAME}</pattern>
+            </label>
+            <message class="com.github.loki4j.logback.JsonLayout"/>
+        </format>
+    </appender>
+    -->
 
-    <!-- Plain text for local dev -->
-    <springProfile name="dev,default">
-        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-            <encoder>
-                <pattern>%d{HH:mm:ss} %-5level [%X{traceId:-}] [%X{userId:-}] [%logger{36}] %msg%n</pattern>
-            </encoder>
-        </appender>
-        <root level="INFO">
-            <appender-ref ref="CONSOLE"/>
-        </root>
-    </springProfile>
-
-    <!-- JSON console for non-local profiles -->
-    <springProfile name="prod">
-        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-                <customFields>{"service":"${appName}"}</customFields>
-                <includeMdcKeyName>traceId</includeMdcKeyName>
-                <includeMdcKeyName>userId</includeMdcKeyName>
-            </encoder>
-        </appender>
-
-        <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
-            <http>
-                <url>${LOKI_URL}/loki/api/v1/push</url>
-                <auth>
-                    <username>${LOKI_USERNAME}</username>
-                    <password>${LOKI_PASSWORD}</password>
-                </auth>
-            </http>
-            <format>
-                <label>
-                    <pattern>service=vinyl-exchange,level=%level,host=${HOSTNAME}</pattern>
-                </label>
-                <message class="com.github.loki4j.logback.JsonLayout"/>
-            </format>
-        </appender>
-
-        <root level="INFO">
-            <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="LOKI"/>
-        </root>
-    </springProfile>
-
-</configuration>
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+        <!-- <appender-ref ref="LOKI"/> -->
+    </root>
+</springProfile>
