@@ -23,6 +23,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +39,9 @@ public class SecurityConfig implements WebMvcConfigurer {
 
     @Value("${file.upload-cms-dir}")
     private String uploadCmsDir;
+
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
 
     private final JWTAuthFilter jwtAuthFilter;
     private final MdcLoggingFilter mdcLoggingFilter;
@@ -64,8 +68,8 @@ public class SecurityConfig implements WebMvcConfigurer {
             "/actuator/health"
     };
 
-    // --- allowed CORS origins ---
-    private static final List<String> ALLOWED_ORIGINS = List.of(
+    // --- fixed CORS origins, dev and Iyzico never change ---
+    private static final List<String> FIXED_ORIGINS = List.of(
             "http://localhost:5173",
             "http://localhost",
             "https://sandbox-api.iyzipay.com",
@@ -105,8 +109,11 @@ public class SecurityConfig implements WebMvcConfigurer {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+        List<String> allowedOrigins = new ArrayList<>(FIXED_ORIGINS);
+        allowedOrigins.add(frontendUrl);
+
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(ALLOWED_ORIGINS);
+        config.setAllowedOrigins(allowedOrigins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
