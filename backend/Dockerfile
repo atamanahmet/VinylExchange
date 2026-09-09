@@ -7,8 +7,6 @@ RUN mvn package -DskipTests -B
 
 FROM amazoncorretto:17
 WORKDIR /app
-RUN yum install -y curl && yum clean all
 COPY --from=build /app/target/vinyl-exchange-0.0.1.jar app.jar
-VOLUME /app/uploads
-EXPOSE 8080
+EXPOSE 10000
 ENTRYPOINT ["java", "-jar", "app.jar"]

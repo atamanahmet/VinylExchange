@@ -1,0 +1,92 @@
+spring:
+  application:
+    name: vinyl-exchange
+
+  datasource:
+    # sslmode default is "prefer" so local Postgres (no SSL configured) still connects.
+    # Cloud environments override DB_SSLMODE to "require" via env var, not hardcoded here.
+    url: jdbc:postgresql://${DB_HOST}:${POSTGRES_PORT}/${DB_NAME}?sslmode=${DB_SSLMODE:prefer}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      # Small pool on purpose, Neon free tier and Render free tier both cap concurrent
+      # connections low. Default Spring Boot pool size of 10 is too aggressive here.
+      maximum-pool-size: ${DB_POOL_MAX:5}
+      minimum-idle: ${DB_POOL_MIN_IDLE:1}
+      connection-timeout: 10000
+
+  jpa:
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
+
+  cache:
+    type: redis
+
+  servlet:
+    multipart:
+      max-file-size: 38MB
+      max-request-size: 38MB
+
+server:
+  port: ${SERVER_PORT}
+  error:
+    include-message: always
+    include-binding-errors: always
+
+jwt:
+  expiration: ${JWT_EXPIRATION}
+  secret: ${JWT_SECRET}
+
+aes:
+  encryption:
+    key: ${AES_ENCRYPTION_KEY}
+
+app:
+  base-url: ${APP_BASE_URL:http://localhost:${SERVER_PORT}}
+  frontend-url: ${FRONTEND_URL}
+  storage:
+    local-fallback-enabled: ${LOCAL_FALLBACK_ENABLED:false}
+
+admin:
+  test:
+    email: ${ADMIN_TEST_EMAIL}
+    password: ${ADMIN_TEST_PASSWORD}
+
+file:
+  upload-listing-dir: uploads/listings/
+  upload-cms-dir: uploads/cms/
+  demo-covers-dir: src/main/resources/demo/covers/
+  image:
+    url-path: /uploads/listings/
+
+musicbrainz:
+  base-url: https://musicbrainz.org/ws/2/release
+  user-agent: testApp/0.1 (+https://github.com/atamanahmet/VinylExchange)
+  rate-limit:
+    enabled: true
+    min-interval-ms: 1100
+
+basitkargo:
+  api-token: ${BASITKARGO_API_TOKEN:placeholder}
+
+shipment:
+  webhook:
+    secret: ${SHIPMENT_WEBHOOK_SECRET:placeholder}
+
+cloudinary:
+  url: ${CLOUDINARY_URL}
