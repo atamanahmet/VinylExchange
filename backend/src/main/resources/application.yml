@@ -95,3 +95,6 @@ shipment:
 
 cloudinary:
   url: ${CLOUDINARY_URL}
+
+opensearch:
+  enabled: ${OPENSEARCH_ENABLED:false}

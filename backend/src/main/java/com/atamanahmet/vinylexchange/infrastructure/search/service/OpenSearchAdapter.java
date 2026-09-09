@@ -29,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "opensearch.enabled", havingValue = "true")
 public class OpenSearchAdapter implements SearchPort {
 
     private static final String INDEX_NAME = "listings";
