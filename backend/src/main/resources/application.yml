@@ -48,6 +48,11 @@ server:
     include-message: always
     include-binding-errors: always
 
+management:
+  health:
+    redis:
+      enabled: false
+
 jwt:
   expiration: ${JWT_EXPIRATION}
   secret: ${JWT_SECRET}
