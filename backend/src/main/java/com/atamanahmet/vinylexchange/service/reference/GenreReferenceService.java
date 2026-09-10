@@ -24,7 +24,7 @@ public class GenreReferenceService {
     private final GenreRepository genreRepository;
 
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = "genreOptions", key = "#locale.toLanguageTag() + '-' + #includeLocal")
+    @Cacheable(cacheNames = "genreOptions", key = "#locale.toLanguageTag() + '-' + #includeLocal", cacheManager = "readCacheManager")
     public List<GenreOptionDto> getGenreOptions(Locale locale, boolean includeLocal) {
         List<Genre> genres = genreRepository.findAllWithParent();
 

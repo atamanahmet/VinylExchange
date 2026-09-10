@@ -22,7 +22,7 @@ public class CoverArtService {
      * Fetches front cover URL from coverartarchive.org
      * Returns null if not found, caller decides what to do
      */
-    @Cacheable(value = "coverArtUrls", key = "#mbId", condition = "#mbId != null")
+    @Cacheable(value = "coverArtUrls", key = "#mbId", condition = "#mbId != null", cacheManager = "readCacheManager")
     public String fetchCoverUrl(UUID mbId) {
         if (mbId == null) return null;
 

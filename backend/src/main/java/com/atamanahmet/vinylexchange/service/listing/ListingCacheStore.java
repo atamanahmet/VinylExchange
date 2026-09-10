@@ -24,7 +24,7 @@ public class ListingCacheStore {
     /**
      * Fetches up to 60 available listings for given sort, result stored in Redis
      */
-    @Cacheable(value = "listings", key = "#pageable.sort.toString()")
+    @Cacheable(value = "listings", key = "#pageable.sort.toString()", cacheManager = "readCacheManager")
     public List<ListingSummaryDto> getTop60ForSort(Pageable pageable) {
         Pageable maxPage = PageRequest.of(0, 60, pageable.getSort());
         return listingRepository.findAllWithStatus(ListingStatus.AVAILABLE, maxPage)

@@ -14,7 +14,7 @@ import com.atamanahmet.vinylexchange.dto.reference.EnumOptionDto;
 @Service
 public class CountryReferenceService {
 
-    @Cacheable(cacheNames = "countryOptions", key = "#locale.toLanguageTag()")
+    @Cacheable(cacheNames = "countryOptions", key = "#locale.toLanguageTag()", cacheManager = "readCacheManager")
     public List<EnumOptionDto> getCountryOptions(Locale locale) {
         return Arrays.stream(Country.values())
                 .sorted(Comparator

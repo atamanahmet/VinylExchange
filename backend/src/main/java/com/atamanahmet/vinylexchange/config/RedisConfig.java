@@ -2,11 +2,13 @@ package com.atamanahmet.vinylexchange.config;
 
 import java.time.Duration;
 
-import org.springframework.boot.autoconfigure.cache.RedisCacheManagerBuilderCustomizer;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
+import org.springframework.data.redis.cache.RedisCacheManager;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.RedisSerializer;
@@ -24,30 +26,45 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 public class RedisConfig {
 
     /**
-     * Safety-net expiry only. Mutations use {@code @CacheEvict} to rebuild immediately;
-     * TTL exists so a missed eviction cannot leave data forever.
+     * Safety net expiry only, mutations use CacheEvict to rebuild right away
      */
     private static final Duration CACHE_TTL = Duration.ofHours(24);
 
+    /**
+     * Write path manager, transaction aware, only the 9 CacheEvict on ListingService use this
+     */
+    @Primary
     @Bean
-    public RedisCacheManagerBuilderCustomizer redisCacheManagerBuilderCustomizer() {
+    public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
         RedisSerializer<Object> jsonSerializer = redisJsonSerializer();
-        RedisCacheConfiguration defaults = baseCacheConfig(jsonSerializer).entryTtl(CACHE_TTL);
-
-        return builder -> builder
-                .cacheDefaults(defaults)
+        return RedisCacheManager.builder(connectionFactory)
+                .cacheDefaults(cacheConfig(jsonSerializer))
                 .transactionAware()
-                .withCacheConfiguration("listings",
-                        baseCacheConfig(jsonSerializer).entryTtl(CACHE_TTL))
-                .withCacheConfiguration("countryOptions",
-                        baseCacheConfig(jsonSerializer).entryTtl(CACHE_TTL))
-                .withCacheConfiguration("genreOptions",
-                        baseCacheConfig(jsonSerializer).entryTtl(CACHE_TTL));
+                .build();
     }
 
     /**
-     * Dedicated Redis ObjectMapper — never reuse the HTTP ObjectMapper (typing would leak to APIs).
-     * DefaultTyping.EVERYTHING required because cached DTOs are Java records (final).
+     * Read only manager, not transaction aware, put runs inside CacheInterceptor so SoftFailCacheErrorHandler can catch a Redis failure
+     */
+    @Bean
+    public RedisCacheManager readCacheManager(RedisConnectionFactory connectionFactory) {
+        RedisSerializer<Object> jsonSerializer = redisJsonSerializer();
+        return RedisCacheManager.builder(connectionFactory)
+                .cacheDefaults(cacheConfig(jsonSerializer))
+                .withCacheConfiguration("listings", cacheConfig(jsonSerializer))
+                .withCacheConfiguration("countryOptions", cacheConfig(jsonSerializer))
+                .withCacheConfiguration("genreOptions", cacheConfig(jsonSerializer))
+                .withCacheConfiguration("coverArtUrls", cacheConfig(jsonSerializer))
+                .build();
+    }
+
+    private static RedisCacheConfiguration cacheConfig(RedisSerializer<Object> valueSerializer) {
+        return baseCacheConfig(valueSerializer).entryTtl(CACHE_TTL);
+    }
+
+    /**
+     * Dedicated Redis ObjectMapper, never reuse the HTTP ObjectMapper, typing would leak to APIs
+     * DefaultTyping EVERYTHING needed because cached DTOs are Java records
      */
     private static RedisSerializer<Object> redisJsonSerializer() {
         PolymorphicTypeValidator typeValidator = BasicPolymorphicTypeValidator.builder()
@@ -57,7 +74,6 @@ public class RedisConfig {
                 .allowIfSubType("java.time.")
                 .allowIfSubType("java.math.")
                 .build();
-
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -65,7 +81,6 @@ public class RedisConfig {
                 typeValidator,
                 ObjectMapper.DefaultTyping.EVERYTHING,
                 JsonTypeInfo.As.PROPERTY);
-
         return new GenericJackson2JsonRedisSerializer(mapper);
     }
 
