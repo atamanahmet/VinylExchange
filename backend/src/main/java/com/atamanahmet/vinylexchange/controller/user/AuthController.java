@@ -19,7 +19,6 @@ import com.atamanahmet.vinylexchange.security.util.JwtCookieUtil;
 
 import com.atamanahmet.vinylexchange.dto.user.UserDTO;
 
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 
 import jakarta.validation.Valid;
@@ -39,9 +38,7 @@ public class AuthController {
 
         AuthResponse authResponseDTO = authService.registerUser(registerRequest, null);
 
-        Cookie cookie = jwtCookieUtil.createJwtCookie(authResponseDTO.token());
-
-        response.addCookie(cookie);
+        jwtCookieUtil.addJwtCookie(authResponseDTO.token(), response);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -55,9 +52,7 @@ public class AuthController {
 
         AuthResponse authResponseDTO = authService.authenticateUser(loginRequest);
 
-        Cookie cookie = jwtCookieUtil.createJwtCookie(authResponseDTO.token());
-
-        response.addCookie(cookie);
+        jwtCookieUtil.addJwtCookie(authResponseDTO.token(), response);
 
         return ResponseEntity
                 .status(HttpStatus.OK)

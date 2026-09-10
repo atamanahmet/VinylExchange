@@ -2,14 +2,14 @@ package com.atamanahmet.vinylexchange.security.util;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
-
-import com.auth0.jwt.exceptions.JWTVerificationException;
+import org.springframework.util.StringUtils;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.util.StringUtils;
 
 @Component
 public class JwtCookieUtil {
@@ -20,31 +20,38 @@ public class JwtCookieUtil {
 
     private static final int COOKIE_MAX_AGE_SECONDS = 60 * 60;
 
-    public Cookie createJwtCookie(String token) {
-
-        Cookie cookie = new Cookie("jwt", token);
-
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true); // https
-        cookie.setPath("/");
-        cookie.setMaxAge(COOKIE_MAX_AGE_SECONDS);
-//        cookie.setAttribute("SameSite", "Strict");
-
-        return cookie;
+    /**
+     * Writes the JWT cookie onto the response.
+     */
+    public void addJwtCookie(String token, HttpServletResponse response) {
+        ResponseCookie cookie = buildCookie(token, COOKIE_MAX_AGE_SECONDS);
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
+    /**
+     * Clears the JWT cookie on the response.
+     */
     public void revokeJwtCookie(HttpServletResponse response) {
+        ResponseCookie cookie = buildCookie("", 0);
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
 
-        Cookie cookie = new Cookie("jwt", null);
-
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true); // https
-        cookie.setPath("/");
-        cookie.setMaxAge(0); // cookie removal
-//        cookie.setAttribute("SameSite", "Strict");
-
-
-        response.addCookie(cookie);
+    /**
+     * SameSite=None is required because frontend and backend live on different
+     * subdomains of a public suffix list domain, so the browser treats them as
+     * cross-site. Lax or an unset SameSite would silently drop the cookie.
+     * 
+     * Long-term fix is moving frontend/backend under an owned domain to 
+     * make them same-site again.
+     */
+    private ResponseCookie buildCookie(String value, int maxAgeSeconds) {
+        return ResponseCookie.from(JWT_COOKIE_NAME, value)
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("None")
+                .path("/")
+                .maxAge(maxAgeSeconds)
+                .build();
     }
 
     /**
