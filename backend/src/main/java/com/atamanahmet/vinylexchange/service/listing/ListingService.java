@@ -93,7 +93,9 @@ public class ListingService {
                 .map(listingMapper::toResponse)
                 .toList();
 
-        return new PageImpl<>(slice, pageable, cached.size());
+        // Total must be the real count, not the cached window, otherwise every
+        // listing past the cached 60 becomes unreachable (no page 2 is offered).
+        return new PageImpl<>(slice, pageable, listingCacheStore.countAvailable());
     }
 
     @Transactional(readOnly = true)
@@ -103,6 +105,7 @@ public class ListingService {
         }
 
         Specification<Listing> spec = ListingSpecifications.isPubliclyAvailable()
+                .and(ListingSpecifications.fetchOwner())
                 .and(ListingSpecifications.hasCountry(criteria.country()))
                 .and(ListingSpecifications.hasFormat(criteria.format()))
                 .and(ListingSpecifications.hasSpeedRpm(criteria.speedRpm()))
@@ -439,7 +442,7 @@ public class ListingService {
     }
 
     public List<ListingDTO> getUserListingsWithStatus(UUID ownerId, ListingStatus status) {
-        return listingRepository.findAllByOwner_IdAndStatus(ownerId, status)
+        return listingRepository.findAllByOwner_IdAndStatusOrderByCreatedAtDesc(ownerId, status)
                 .stream().map(listingMapper::toDTO).toList();
     }
 

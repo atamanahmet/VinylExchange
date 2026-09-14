@@ -7,6 +7,7 @@ import java.util.UUID;
 import com.atamanahmet.vinylexchange.domain.entity.Listing;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
@@ -21,7 +22,15 @@ import jakarta.persistence.LockModeType;
 @Repository
 public interface ListingRepository extends JpaRepository<Listing, UUID>, JpaSpecificationExecutor<Listing> {
 
-        List<Listing> findAllByOwner_IdAndStatus(UUID ownerId, ListingStatus status);
+        /**
+         * Owner listings for the account pages. Genres and trade preferences are
+         * fetched eagerly because ListingDTO reads both, which otherwise costs
+         * two extra queries per listing. Newest first, otherwise the row order is
+         * whatever the database returns and shifts between requests.
+         */
+        @EntityGraph(attributePaths = { "genres", "tradePreferences" })
+        List<Listing> findAllByOwner_IdAndStatusOrderByCreatedAtDesc(
+                        UUID ownerId, ListingStatus status);
 
         List<Listing> findAllByIdIn(List<UUID> listingIds);
 
@@ -57,10 +66,20 @@ Optional<Listing> findByIdWithImages(@Param("id") UUID id);
                 @Param("listingId") UUID listingId,
                 @Param("status") ListingStatus status);
 
-        @Query("SELECT l FROM Listing l " +
+        /**
+         * Owner is joined because it is an EAGER @ManyToOne and the summary DTO
+         * reads its username, so without the fetch Hibernate issues one extra
+         * select per listing.
+         */
+        @Query(value = "SELECT l FROM Listing l " +
+                "LEFT JOIN FETCH l.owner " +
                 "WHERE l.stockQuantity > 0 " +
                 "AND l.status = :status " +
-                "AND l.onHold = false")
+                "AND l.onHold = false",
+                countQuery = "SELECT COUNT(l) FROM Listing l " +
+                        "WHERE l.stockQuantity > 0 " +
+                        "AND l.status = :status " +
+                        "AND l.onHold = false")
         Page<Listing> findAllWithStatus(
                 @Param("status") ListingStatus status, Pageable pageable);
 
