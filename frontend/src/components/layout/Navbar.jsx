@@ -21,6 +21,7 @@ export default function Navbar() {
 
   const clearSearch = useSearchStore((state) => state.clearSearch);
   const startListingSearch = useSearchStore((state) => state.startListingSearch);
+  const lastListingQuery = useSearchStore((state) => state.lastListingQuery);
 
   const openLogin = useUIStore((state) => state.openLogin);
   const navbarActive = useUIStore((state) => state.navbarActive);
@@ -40,13 +41,20 @@ export default function Navbar() {
   );
   const markAsRead = useNotificationStore((state) => state.markAsRead);
 
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(lastListingQuery ?? "");
+  const [trackedQuery, setTrackedQuery] = useState(lastListingQuery);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const [isNotificationMenuOpen, setIsNotificationMenuOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+
+  // Mirror searches started elsewhere (artist links, logo reset) into the input.
+  if (trackedQuery !== lastListingQuery) {
+    setTrackedQuery(lastListingQuery);
+    setQuery(lastListingQuery ?? "");
+  }
 
   const handleSearch = (e) => {
     if (e) e.preventDefault();

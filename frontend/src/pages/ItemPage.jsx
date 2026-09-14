@@ -13,6 +13,7 @@ import dayjs from "dayjs";
 
 import axios from "@/api/axiosInstance";
 
+import ArtistLink from "@/components/listing/ArtistLink";
 import ImageGallery from "@/components/shared/ImageGallery";
 import { Button } from "@/components/ui/button";
 import {
@@ -287,9 +288,10 @@ export default function ItemPage() {
                 {listing.title}
               </CardTitle>
               {listing.artistName && (
-                <p className="text-base font-medium text-accent-text sm:text-lg">
-                  {listing.artistName}
-                </p>
+                <ArtistLink
+                  artist={listing.artistName}
+                  className="text-base font-medium text-accent-text sm:text-lg"
+                />
               )}
             </CardHeader>
 

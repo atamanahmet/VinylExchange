@@ -9,6 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import AdaptiveCardTitle from "./AdaptiveCardTitle";
+import ArtistLink from "./ArtistLink";
 import CardActionButtons from "./CardActionButtons";
 import CardImage from "./CardImage";
 
@@ -73,7 +74,10 @@ export default function ListingCard({ item, onSelect, className }) {
         />
 
         <CardText accent title={item.artist} centered={centered}>
-          {item.artist}
+          <ArtistLink
+            artist={item.artist}
+            className={cn("block w-full truncate", centered && "text-center")}
+          />
         </CardText>
 
         <CardText centered={centered} title={item.format}>
