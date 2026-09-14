@@ -6,11 +6,13 @@ import AccountHeader from "@/components/account/AccountHeader";
 import AccountOrdersSection from "@/components/account/AccountOrdersSection";
 import AccountAddressesSection from "@/components/account/AccountAddressesSection";
 import AccountPaymentsSection from "@/components/account/AccountPaymentsSection";
+import AccountSecuritySection from "@/components/account/AccountSecuritySection";
 import { useAuthStore } from "@/stores/authStore";
 
 function resolveAccountSection(pathname) {
   if (pathname.endsWith("/addresses")) return "addresses";
   if (pathname.endsWith("/payments")) return "payments";
+  if (pathname.endsWith("/security")) return "security";
   return "orders";
 }
 
@@ -24,7 +26,7 @@ export default function AccountPage() {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      navigate("/");
+      navigate("/login", { replace: true });
     }
   }, [isLoading, user, navigate]);
 
@@ -42,6 +44,7 @@ export default function AccountPage() {
             <AccountHeader />
             {section === "addresses" && <AccountAddressesSection />}
             {section === "payments" && <AccountPaymentsSection />}
+            {section === "security" && <AccountSecuritySection />}
             {section === "orders" && <AccountOrdersSection />}
           </div>
         </div>

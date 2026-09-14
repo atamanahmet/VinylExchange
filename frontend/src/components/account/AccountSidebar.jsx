@@ -9,7 +9,7 @@ const NAV_ITEM_CLASS =
 const NAV_ITEMS = [
   { id: "orders", label: "My orders", to: "/account" },
   { id: "addresses", label: "Your addresses", to: "/account/addresses" },
-  { id: "security", label: "Login & security", stub: true },
+  { id: "security", label: "Login & security", to: "/account/security" },
   { id: "payments", label: "Payments", to: "/account/payments" },
   { id: "archived", label: "Archived orders", stub: true },
   { id: "saved", label: "Saved items", to: "/wishlist" },

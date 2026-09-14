@@ -10,6 +10,7 @@ import ConversationsPage from "../pages/ConversationsPage";
 import ItemPage from "../pages/ItemPage";
 import ListingForm from "../pages/ListingForm";
 import ListingsPage from "../pages/ListingsPage";
+import LoginPage from "../pages/LoginPage";
 import MainPage from "../pages/MainPage";
 import OrderDetailPage from "../pages/OrderDetailsPage";
 import OrdersPage from "../pages/OrdersPage";
@@ -44,7 +45,7 @@ function ProtectedRoute() {
   }
 
   if (!user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return <Outlet />;
@@ -54,6 +55,7 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<MainPage />} />
+      <Route path="/login" element={<LoginPage />} />
       <Route path="/about" element={<About />} />
       <Route path="/listings" element={<ListingsPage />} />
       <Route path="/terms" element={<TermsAndConditions />} />
@@ -81,6 +83,7 @@ export function AppRoutes() {
         <Route path="/account" element={<AccountPage />} />
         <Route path="/account/addresses" element={<AccountPage />} />
         <Route path="/account/payments" element={<AccountPage />} />
+        <Route path="/account/security" element={<AccountPage />} />
       </Route>
     </Routes>
   );

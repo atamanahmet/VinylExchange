@@ -119,6 +119,34 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
+  changePassword: async ({ currentPassword, newPassword }) => {
+    try {
+      const res = await axios.patch(
+        "/api/account/password",
+        { currentPassword, newPassword },
+        { withCredentials: true },
+      );
+
+      if (res.status === 204) {
+        sessionStorage.clear();
+        set({ user: null });
+        return { success: true };
+      }
+
+      return {
+        success: false,
+        message: "Could not change password. Try again.",
+        errorType: "server",
+      };
+    } catch (error) {
+      const mapped = mapAuthError(error, {
+        credentialsMessage: "Sign in again to change your password.",
+        fallbackMessage: "Could not change password. Try again.",
+      });
+      return { success: false, ...mapped };
+    }
+  },
+
   logOut: async () => {
     try {
       const res = await axios.post("/logout", null, {
