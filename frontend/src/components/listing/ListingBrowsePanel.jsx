@@ -100,7 +100,12 @@ export default function ListingBrowsePanel({
 
   const showListLayout = layout === "list" && isLargeScreen;
   const showGridLayout = layout === "grid" || !isLargeScreen;
+
+  // One flag pair for header, skeletons and rows, otherwise columns drift apart.
   const listViewShowsPrice = true;
+  const listViewShowsActions = isLoading
+    ? true
+    : items.some((item) => item.primaryAction || item.secondaryAction);
 
   const viewToggleClass = (active) =>
     cn(
@@ -196,7 +201,10 @@ export default function ListingBrowsePanel({
 
             {showListLayout && items.length > 0 && (
               <div className="overflow-hidden rounded-xl border border-surface-3">
-                <ListViewHeader showPrice={listViewShowsPrice} />
+                <ListViewHeader
+                  showPrice={listViewShowsPrice}
+                  showActions={listViewShowsActions}
+                />
 
                 <div>
                   {isLoading
@@ -206,10 +214,16 @@ export default function ListingBrowsePanel({
                           <SkeletonListView
                             key={i}
                             showPrice={listViewShowsPrice}
+                            showActions={listViewShowsActions}
                           />
                         ))
                     : items.map((item) => (
-                        <ListView key={item.id} item={item} />
+                        <ListView
+                          key={item.id}
+                          item={item}
+                          showPrice={listViewShowsPrice}
+                          showActions={listViewShowsActions}
+                        />
                       ))}
                 </div>
               </div>

@@ -9,10 +9,15 @@ import {
   listViewRowClass,
 } from "@/utils/listViewLayout";
 
+import ArtistLink from "./ArtistLink";
 import CardActionButtons from "./CardActionButtons";
 import CardImage from "./CardImage";
 
-export default function ListView({ item }) {
+export default function ListView({
+  item,
+  showPrice: showPriceProp,
+  showActions: showActionsProp,
+}) {
   const navigate = useNavigate();
 
   const linkToListing = !item.disableLink;
@@ -26,7 +31,10 @@ export default function ListView({ item }) {
 
   const imageSrc = item.imageUrl || item.externalCoverUrl;
   const hasActions = Boolean(item.primaryAction || item.secondaryAction);
-  const showPrice = item.price != null;
+
+  // Parent owns the column set so the header can never disagree with the rows.
+  const showPrice = showPriceProp ?? item.price != null;
+  const showActions = showActionsProp ?? hasActions;
   const displayPrice = item.discount > 0 ? item.discountedPrice : item.price;
 
   const coverCell = linkToListing ? (
@@ -91,7 +99,10 @@ export default function ListView({ item }) {
 
           <div className="min-w-0 flex-1 space-y-1 text-left">
             {mobileTitleCell}
-            <p className="truncate text-sm text-accent-text">{item.artist}</p>
+            <ArtistLink
+              artist={item.artist}
+              className="block w-full truncate text-sm text-accent-text"
+            />
             <p className="text-xs text-on-surface-muted">
               {[item.year || item.date, item.format, item.country]
                 .filter(Boolean)
@@ -117,16 +128,17 @@ export default function ListView({ item }) {
         )}
       </article>
 
-      <article
-        className={listViewRowClass({ showPrice, showActions: hasActions })}
-      >
+      <article className={listViewRowClass({ showPrice, showActions })}>
         <div className={LIST_VIEW_COVER_CELL}>{coverCell}</div>
 
         <div className={LIST_VIEW_CELL}>{titleCell}</div>
 
-        <p className={cn(LIST_VIEW_CELL, "truncate text-accent-text")}>
-          {item.artist}
-        </p>
+        <div className={LIST_VIEW_CELL}>
+          <ArtistLink
+            artist={item.artist}
+            className="block w-full truncate text-accent-text"
+          />
+        </div>
 
         <p className={cn(LIST_VIEW_CELL, "text-on-surface-dim")}>
           {item.year || item.date}
@@ -142,7 +154,7 @@ export default function ListView({ item }) {
 
         {showPrice && (
           <div className={LIST_VIEW_CELL}>
-            {item.discount > 0 && (
+            {item.discount > 0 && item.price != null && (
               <p className="text-sm text-on-surface-muted line-through">
                 {item.price.toLocaleString("tr-TR")} ₺
               </p>
@@ -155,14 +167,16 @@ export default function ListView({ item }) {
           </div>
         )}
 
-        {hasActions && (
+        {showActions && (
           <div className={LIST_VIEW_ACTIONS_CELL}>
-            <CardActionButtons
-              layout="list"
-              primaryAction={item.primaryAction}
-              secondaryAction={item.secondaryAction}
-              stackActions={item.stackActions}
-            />
+            {hasActions && (
+              <CardActionButtons
+                layout="list"
+                primaryAction={item.primaryAction}
+                secondaryAction={item.secondaryAction}
+                stackActions={item.stackActions}
+              />
+            )}
           </div>
         )}
       </article>

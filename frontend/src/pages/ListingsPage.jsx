@@ -77,15 +77,17 @@ export default function ListingsPage() {
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-surface-3">
-          <ListViewHeader />
+          <ListViewHeader showPrice showActions />
 
           <div>
             {isFetchingMine
               ? Array(5)
                   .fill(0)
-                  .map((_, i) => <SkeletonListView key={i} />)
+                  .map((_, i) => (
+                    <SkeletonListView key={i} showPrice showActions />
+                  ))
               : myListingCards.map((item) => (
-                  <ListView key={item.id} item={item} />
+                  <ListView key={item.id} item={item} showPrice showActions />
                 ))}
           </div>
         </div>

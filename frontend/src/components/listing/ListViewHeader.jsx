@@ -1,4 +1,8 @@
-import { LIST_VIEW_HEADER_CELL, listViewHeaderClass } from "@/utils/listViewLayout";
+import {
+  LIST_VIEW_HEADER_ACTIONS_CELL,
+  LIST_VIEW_HEADER_CELL,
+  listViewHeaderClass,
+} from "@/utils/listViewLayout";
 
 export default function ListViewHeader({ showPrice = true, showActions = true }) {
   return (
@@ -10,7 +14,9 @@ export default function ListViewHeader({ showPrice = true, showActions = true })
       <p className={LIST_VIEW_HEADER_CELL}>Format</p>
       <p className={LIST_VIEW_HEADER_CELL}>Country</p>
       {showPrice && <p className={LIST_VIEW_HEADER_CELL}>Price</p>}
-      {showActions && <div className={LIST_VIEW_HEADER_CELL} aria-hidden="true" />}
+      {showActions && (
+        <div className={LIST_VIEW_HEADER_ACTIONS_CELL} aria-hidden="true" />
+      )}
     </div>
   );
 }
