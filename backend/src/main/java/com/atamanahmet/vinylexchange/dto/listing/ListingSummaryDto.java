@@ -10,5 +10,6 @@ public record ListingSummaryDto(
         int year,
         String country,
         String format,
-        String labelName) {
+        String labelName,
+        String ownerUsername) {
 }

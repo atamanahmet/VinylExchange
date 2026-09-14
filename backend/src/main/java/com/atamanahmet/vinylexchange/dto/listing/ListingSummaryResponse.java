@@ -16,5 +16,6 @@ public record ListingSummaryResponse(
         int year,
         String country,
         String format,
-        String label) {
+        String label,
+        String ownerUsername) {
 }

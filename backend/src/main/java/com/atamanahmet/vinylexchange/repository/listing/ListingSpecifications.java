@@ -12,6 +12,7 @@ import com.atamanahmet.vinylexchange.domain.enums.MediaFormat;
 import com.atamanahmet.vinylexchange.domain.enums.VinylSubtype;
 
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 
@@ -20,6 +21,21 @@ import com.atamanahmet.vinylexchange.domain.entity.User;
 public final class ListingSpecifications {
 
     private ListingSpecifications() {
+    }
+
+    /**
+     * Joins owner so the summary DTO can read its username without triggering one
+     * extra select per listing. Skipped on the count query, where a fetch join is
+     * both useless and illegal.
+     */
+    public static Specification<Listing> fetchOwner() {
+        return (root, query, cb) -> {
+            Class<?> resultType = query.getResultType();
+            if (resultType != Long.class && resultType != long.class) {
+                root.fetch("owner", JoinType.LEFT);
+            }
+            return cb.conjunction();
+        };
     }
 
     public static Specification<Listing> isPubliclyAvailable() {

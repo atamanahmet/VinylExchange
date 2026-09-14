@@ -147,7 +147,8 @@ public class ListingMapper {
                 listing.getYear(),
                 listing.getCountry() != null ? listing.getCountry().getIsoCode() : null,
                 MediaInfoFormatter.toDisplayLabel(listing.getMediaInfo()),
-                listing.getLabelName());
+                listing.getLabelName(),
+                listing.getOwner() != null ? listing.getOwner().getUsername() : null);
     }
 
     /**
@@ -164,7 +165,8 @@ public class ListingMapper {
                 dto.year(),
                 dto.country(),
                 dto.format(),
-                dto.labelName()
+                dto.labelName(),
+                dto.ownerUsername()
         );
     }
 
