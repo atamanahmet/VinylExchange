@@ -325,7 +325,7 @@ export default function ItemPage() {
                   <button
                     type="button"
                     onClick={() => navigate(`/seller/${listing.ownerUsername}`)}
-                    className="font-medium text-brand-fg hover:text-amber-400 transition-colors"
+                    className="font-medium text-brand-fg hover:text-brand-fg transition-colors"
                   >
                     {listing.ownerUsername}
                   </button>

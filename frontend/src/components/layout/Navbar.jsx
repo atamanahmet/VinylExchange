@@ -193,7 +193,7 @@ export default function Navbar() {
                   className="relative flex items-center justify-center text-on-surface-dim hover:text-on-surface bg-transparent border border-transparent hover:bg-surface-2 focus:ring-2 focus:ring-surface-3 font-medium rounded-base text-sm w-10 h-10 ml-2 hover:-translate-y-0.5 ease-in-out"
                   aria-label="Messages"
                 >
-                  <div className="border-2 border-gray-800 p-2 rounded-full">
+                  <div className="border-2 border-surface-3 p-2 rounded-full">
                     <svg
                       className="w-5 h-5"
                       fill="none"
@@ -222,7 +222,7 @@ export default function Navbar() {
                   className="relative flex items-center justify-center text-on-surface-dim hover:text-on-surface bg-transparent hover:bg-surface-2 focus:ring-2 focus:ring-surface-3 font-medium rounded-base text-sm w-10 h-10 focus:outline-none "
                   aria-label="Cart"
                 >
-                  <div className="border-2 border-gray-800 p-2 rounded-full">
+                  <div className="border-2 border-surface-3 p-2 rounded-full">
                     <svg
                       className="w-5 h-5 "
                       fill="none"
@@ -256,7 +256,7 @@ export default function Navbar() {
                   className="flex items-center justify-center text-sm bg-surface-2 rounded-full w-10 h-10 focus:ring-4 focus:ring-surface-3"
                   aria-label="Open user menu"
                 >
-                  <div className="border-2 border-gray-800 p-2 rounded-full">
+                  <div className="border-2 border-surface-3 p-2 rounded-full">
                     <svg
                       className="w-5 h-5"
                       viewBox="0 0 24 24"
@@ -305,7 +305,7 @@ export default function Navbar() {
                           />
                         ))
                       ) : (
-                        <li className=" py-2 text-sm text-gray-400 text-center">
+                        <li className=" py-2 text-sm text-on-surface-muted text-center">
                           No notifications
                         </li>
                       )}

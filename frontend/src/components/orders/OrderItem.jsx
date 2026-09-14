@@ -52,8 +52,8 @@ export default function OrderItem({ item, onDelete }) {
           <p
             className={`px-6 ${
               item.discount > 0
-                ? "text-base font-bold text-gray-900 dark:text-white line-through"
-                : "text-base font-bold text-gray-900 dark:text-white"
+                ? "text-base font-bold text-on-surface line-through"
+                : "text-base font-bold text-on-surface"
             }`}
           >
             {item.price + " ₺"}
@@ -61,8 +61,8 @@ export default function OrderItem({ item, onDelete }) {
           <p
             className={`px-6 ${
               item.discount > 0
-                ? "text-base font-bold text-green-900 dark:text-green-400"
-                : "text-base font-bold text-green-900 dark:text-green-400"
+                ? "text-base font-bold text-success-fg"
+                : "text-base font-bold text-success-fg"
             }`}
           >
             {item.discount > 0 ? item.discountedPrice + " ₺" : null}
@@ -76,13 +76,13 @@ export default function OrderItem({ item, onDelete }) {
               onClick={() => {
                 navigateToEditWithId();
               }}
-              className="font-medium text-fg-brand hover:underline bg-indigo-700 py-2 px-4.5 mb-2 rounded-md  cursor-pointer"
+              className="font-medium text-on-brand hover:underline bg-brand py-2 px-4.5 mb-2 rounded-md  cursor-pointer"
             >
               Edit
             </a>
             <a
               onClick={() => onDelete(item.id)}
-              className="font-medium text-fg-brand bg-red-700 p-2 rounded-md hover:underline cursor-pointer"
+              className="font-medium text-white bg-danger p-2 rounded-md hover:underline cursor-pointer"
             >
               Delete
             </a>

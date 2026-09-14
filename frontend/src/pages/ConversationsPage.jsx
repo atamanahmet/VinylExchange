@@ -143,25 +143,25 @@ export default function ConversationsPage() {
       {/* delete confirm modal */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-neutral-900 border border-neutral-700 rounded-lg p-6 w-80 shadow-xl">
-            <h3 className="text-white font-semibold text-lg mb-2">
+          <div className="bg-surface-1 border border-surface-3 rounded-lg p-6 w-80 shadow-xl">
+            <h3 className="text-on-surface font-semibold text-lg mb-2">
               {deleteTarget.type === "all"
                 ? "Delete all conversations?"
                 : "Delete this conversation?"}
             </h3>
-            <p className="text-gray-400 text-sm mb-6">
+            <p className="text-on-surface-muted text-sm mb-6">
               This action cannot be undone.
             </p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setDeleteTarget(null)}
-                className="px-4 py-2 rounded-md text-sm font-medium text-gray-300 border border-neutral-600 hover:bg-neutral-800"
+                className="px-4 py-2 rounded-md text-sm font-medium text-on-surface-dim border border-surface-4 hover:bg-surface-2"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteConfirm}
-                className="px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+                className="px-4 py-2 rounded-md text-sm font-medium text-white bg-danger hover:bg-danger-hover"
               >
                 Delete
               </button>
@@ -174,9 +174,9 @@ export default function ConversationsPage() {
       <div className="w-2/8 bg-neutral-primary border-r border-neutral-secondary flex flex-col">
         <header className="py-4 px-4 border-b border-neutral-secondary bg-accent-primary shrink-0">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-semibold text-white">Conversations</h2>
+            <h2 className="text-2xl font-semibold text-on-surface">Conversations</h2>
             <button
-              className="bg-red-500 hover:bg-red-600 text-white rounded p-0.5 text-sm font-medium transition-colors"
+              className="bg-danger hover:bg-danger-hover text-white rounded p-0.5 text-sm font-medium transition-colors"
               onClick={() => setDeleteTarget({ type: "all" })}
             >
               Delete All
@@ -220,7 +220,7 @@ export default function ConversationsPage() {
                     onClick={() =>
                       setDeleteTarget({ id: convo.publicId, type: "one" })
                     }
-                    className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-gray-500 hover:text-red-500 p-1"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-on-surface-muted hover:text-danger-bright p-1"
                     aria-label="Delete conversation"
                   >
                     <svg
@@ -269,7 +269,7 @@ export default function ConversationsPage() {
               {currentListing && (
                 <button
                   onClick={() => navigate(buildListingPath(currentListing))}
-                  className="flex items-center gap-2 text-sm text-amber-500 hover:text-amber-400 border border-neutral-700 rounded-md px-3 py-1.5 hover:bg-neutral-800 transition-colors"
+                  className="flex items-center gap-2 text-sm text-brand-fg hover:text-brand-fg border border-surface-3 rounded-md px-3 py-1.5 hover:bg-surface-2 transition-colors"
                 >
                   {currentListing.imagePaths?.[0] && (
                     <img
@@ -278,7 +278,7 @@ export default function ConversationsPage() {
                       className="w-6 h-6 rounded object-cover"
                     />
                   )}
-                  <span className="truncate text-xs text-gray-400">
+                  <span className="truncate text-xs text-on-surface-muted">
                     {[
                       currentListing.artistName,
                       currentListing.year,
@@ -318,8 +318,8 @@ export default function ConversationsPage() {
                   <div
                     className={`max-w-md ${
                       message.senderUsername === user.username
-                        ? "bg-amber-600 text-white"
-                        : "bg-indigo-950 text-white"
+                        ? "bg-brand text-on-brand"
+                        : "bg-surface-3 text-on-surface"
                     } rounded-2xl px-4 py-2.5 shadow-sm`}
                   >
                     {message.senderUsername !== user.username && (
@@ -333,7 +333,7 @@ export default function ConversationsPage() {
                     <p
                       className={`text-xs mt-1 ${
                         message.senderUsername === user.username
-                          ? "text-white/80 text-right"
+                          ? "text-on-surface/80 text-right"
                           : "text-body text-left"
                       }`}
                     >
@@ -360,7 +360,7 @@ export default function ConversationsPage() {
                   style={{ overflowY: "auto" }}
                 />
                 <button
-                  className="bg-accent-primary hover:bg-accent-primary-dark text-white px-4 py-2.5 rounded-base font-medium transition-colors shrink-0"
+                  className="bg-brand hover:bg-brand-hover text-on-brand px-4 py-2.5 rounded-base font-medium transition-colors shrink-0"
                   onClick={handleSend}
                 >
                   Send

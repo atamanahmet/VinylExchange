@@ -8,27 +8,27 @@ import { cn } from "@/lib/utils";
 const STATUS_CONFIG = {
   PENDING_PAYMENT: {
     label: "Pending payment",
-    color: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
+    color: "bg-brand/10 text-brand-fg border-brand/20",
   },
   HELD: {
     label: "Held in escrow",
-    color: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+    color: "bg-signal-fg/10 text-signal-fg border-signal-fg/20",
   },
   RELEASED: {
     label: "Released to seller",
-    color: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20",
+    color: "bg-promo-fg/10 text-promo-fg border-promo-fg/20",
   },
   COMPLETED: {
     label: "Completed",
-    color: "bg-green-500/10 text-green-600 border-green-500/20",
+    color: "bg-success/10 text-success-fg border-success/20",
   },
   REFUNDED: {
     label: "Refunded",
-    color: "bg-gray-500/10 text-gray-600 border-gray-500/20",
+    color: "bg-on-surface-muted/10 text-on-surface-muted border-on-surface-muted/20",
   },
   CANCELLED: {
     label: "Cancelled",
-    color: "bg-red-500/10 text-red-600 border-red-500/20",
+    color: "bg-danger/10 text-danger-fg border-danger/20",
   },
 };
 
@@ -55,7 +55,7 @@ function formatStatus(status) {
 function StatusBadge({ status }) {
   const config = STATUS_CONFIG[status] || {
     label: status,
-    color: "bg-gray-500/10 text-gray-600 border-gray-500/20",
+    color: "bg-on-surface-muted/10 text-on-surface-muted border-on-surface-muted/20",
   };
 
   return (
@@ -93,7 +93,7 @@ export default function AccountPaymentCard({ payment }) {
         <div className="flex flex-col items-end gap-2">
           <StatusBadge status={payment.status} />
           {payment.refundReviewRequired && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600 border border-orange-500/20">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning-fg border border-warning/20">
               Under review
             </span>
           )}

@@ -18,7 +18,7 @@ export default function AccountOrdersSection() {
             className={cn(
               "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
               tab === item.id
-                ? "bg-brand text-white"
+                ? "bg-brand text-on-brand"
                 : "text-on-surface-muted hover:text-on-surface",
             )}
           >

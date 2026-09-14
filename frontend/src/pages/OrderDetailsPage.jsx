@@ -5,35 +5,35 @@ import { useOrderStore } from "../stores/orderStore";
 const STATUS_CONFIG = {
   AWAITING_PAYMENT: {
     label: "Awaiting payment",
-    color: "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20",
+    color: "bg-brand/10 text-brand-fg border border-brand/20",
   },
   PAID: {
     label: "Paid",
-    color: "bg-blue-500/10 text-blue-400 border border-blue-500/20",
+    color: "bg-signal-fg/10 text-signal-fg border border-signal-fg/20",
   },
   SHIPPED: {
     label: "Shipped",
-    color: "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20",
+    color: "bg-promo-fg/10 text-promo-fg border border-promo-fg/20",
   },
   DELIVERED: {
     label: "Delivered",
-    color: "bg-teal-500/10 text-teal-400 border border-teal-500/20",
+    color: "bg-info/10 text-info-fg border border-info/20",
   },
   DISPUTED: {
     label: "Disputed",
-    color: "bg-orange-500/10 text-orange-400 border border-orange-500/20",
+    color: "bg-warning/10 text-warning-fg border border-warning/20",
   },
   COMPLETED: {
     label: "Completed",
-    color: "bg-green-500/10 text-green-400 border border-green-500/20",
+    color: "bg-success/10 text-success-fg border border-success/20",
   },
   REFUNDED: {
     label: "Refunded",
-    color: "bg-gray-500/10 text-gray-400 border border-gray-500/20",
+    color: "bg-on-surface-muted/10 text-on-surface-muted border border-on-surface-muted/20",
   },
   CANCELLED: {
     label: "Cancelled",
-    color: "bg-red-500/10 text-red-400 border border-red-500/20",
+    color: "bg-danger/10 text-danger-fg border border-danger/20",
   },
 };
 
@@ -54,7 +54,7 @@ function formatDate(isoString) {
 function StatusBadge({ status }) {
   const config = STATUS_CONFIG[status] || {
     label: status,
-    color: "bg-gray-500/10 text-gray-400",
+    color: "bg-on-surface-muted/10 text-on-surface-muted",
   };
   return (
     <span
@@ -68,9 +68,9 @@ function StatusBadge({ status }) {
 function InfoRow({ label, value }) {
   if (!value) return null;
   return (
-    <div className="flex justify-between items-center py-2 border-b border-neutral-800 last:border-0">
-      <span className="text-sm text-neutral-500">{label}</span>
-      <span className="text-sm text-neutral-200">{value}</span>
+    <div className="flex justify-between items-center py-2 border-b border-surface-2 last:border-0">
+      <span className="text-sm text-on-surface-muted">{label}</span>
+      <span className="text-sm text-on-surface-bright">{value}</span>
     </div>
   );
 }
@@ -99,9 +99,9 @@ export default function OrderDetailPage() {
   if (isFetching) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-8 flex flex-col gap-4">
-        <div className="h-8 w-48 bg-neutral-900 rounded animate-pulse" />
-        <div className="h-64 bg-neutral-900 rounded-xl animate-pulse" />
-        <div className="h-40 bg-neutral-900 rounded-xl animate-pulse" />
+        <div className="h-8 w-48 bg-surface-1 rounded animate-pulse" />
+        <div className="h-64 bg-surface-1 rounded-xl animate-pulse" />
+        <div className="h-40 bg-surface-1 rounded-xl animate-pulse" />
       </div>
     );
   }
@@ -109,10 +109,10 @@ export default function OrderDetailPage() {
   if (!currentOrder) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-        <p className="text-neutral-500 text-sm">Order not found.</p>
+        <p className="text-on-surface-muted text-sm">Order not found.</p>
         <button
           onClick={() => navigate("/orders")}
-          className="mt-4 text-sm text-amber-500 hover:text-amber-400"
+          className="mt-4 text-sm text-brand-fg hover:text-brand-fg"
         >
           Back to orders
         </button>
@@ -164,7 +164,7 @@ export default function OrderDetailPage() {
       {/* back */}
       <button
         onClick={() => navigate("/orders")}
-        className="flex items-center gap-1.5 text-sm text-neutral-500 hover:text-white mb-6 transition-colors"
+        className="flex items-center gap-1.5 text-sm text-on-surface-muted hover:text-on-surface mb-6 transition-colors"
       >
         <svg
           className="w-4 h-4"
@@ -185,28 +185,28 @@ export default function OrderDetailPage() {
       {/* header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold text-white">
+          <h1 className="text-xl font-semibold text-on-surface">
             Order{" "}
-            <span className="font-mono text-neutral-400">
+            <span className="font-mono text-on-surface-muted">
               #{currentOrder.orderNumber}
             </span>
           </h1>
           <StatusBadge status={currentOrder.status} />
           {currentOrder.saleType === "TRADE" && (
-            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-promo-fg/10 text-promo-fg border border-promo-fg/20">
               Trade
             </span>
           )}
         </div>
-        <span className="text-sm text-neutral-500">
+        <span className="text-sm text-on-surface-muted">
           {formatDate(currentOrder.createdAt)}
         </span>
       </div>
 
       {/* items */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden mb-4">
-        <div className="px-4 py-3 border-b border-neutral-800">
-          <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
+      <div className="bg-surface-1 border border-surface-2 rounded-xl overflow-hidden mb-4">
+        <div className="px-4 py-3 border-b border-surface-2">
+          <span className="text-xs font-medium text-on-surface-muted uppercase tracking-wider">
             Items
           </span>
         </div>
@@ -216,7 +216,7 @@ export default function OrderDetailPage() {
             key={i}
             className={`flex items-center gap-4 px-4 py-4 ${
               i < currentOrder.items.length - 1
-                ? "border-b border-neutral-800"
+                ? "border-b border-surface-2"
                 : ""
             }`}
           >
@@ -224,12 +224,12 @@ export default function OrderDetailPage() {
               <img
                 src={item.listingMainImageUrl}
                 alt={item.listingTitle}
-                className="w-14 h-14 rounded-lg object-cover bg-neutral-800 shrink-0"
+                className="w-14 h-14 rounded-lg object-cover bg-surface-2 shrink-0"
               />
             ) : (
-              <div className="w-14 h-14 rounded-lg bg-neutral-800 shrink-0 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-lg bg-surface-2 shrink-0 flex items-center justify-center">
                 <svg
-                  className="w-6 h-6 text-neutral-600"
+                  className="w-6 h-6 text-on-surface-faint"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -247,32 +247,32 @@ export default function OrderDetailPage() {
             <div className="flex-1 min-w-0">
               <button
                 onClick={() => navigate(`/item/${item.listingId}`)}
-                className="text-sm font-medium text-white hover:text-amber-400 transition-colors text-left truncate block"
+                className="text-sm font-medium text-on-surface hover:text-brand-fg transition-colors text-left truncate block"
               >
                 {item.listingTitle}
               </button>
-              <p className="text-xs text-neutral-500 mt-0.5">
+              <p className="text-xs text-on-surface-muted mt-0.5">
                 {formatPrice(item.unitPriceKurus)} × {item.quantity}
               </p>
             </div>
 
-            <span className="text-sm font-medium text-neutral-200 shrink-0">
+            <span className="text-sm font-medium text-on-surface-bright shrink-0">
               {formatPrice(item.subTotalKurus)}
             </span>
           </div>
         ))}
 
         {/* total row */}
-        <div className="flex justify-between items-center px-4 py-3 bg-neutral-950/50 border-t border-neutral-800">
-          <span className="text-sm text-neutral-500">Order total</span>
-          <span className="text-base font-semibold text-white">
+        <div className="flex justify-between items-center px-4 py-3 bg-surface-base/50 border-t border-surface-2">
+          <span className="text-sm text-on-surface-muted">Order total</span>
+          <span className="text-base font-semibold text-on-surface">
             {formatPrice(currentOrder.totalPriceKurus)}
           </span>
         </div>
       </div>
 
       {/* order info */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2 mb-4">
+      <div className="bg-surface-1 border border-surface-2 rounded-xl px-4 py-2 mb-4">
         <InfoRow
           label="Order placed"
           value={formatDate(currentOrder.createdAt)}
@@ -297,22 +297,22 @@ export default function OrderDetailPage() {
       </div>
 
       {currentOrder.shipmentHandlerCode && (
-        <div className="bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-2 mb-4">
+        <div className="bg-surface-1 border border-surface-2 rounded-xl px-4 py-2 mb-4">
           <InfoRow label="Carrier" value={currentOrder.shipmentHandlerCode} />
           <InfoRow label="Tracking barcode" value={currentOrder.shipmentBarcode} />
-          <div className="flex justify-between items-center py-2 border-b border-neutral-800 last:border-0">
-            <span className="text-sm text-neutral-500">Shipping label</span>
+          <div className="flex justify-between items-center py-2 border-b border-surface-2 last:border-0">
+            <span className="text-sm text-on-surface-muted">Shipping label</span>
             {currentOrder.shipmentLabelUrl ? (
               <a
                 href={currentOrder.shipmentLabelUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-amber-500 hover:text-amber-400 transition-colors"
+                className="text-sm text-brand-fg hover:text-brand-fg transition-colors"
               >
                 View label
               </a>
             ) : (
-              <span className="text-sm text-neutral-200">—</span>
+              <span className="text-sm text-on-surface-bright">—</span>
             )}
           </div>
           <InfoRow
@@ -323,13 +323,13 @@ export default function OrderDetailPage() {
       )}
 
       {showGenerateLabelPrompt && (
-        <div className="bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-4 mb-4 flex items-center justify-between gap-4">
-          <p className="text-sm text-neutral-400">Label not generated yet</p>
+        <div className="bg-surface-1 border border-surface-2 rounded-xl px-4 py-4 mb-4 flex items-center justify-between gap-4">
+          <p className="text-sm text-on-surface-muted">Label not generated yet</p>
           <button
             onClick={() =>
               navigate(`/orders/${currentOrder.orderId}/shipment/label`)
             }
-            className="text-sm text-white bg-amber-600 hover:bg-amber-700 px-4 py-2 rounded-lg transition-colors shrink-0"
+            className="text-sm text-on-brand bg-brand hover:bg-brand-hover px-4 py-2 rounded-lg transition-colors shrink-0"
           >
             Generate shipping label
           </button>
@@ -342,7 +342,7 @@ export default function OrderDetailPage() {
           {canConfirm && (
             <button
               onClick={handleConfirm}
-              className="text-sm text-white bg-green-700 hover:bg-green-800 px-4 py-2 rounded-lg transition-colors"
+              className="text-sm text-on-brand bg-success hover:bg-success-hover px-4 py-2 rounded-lg transition-colors"
             >
               Confirm delivery
             </button>
@@ -350,7 +350,7 @@ export default function OrderDetailPage() {
           {canDispute && (
             <button
               onClick={() => setDisputeModal(true)}
-              className="text-sm text-orange-400 hover:text-orange-300 border border-orange-500/30 hover:border-orange-500/60 px-4 py-2 rounded-lg transition-colors"
+              className="text-sm text-warning-fg hover:text-accent-dim border border-warning/30 hover:border-warning/60 px-4 py-2 rounded-lg transition-colors"
             >
               Open dispute
             </button>
@@ -358,7 +358,7 @@ export default function OrderDetailPage() {
           {canCancel && (
             <button
               onClick={() => setCancelModal(true)}
-              className="text-sm text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/60 px-4 py-2 rounded-lg transition-colors"
+              className="text-sm text-danger-fg hover:text-danger-bright border border-danger/30 hover:border-danger/60 px-4 py-2 rounded-lg transition-colors"
             >
               Cancel order
             </button>
@@ -369,11 +369,11 @@ export default function OrderDetailPage() {
       {/* cancel modal */}
       {cancelModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div className="bg-neutral-900 border border-neutral-700 rounded-xl p-6 w-full max-w-md mx-4">
-            <h2 className="text-base font-medium text-white mb-1">
+          <div className="bg-surface-1 border border-surface-3 rounded-xl p-6 w-full max-w-md mx-4">
+            <h2 className="text-base font-medium text-on-surface mb-1">
               Cancel order
             </h2>
-            <p className="text-sm text-neutral-400 mb-4">
+            <p className="text-sm text-on-surface-muted mb-4">
               Provide a reason for cancellation.
             </p>
             <textarea
@@ -381,7 +381,7 @@ export default function OrderDetailPage() {
               onChange={(e) => setCancelReason(e.target.value)}
               placeholder="Reason..."
               rows={3}
-              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg text-sm text-white placeholder-neutral-500 p-3 resize-none focus:outline-none focus:border-neutral-500"
+              className="w-full bg-surface-2 border border-surface-3 rounded-lg text-sm text-on-surface placeholder-on-surface-muted p-3 resize-none focus:outline-none focus:border-surface-4"
             />
             <div className="flex justify-end gap-2 mt-4">
               <button
@@ -389,14 +389,14 @@ export default function OrderDetailPage() {
                   setCancelModal(false);
                   setCancelReason("");
                 }}
-                className="text-sm text-neutral-400 hover:text-white px-4 py-2 rounded-lg border border-neutral-700 hover:border-neutral-500 transition-colors"
+                className="text-sm text-on-surface-muted hover:text-on-surface px-4 py-2 rounded-lg border border-surface-3 hover:border-surface-4 transition-colors"
               >
                 Go back
               </button>
               <button
                 onClick={handleCancelConfirm}
                 disabled={!cancelReason.trim()}
-                className="text-sm text-white bg-red-700 hover:bg-red-800 disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2 rounded-lg transition-colors"
+                className="text-sm text-white bg-danger hover:bg-danger-hover disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2 rounded-lg transition-colors"
               >
                 Confirm cancel
               </button>
@@ -408,21 +408,21 @@ export default function OrderDetailPage() {
       {/* dispute modal */}
       {disputeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div className="bg-neutral-900 border border-neutral-700 rounded-xl p-6 w-full max-w-md mx-4">
-            <h2 className="text-base font-medium text-white mb-1">
+          <div className="bg-surface-1 border border-surface-3 rounded-xl p-6 w-full max-w-md mx-4">
+            <h2 className="text-base font-medium text-on-surface mb-1">
               Open dispute
             </h2>
-            <p className="text-sm text-neutral-400 mb-4">
+            <p className="text-sm text-on-surface-muted mb-4">
               Describe the issue with this order.
             </p>
 
-            <label className="text-xs text-neutral-500 mb-1 block">
+            <label className="text-xs text-on-surface-muted mb-1 block">
               Reason
             </label>
             <select
               value={disputeReason}
               onChange={(e) => setDisputeReason(e.target.value)}
-              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg text-sm text-white p-2.5 mb-3 focus:outline-none focus:border-neutral-500"
+              className="w-full bg-surface-2 border border-surface-3 rounded-lg text-sm text-on-surface p-2.5 mb-3 focus:outline-none focus:border-surface-4"
             >
               <option value="ITEM_NOT_AS_DESCRIBED">
                 Item not as described
@@ -432,7 +432,7 @@ export default function OrderDetailPage() {
               <option value="DAMAGED_ITEM">Item arrived damaged</option>
             </select>
 
-            <label className="text-xs text-neutral-500 mb-1 block">
+            <label className="text-xs text-on-surface-muted mb-1 block">
               Details
             </label>
             <textarea
@@ -440,7 +440,7 @@ export default function OrderDetailPage() {
               onChange={(e) => setDisputeNote(e.target.value)}
               placeholder="Describe the problem..."
               rows={3}
-              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg text-sm text-white placeholder-neutral-500 p-3 resize-none focus:outline-none focus:border-neutral-500"
+              className="w-full bg-surface-2 border border-surface-3 rounded-lg text-sm text-on-surface placeholder-on-surface-muted p-3 resize-none focus:outline-none focus:border-surface-4"
             />
             <div className="flex justify-end gap-2 mt-4">
               <button
@@ -448,14 +448,14 @@ export default function OrderDetailPage() {
                   setDisputeModal(false);
                   setDisputeNote("");
                 }}
-                className="text-sm text-neutral-400 hover:text-white px-4 py-2 rounded-lg border border-neutral-700 hover:border-neutral-500 transition-colors"
+                className="text-sm text-on-surface-muted hover:text-on-surface px-4 py-2 rounded-lg border border-surface-3 hover:border-surface-4 transition-colors"
               >
                 Go back
               </button>
               <button
                 onClick={handleDisputeConfirm}
                 disabled={!disputeNote.trim()}
-                className="text-sm text-white bg-orange-700 hover:bg-orange-800 disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2 rounded-lg transition-colors"
+                className="text-sm text-white bg-warning hover:bg-warning-hover disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2 rounded-lg transition-colors"
               >
                 Submit dispute
               </button>

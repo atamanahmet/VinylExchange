@@ -10,59 +10,59 @@ import { buildListingPath } from "@/utils/listingPath";
 const STATUS_CONFIG = {
   AWAITING_PAYMENT: {
     label: "Awaiting payment",
-    color: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
+    color: "bg-brand/10 text-brand-fg border-brand/20",
   },
   PAID: {
     label: "Paid",
-    color: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+    color: "bg-signal-fg/10 text-signal-fg border-signal-fg/20",
   },
   AWAITING_SHIPMENT: {
     label: "Awaiting shipment",
-    color: "bg-sky-500/10 text-sky-600 border-sky-500/20",
+    color: "bg-signal-fg/10 text-signal-fg border-signal-fg/20",
   },
   SHIPPED: {
     label: "Shipped",
-    color: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20",
+    color: "bg-promo-fg/10 text-promo-fg border-promo-fg/20",
   },
   IN_TRANSIT: {
     label: "In transit",
-    color: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20",
+    color: "bg-promo-fg/10 text-promo-fg border-promo-fg/20",
   },
   OUT_FOR_DELIVERY: {
     label: "Out for delivery",
-    color: "bg-violet-500/10 text-violet-600 border-violet-500/20",
+    color: "bg-promo-fg/10 text-promo-fg border-promo-fg/20",
   },
   DELIVERED: {
     label: "Delivered",
-    color: "bg-teal-500/10 text-teal-600 border-teal-500/20",
+    color: "bg-info/10 text-info-fg border-info/20",
   },
   DISPUTED: {
     label: "Disputed",
-    color: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+    color: "bg-warning/10 text-warning-fg border-warning/20",
   },
   COMPLETED: {
     label: "Completed",
-    color: "bg-green-500/10 text-green-600 border-green-500/20",
+    color: "bg-success/10 text-success-fg border-success/20",
   },
   RETURNING: {
     label: "Returning",
-    color: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+    color: "bg-brand/10 text-brand border-brand/20",
   },
   RETURNED: {
     label: "Returned",
-    color: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+    color: "bg-brand/10 text-brand border-brand/20",
   },
   REFUNDED: {
     label: "Refunded",
-    color: "bg-gray-500/10 text-gray-600 border-gray-500/20",
+    color: "bg-on-surface-muted/10 text-on-surface-muted border-on-surface-muted/20",
   },
   CANCELLED: {
     label: "Cancelled",
-    color: "bg-red-500/10 text-red-600 border-red-500/20",
+    color: "bg-danger/10 text-danger-fg border-danger/20",
   },
   LOST: {
     label: "Lost",
-    color: "bg-red-500/10 text-red-600 border-red-500/20",
+    color: "bg-danger/10 text-danger-fg border-danger/20",
   },
 };
 
@@ -94,7 +94,7 @@ function formatDate(isoString) {
 function StatusBadge({ status }) {
   const config = STATUS_CONFIG[status] || {
     label: status,
-    color: "bg-gray-500/10 text-gray-600",
+    color: "bg-on-surface-muted/10 text-on-surface-muted",
   };
 
   return (

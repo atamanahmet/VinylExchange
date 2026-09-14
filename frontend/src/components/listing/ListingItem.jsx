@@ -35,8 +35,8 @@ export default function ListingItem({ item }) {
         <p
           className={`px-6 ${
             item.discount > 0
-              ? "text-base font-bold text-gray-900 dark:text-white line-through"
-              : "text-base font-bold text-gray-900 dark:text-white"
+              ? "text-base font-bold text-on-surface line-through"
+              : "text-base font-bold text-on-surface"
           }`}
         >
           {item.price != null ? item.price + " ₺" : "-"}
@@ -44,8 +44,8 @@ export default function ListingItem({ item }) {
         <p
           className={`px-6 ${
             item.discount > 0
-              ? "text-base font-bold text-green-900 dark:text-green-400"
-              : "text-base font-bold text-green-900 dark:text-green-400"
+              ? "text-base font-bold text-success-fg"
+              : "text-base font-bold text-success-fg"
           }`}
         >
           {item.discount > 0 && item.discountedPrice != null
@@ -63,7 +63,7 @@ export default function ListingItem({ item }) {
           {item.primaryAction && (
             <button
               onClick={item.primaryAction.onClick}
-              className="font-medium text-fg-brand hover:underline bg-indigo-700 py-2 px-4 rounded-md cursor-pointer"
+              className="font-medium text-on-brand hover:underline bg-brand py-2 px-4 rounded-md cursor-pointer"
             >
               {item.primaryAction.label}
             </button>
@@ -71,7 +71,7 @@ export default function ListingItem({ item }) {
           {item.secondaryAction && (
             <button
               onClick={item.secondaryAction.onClick}
-              className="font-medium text-fg-brand hover:underline bg-red-700 py-2 px-4 rounded-md cursor-pointer"
+              className="font-medium text-white hover:underline bg-danger py-2 px-4 rounded-md cursor-pointer"
             >
               {item.secondaryAction.label}
             </button>

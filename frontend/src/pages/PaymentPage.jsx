@@ -116,30 +116,30 @@ export default function PaymentPage() {
   };
 
   return (
-    <section className="bg-white max-w-7xl mx-auto min-h-screen dark:bg-gray-900 py-5">
+    <section className="max-w-7xl mx-auto min-h-screen bg-surface-1 py-5">
       <div className="px-10">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white sm:text-2xl mb-6">
+        <h2 className="text-xl font-semibold text-on-surface sm:text-2xl mb-6">
           Complete Payment
         </h2>
 
         {shippingLine && (
-          <p className="text-gray-500 dark:text-gray-400 mb-6">{shippingLine}</p>
+          <p className="text-on-surface-muted mb-6">{shippingLine}</p>
         )}
 
         {loading && (
           <div className="flex items-center justify-center py-20">
-            <p className="text-gray-500 dark:text-gray-400">
+            <p className="text-on-surface-muted">
               Loading payment form...
             </p>
           </div>
         )}
 
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-            <p className="text-sm text-red-700">{error}</p>
+          <div className="rounded-lg border border-danger/20 bg-danger/10 p-4">
+            <p className="text-sm text-danger-fg">{error}</p>
             <button
               onClick={() => navigate("/orders")}
-              className="mt-3 text-sm font-medium text-red-700 underline"
+              className="mt-3 text-sm font-medium text-danger-fg underline"
             >
               Return to orders
             </button>

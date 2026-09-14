@@ -9,35 +9,35 @@ import { useAuthStore } from "../stores/authStore";
 const STATUS_CONFIG = {
   AWAITING_PAYMENT: {
     label: "Awaiting payment",
-    color: "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20",
+    color: "bg-brand/10 text-brand-fg border border-brand/20",
   },
   PAID: {
     label: "Paid",
-    color: "bg-blue-500/10 text-blue-400 border border-blue-500/20",
+    color: "bg-signal-fg/10 text-signal-fg border border-signal-fg/20",
   },
   SHIPPED: {
     label: "Shipped",
-    color: "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20",
+    color: "bg-promo-fg/10 text-promo-fg border border-promo-fg/20",
   },
   DELIVERED: {
     label: "Delivered",
-    color: "bg-teal-500/10 text-teal-400 border border-teal-500/20",
+    color: "bg-info/10 text-info-fg border border-info/20",
   },
   DISPUTED: {
     label: "Disputed",
-    color: "bg-orange-500/10 text-orange-400 border border-orange-500/20",
+    color: "bg-warning/10 text-warning-fg border border-warning/20",
   },
   COMPLETED: {
     label: "Completed",
-    color: "bg-green-500/10 text-green-400 border border-green-500/20",
+    color: "bg-success/10 text-success-fg border border-success/20",
   },
   REFUNDED: {
     label: "Refunded",
-    color: "bg-gray-500/10 text-gray-400 border border-gray-500/20",
+    color: "bg-on-surface-muted/10 text-on-surface-muted border border-on-surface-muted/20",
   },
   CANCELLED: {
     label: "Cancelled",
-    color: "bg-red-500/10 text-red-400 border border-red-500/20",
+    color: "bg-danger/10 text-danger-fg border border-danger/20",
   },
 };
 
@@ -61,7 +61,7 @@ function formatDate(isoString) {
 function StatusBadge({ status }) {
   const config = STATUS_CONFIG[status] || {
     label: status,
-    color: "bg-gray-500/10 text-gray-400",
+    color: "bg-on-surface-muted/10 text-on-surface-muted",
   };
   return (
     <span
@@ -96,30 +96,30 @@ function OrderCard({
   const canDispute = !isSeller && order.status === "SHIPPED";
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden">
+    <div className="bg-surface-1 border border-surface-2 rounded-xl overflow-hidden">
       {/* header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-800">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-surface-2">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(`/orders/${order.orderId}`)}
-            className="text-xs text-neutral-500 font-mono hover:text-amber-400 transition-colors"
+            className="text-xs text-on-surface-muted font-mono hover:text-brand-fg transition-colors"
           >
             #{order.orderNumber}
           </button>
           <StatusBadge status={order.status} />
           {order.saleType === "TRADE" && (
-            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-promo-fg/10 text-promo-fg border border-promo-fg/20">
               Trade
             </span>
           )}
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-neutral-500">
+          <span className="text-xs text-on-surface-muted">
             {formatDate(order.createdAt)}
           </span>
           <button
             onClick={() => setExpanded(!expanded)}
-            className="text-neutral-400 hover:text-white transition-colors"
+            className="text-on-surface-muted hover:text-on-surface transition-colors"
             aria-label={expanded ? "Collapse order" : "Expand order"}
           >
             <svg
@@ -149,12 +149,12 @@ function OrderCard({
                 <img
                   src={item.listingMainImageUrl}
                   alt={item.listingTitle}
-                  className="w-10 h-10 rounded-md object-cover bg-neutral-800 shrink-0"
+                  className="w-10 h-10 rounded-md object-cover bg-surface-2 shrink-0"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-md bg-neutral-800 shrink-0 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-md bg-surface-2 shrink-0 flex items-center justify-center">
                   <svg
-                    className="w-5 h-5 text-neutral-600"
+                    className="w-5 h-5 text-on-surface-faint"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -171,16 +171,16 @@ function OrderCard({
               <div className="flex-1 min-w-0">
                 <button
                   onClick={() => navigate(`/item/${item.listingId}`)}
-                  className="text-sm text-white hover:text-amber-400 transition-colors truncate block text-left"
+                  className="text-sm text-on-surface hover:text-brand-fg transition-colors truncate block text-left"
                 >
                   {item.listingTitle}
                 </button>
-                <p className="text-xs text-neutral-500">
+                <p className="text-xs text-on-surface-muted">
                   {item.quantity > 1 ? `${item.quantity}x ` : ""}
                   {formatPrice(item.unitPriceKurus)}
                 </p>
               </div>
-              <span className="text-sm text-neutral-300 shrink-0">
+              <span className="text-sm text-on-surface-dim shrink-0">
                 {formatPrice(item.subTotalKurus)}
               </span>
             </div>
@@ -189,7 +189,7 @@ function OrderCard({
         {!expanded && order.items.length > 2 && (
           <button
             onClick={() => setExpanded(true)}
-            className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors text-left"
+            className="text-xs text-on-surface-muted hover:text-on-surface-dim transition-colors text-left"
           >
             +{order.items.length - 2} more item
             {order.items.length - 2 > 1 ? "s" : ""}
@@ -199,12 +199,12 @@ function OrderCard({
 
       {/* expanded details */}
       {expanded && (
-        <div className="px-4 pb-3 border-t border-neutral-800 pt-3 flex flex-col gap-2">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-neutral-500">
+        <div className="px-4 pb-3 border-t border-surface-2 pt-3 flex flex-col gap-2">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-on-surface-muted">
             {order.shippingDeadline && (
               <>
                 <span>Ship by</span>
-                <span className="text-neutral-300">
+                <span className="text-on-surface-dim">
                   {formatDate(order.shippingDeadline)}
                 </span>
               </>
@@ -212,7 +212,7 @@ function OrderCard({
             {order.expectedDeliveryDate && (
               <>
                 <span>Expected delivery</span>
-                <span className="text-neutral-300">
+                <span className="text-on-surface-dim">
                   {formatDate(order.expectedDeliveryDate)}
                 </span>
               </>
@@ -220,7 +220,7 @@ function OrderCard({
             {order.deliveredAt && (
               <>
                 <span>Delivered</span>
-                <span className="text-neutral-300">
+                <span className="text-on-surface-dim">
                   {formatDate(order.deliveredAt)}
                 </span>
               </>
@@ -230,14 +230,14 @@ function OrderCard({
       )}
 
       {/* footer — total + actions */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-800 bg-neutral-950/50">
-        <span className="text-sm font-medium text-white">
+      <div className="flex items-center justify-between px-4 py-3 border-t border-surface-2 bg-surface-base/50">
+        <span className="text-sm font-medium text-on-surface">
           Total: {formatPrice(order.totalPriceKurus)}
         </span>
         <div className="flex items-center gap-2">
           <button
             onClick={() => onOpenConversation(order)}
-            className="text-xs text-neutral-400 hover:text-white border border-neutral-700 hover:border-neutral-500 px-3 py-1.5 rounded-lg transition-colors"
+            className="text-xs text-on-surface-muted hover:text-on-surface border border-surface-3 hover:border-surface-4 px-3 py-1.5 rounded-lg transition-colors"
           >
             Message
           </button>
@@ -247,7 +247,7 @@ function OrderCard({
               onClick={() =>
                 navigate(`/orders/${order.orderId}/shipment/label`)
               }
-              className="text-xs text-white bg-amber-600 hover:bg-amber-700 px-3 py-1.5 rounded-lg transition-colors"
+              className="text-xs text-on-brand bg-brand hover:bg-brand-hover px-3 py-1.5 rounded-lg transition-colors"
             >
               Create shipping label
             </button>
@@ -256,7 +256,7 @@ function OrderCard({
           {canConfirm && (
             <button
               onClick={() => onConfirmDelivery(order.orderId)}
-              className="text-xs text-white bg-green-700 hover:bg-green-800 px-3 py-1.5 rounded-lg transition-colors"
+              className="text-xs text-on-brand bg-success hover:bg-success-hover px-3 py-1.5 rounded-lg transition-colors"
             >
               Confirm delivery
             </button>
@@ -265,7 +265,7 @@ function OrderCard({
           {canDispute && (
             <button
               onClick={() => onDispute(order.orderId)}
-              className="text-xs text-orange-400 hover:text-orange-300 border border-orange-500/30 hover:border-orange-500/60 px-3 py-1.5 rounded-lg transition-colors"
+              className="text-xs text-warning-fg hover:text-accent-dim border border-warning/30 hover:border-warning/60 px-3 py-1.5 rounded-lg transition-colors"
             >
               Open dispute
             </button>
@@ -274,7 +274,7 @@ function OrderCard({
           {canPay && (
             <button
               onClick={() => onPay(order.orderId)}
-              className="text-xs text-white bg-amber-600 hover:bg-amber-700 px-3 py-1.5 rounded-lg transition-colors"
+              className="text-xs text-on-brand bg-brand hover:bg-brand-hover px-3 py-1.5 rounded-lg transition-colors"
             >
               Complete Payment
             </button>
@@ -283,7 +283,7 @@ function OrderCard({
           {canCancel && (
             <button
               onClick={() => onCancel(order.orderId)}
-              className="text-xs text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/60 px-3 py-1.5 rounded-lg transition-colors"
+              className="text-xs text-danger-fg hover:text-danger-bright border border-danger/30 hover:border-danger/60 px-3 py-1.5 rounded-lg transition-colors"
             >
               Cancel
             </button>
@@ -313,16 +313,16 @@ function OrderGroup({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
+        <span className="text-xs font-medium text-on-surface-muted uppercase tracking-wider">
           {isSeller ? "Buyer" : "Seller"}
         </span>
         <button
           onClick={() => navigate(`/seller/${label}`)}
-          className="text-sm font-medium text-white hover:text-amber-400 transition-colors"
+          className="text-sm font-medium text-on-surface hover:text-brand-fg transition-colors"
         >
           {label}
         </button>
-        <span className="text-xs text-neutral-600 ml-auto">
+        <span className="text-xs text-on-surface-faint ml-auto">
           {orders.length} order{orders.length !== 1 ? "s" : ""}
         </span>
       </div>
@@ -436,18 +436,18 @@ export default function OrdersPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      <h1 className="text-xl font-semibold text-white mb-6">Orders</h1>
+      <h1 className="text-xl font-semibold text-on-surface mb-6">Orders</h1>
 
       {/* tabs */}
-      <div className="flex gap-1 mb-6 bg-neutral-900 p-1 rounded-xl border border-neutral-800 w-fit">
+      <div className="flex gap-1 mb-6 bg-surface-1 p-1 rounded-xl border border-surface-2 w-fit">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               tab === t.id
-                ? "bg-amber-600 text-white"
-                : "text-neutral-400 hover:text-white"
+                ? "bg-brand text-on-brand"
+                : "text-on-surface-muted hover:text-on-surface"
             }`}
           >
             {t.label}
@@ -455,8 +455,8 @@ export default function OrdersPage() {
               <span
                 className={`text-xs px-1.5 py-0.5 rounded-full ${
                   tab === t.id
-                    ? "bg-amber-700 text-amber-100"
-                    : "bg-neutral-800 text-neutral-400"
+                    ? "bg-brand-active text-accent-light"
+                    : "bg-surface-2 text-on-surface-muted"
                 }`}
               >
                 {t.count}
@@ -474,8 +474,8 @@ export default function OrdersPage() {
             onClick={() => setFilter(f.value)}
             className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
               statusFilter === f.value
-                ? "border-amber-500 text-amber-400 bg-amber-500/10"
-                : "border-neutral-700 text-neutral-400 hover:border-neutral-500 hover:text-neutral-300"
+                ? "border-brand text-brand-fg bg-brand/10"
+                : "border-surface-3 text-on-surface-muted hover:border-surface-4 hover:text-on-surface-dim"
             }`}
           >
             {f.label}
@@ -491,14 +491,14 @@ export default function OrdersPage() {
             .map((_, i) => (
               <div
                 key={i}
-                className="h-28 bg-neutral-900 rounded-xl border border-neutral-800 animate-pulse"
+                className="h-28 bg-surface-1 rounded-xl border border-surface-2 animate-pulse"
               />
             ))}
         </div>
       ) : Object.keys(grouped).length === 0 ? (
-        <div className="text-center py-16 text-neutral-500">
+        <div className="text-center py-16 text-on-surface-muted">
           <svg
-            className="w-10 h-10 mx-auto mb-3 text-neutral-700"
+            className="w-10 h-10 mx-auto mb-3 text-on-surface-faint"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -533,11 +533,11 @@ export default function OrdersPage() {
       {/* cancel modal */}
       {cancelModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div className="bg-neutral-900 border border-neutral-700 rounded-xl p-6 w-full max-w-md mx-4">
-            <h2 className="text-base font-medium text-white mb-1">
+          <div className="bg-surface-1 border border-surface-3 rounded-xl p-6 w-full max-w-md mx-4">
+            <h2 className="text-base font-medium text-on-surface mb-1">
               Cancel order
             </h2>
-            <p className="text-sm text-neutral-400 mb-4">
+            <p className="text-sm text-on-surface-muted mb-4">
               Please provide a reason for cancellation.
             </p>
             <textarea
@@ -545,7 +545,7 @@ export default function OrdersPage() {
               onChange={(e) => setCancelReason(e.target.value)}
               placeholder="Reason for cancellation..."
               rows={3}
-              className="w-full bg-neutral-800 border border-neutral-700 rounded-lg text-sm text-white placeholder-neutral-500 p-3 resize-none focus:outline-none focus:border-neutral-500"
+              className="w-full bg-surface-2 border border-surface-3 rounded-lg text-sm text-on-surface placeholder-on-surface-muted p-3 resize-none focus:outline-none focus:border-surface-4"
             />
             <div className="flex justify-end gap-2 mt-4">
               <button
@@ -553,14 +553,14 @@ export default function OrdersPage() {
                   setCancelModal(null);
                   setCancelReason("");
                 }}
-                className="text-sm text-neutral-400 hover:text-white px-4 py-2 rounded-lg border border-neutral-700 hover:border-neutral-500 transition-colors"
+                className="text-sm text-on-surface-muted hover:text-on-surface px-4 py-2 rounded-lg border border-surface-3 hover:border-surface-4 transition-colors"
               >
                 Go back
               </button>
               <button
                 onClick={handleCancelConfirm}
                 disabled={!cancelReason.trim()}
-                className="text-sm text-white bg-red-700 hover:bg-red-800 disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2 rounded-lg transition-colors"
+                className="text-sm text-white bg-danger hover:bg-danger-hover disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2 rounded-lg transition-colors"
               >
                 Confirm cancel
               </button>
