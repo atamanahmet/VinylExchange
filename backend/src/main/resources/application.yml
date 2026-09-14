@@ -42,6 +42,18 @@ spring:
       max-file-size: 38MB
       max-request-size: 38MB
 
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
 server:
   port: ${SERVER_PORT}
   error:
@@ -51,6 +63,8 @@ server:
 management:
   health:
     redis:
+      enabled: false
+    mail:
       enabled: false
 
 jwt:
@@ -66,6 +80,14 @@ app:
   frontend-url: ${FRONTEND_URL}
   storage:
     local-fallback-enabled: ${LOCAL_FALLBACK_ENABLED:false}
+  mail:
+    # Off by default. Set MAIL_ENABLED=true (+ SMTP env vars) when a provider exists.
+    enabled: ${MAIL_ENABLED:false}
+    from: ${MAIL_FROM:}
+  rate-limit:
+    password-change:
+      capacity: ${PASSWORD_CHANGE_RATE_LIMIT_CAPACITY:5}
+      window-minutes: ${PASSWORD_CHANGE_RATE_LIMIT_WINDOW_MINUTES:15}
 
 admin:
   test:

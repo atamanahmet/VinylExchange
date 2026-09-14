@@ -95,4 +95,19 @@ public class JwtTokenUtil {
             throw new JWTVerificationException("Invalid or expired token");
         }
     }
+
+    public Instant extractIssuedAt(String token) {
+
+        try {
+            DecodedJWT decodedJWT = JWT.require(Algorithm.HMAC512(jwtConfig.getSECRET()))
+                    .build()
+                    .verify(token);
+
+            Date issuedAt = decodedJWT.getIssuedAt();
+            return issuedAt != null ? issuedAt.toInstant() : null;
+
+        } catch (JWTVerificationException e) {
+            throw new JWTVerificationException("Invalid or expired token");
+        }
+    }
 }

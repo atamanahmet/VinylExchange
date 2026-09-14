@@ -1,6 +1,7 @@
 package com.atamanahmet.vinylexchange.security.filter;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.UUID;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -66,6 +67,13 @@ public class JWTAuthFilter extends OncePerRequestFilter {
 
             UserDetailsImpl userPrincipal = userDetailsServiceImpl.loadUserByUserId(userId);
 
+            if (isTokenIssuedBeforePasswordChange(token, userPrincipal)) {
+                logger.warn("JWT issued before password change for user: " + userId);
+                jwtCookieUtil.revokeJwtCookie(response);
+                filterChain.doFilter(request, response);
+                return;
+            }
+
             if (!userPrincipal.isEnabled() ||
                     !userPrincipal.isAccountNonLocked() ||
                     !userPrincipal.isAccountNonExpired() ||
@@ -99,5 +107,15 @@ public class JWTAuthFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isTokenIssuedBeforePasswordChange(String token, UserDetailsImpl userPrincipal) {
+        Instant passwordChangedAt = userPrincipal.getUser().getPasswordChangedAt();
+        if (passwordChangedAt == null) {
+            return false;
+        }
+
+        Instant issuedAt = jwtTokenUtil.extractIssuedAt(token);
+        return issuedAt == null || !issuedAt.isAfter(passwordChangedAt);
     }
 }

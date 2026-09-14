@@ -1,5 +1,6 @@
 package com.atamanahmet.vinylexchange.domain.entity;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -53,6 +54,12 @@ public class User extends BaseEntity {
 
     @JsonIgnore
     private String password;
+
+    /**
+     * When set, JWTs with issued-at before this instant are rejected.
+     */
+    @Column(name = "password_changed_at")
+    private Instant passwordChangedAt;
 
     @Column(nullable = false)
     @Builder.Default
