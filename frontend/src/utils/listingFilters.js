@@ -97,6 +97,174 @@ export function countActiveFilters(filters) {
   return count;
 }
 
+/** Active filter count for a single panel section, drives the section badges. */
+export function countSectionFilters(filters, section) {
+  switch (section) {
+    case "format":
+      return (
+        (filters.formats?.length ? 1 : 0) +
+        (filters.speedRpm?.length ? 1 : 0) +
+        (filters.vinylSubtype?.length ? 1 : 0)
+      );
+    case "condition":
+      return filters.conditions?.length ?? 0;
+    case "country":
+      return filters.countries?.length ?? 0;
+    case "genre":
+      return filters.genreIds?.length ?? 0;
+    case "price":
+      return filters.priceRange &&
+        (filters.priceRange[0] > SLIDER_BOUNDS.minPrice ||
+          filters.priceRange[1] < SLIDER_BOUNDS.maxPrice)
+        ? 1
+        : 0;
+    case "year":
+      return filters.yearRange &&
+        (filters.yearRange[0] > SLIDER_BOUNDS.minYear ||
+          filters.yearRange[1] < SLIDER_BOUNDS.maxYear)
+        ? 1
+        : 0;
+    case "trade":
+      return filters.tradeableOnly ? 1 : 0;
+    default:
+      return 0;
+  }
+}
+
+/** True when the draft filters differ from what is currently applied. */
+export function filtersEqual(a, b) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+
+  const sameList = (left = [], right = []) =>
+    left.length === right.length &&
+    left.every((value, index) => value === right[index]);
+
+  return (
+    sameList(a.formats, b.formats) &&
+    sameList(a.speedRpm, b.speedRpm) &&
+    sameList(a.vinylSubtype, b.vinylSubtype) &&
+    sameList(a.conditions, b.conditions) &&
+    sameList(a.countries, b.countries) &&
+    sameList(a.genreIds, b.genreIds) &&
+    sameList(a.priceRange, b.priceRange) &&
+    sameList(a.yearRange, b.yearRange) &&
+    Boolean(a.tradeableOnly) === Boolean(b.tradeableOnly)
+  );
+}
+
+/**
+ * Flattens active filters into removable chips.
+ * Option lists supply human labels for id-based filters.
+ */
+export function describeActiveFilters(
+  filters,
+  { countryOptions = [], genreOptions = [] } = {},
+) {
+  const chips = [];
+  const labelFor = (options, value, matchKey) =>
+    options.find((option) => option[matchKey] === value)?.label ?? value;
+
+  filters.formats?.forEach((format) => {
+    chips.push({
+      key: `formats:${format}`,
+      label: FORMAT_LABELS[format] ?? format,
+      remove: (current) => ({
+        ...current,
+        formats: current.formats.filter((item) => item !== format),
+        ...(format === "VINYL" ? { speedRpm: [], vinylSubtype: [] } : {}),
+      }),
+    });
+  });
+
+  filters.speedRpm?.forEach((rpm) => {
+    chips.push({
+      key: `speedRpm:${rpm}`,
+      label: `${rpm} RPM`,
+      remove: (current) => ({
+        ...current,
+        speedRpm: current.speedRpm.filter((item) => item !== rpm),
+      }),
+    });
+  });
+
+  filters.vinylSubtype?.forEach((value) => {
+    chips.push({
+      key: `vinylSubtype:${value}`,
+      label: labelFor(VINYL_SUBTYPE_OPTIONS, value, "value"),
+      remove: (current) => ({
+        ...current,
+        vinylSubtype: current.vinylSubtype.filter((item) => item !== value),
+      }),
+    });
+  });
+
+  filters.conditions?.forEach((value) => {
+    chips.push({
+      key: `conditions:${value}`,
+      label: labelFor(CONDITION_OPTIONS, value, "value"),
+      remove: (current) => ({
+        ...current,
+        conditions: current.conditions.filter((item) => item !== value),
+      }),
+    });
+  });
+
+  filters.countries?.forEach((value) => {
+    chips.push({
+      key: `countries:${value}`,
+      label: labelFor(countryOptions, value, "value"),
+      remove: (current) => ({
+        ...current,
+        countries: current.countries.filter((item) => item !== value),
+      }),
+    });
+  });
+
+  filters.genreIds?.forEach((value) => {
+    chips.push({
+      key: `genreIds:${value}`,
+      label: labelFor(genreOptions, value, "id"),
+      remove: (current) => ({
+        ...current,
+        genreIds: current.genreIds.filter((item) => item !== value),
+      }),
+    });
+  });
+
+  if (countSectionFilters(filters, "price")) {
+    chips.push({
+      key: "priceRange",
+      label: `${filters.priceRange[0]} - ${filters.priceRange[1]} TL`,
+      remove: (current) => ({
+        ...current,
+        priceRange: [...DEFAULT_FILTERS.priceRange],
+      }),
+    });
+  }
+
+  if (countSectionFilters(filters, "year")) {
+    chips.push({
+      key: "yearRange",
+      label: `${filters.yearRange[0]} - ${filters.yearRange[1]}`,
+      remove: (current) => ({
+        ...current,
+        yearRange: [...DEFAULT_FILTERS.yearRange],
+      }),
+    });
+  }
+
+  if (filters.tradeableOnly) {
+    chips.push({
+      key: "tradeableOnly",
+      label: "Tradeable only",
+      remove: (current) => ({ ...current, tradeableOnly: false }),
+    });
+  }
+
+  return chips;
+}
+
 export function buildListingFilterParams(filters, { page, size, sort, ownerUsername } = {}) {
   const params = {};
 

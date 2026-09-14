@@ -10,14 +10,26 @@ import { useUserPreferenceStore } from "../stores/userPreferenceStore";
 
 import { mapListingsToCardItems } from "../adapters/mapListingToCardItems";
 import { useLocation, useNavigate } from "react-router-dom";
-import { buildListingFilterParams, resetFilters } from "../utils/listingFilters";
+import { useListingFilterState } from "@/hooks/useListingFilterState";
+import { buildListingFilterParams } from "../utils/listingFilters";
 
 export default function MainPage() {
   const PAGE_SIZE = 20;
 
   const [page, setPage] = useState(0);
-  const [draftFilters, setDraftFilters] = useState(() => resetFilters());
-  const [appliedFilters, setAppliedFilters] = useState(() => resetFilters());
+
+  const resetPage = useCallback(() => setPage(0), []);
+  const {
+    draftFilters,
+    setDraftFilters,
+    appliedFilters,
+    applyFilters,
+    clearFilters,
+    commitFilters,
+    activeCount,
+    isDirty,
+    canReset,
+  } = useListingFilterState({ onFiltersCommitted: resetPage });
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -51,12 +63,9 @@ export default function MainPage() {
   useEffect(() => {
     if (!location.state?.resetBrowse) return;
 
-    const defaults = resetFilters();
-    setDraftFilters(defaults);
-    setAppliedFilters(defaults);
-    setPage(0);
+    clearFilters();
     navigate(location.pathname, { replace: true, state: null });
-  }, [location.state, location.pathname, navigate]);
+  }, [location.state, location.pathname, navigate, clearFilters]);
 
   useEffect(() => {
     if (isSearchActive) return;
@@ -84,28 +93,6 @@ export default function MainPage() {
     },
     [setSort],
   );
-
-  const handleApplyFilters = useCallback(() => {
-    setAppliedFilters({
-      ...draftFilters,
-      priceRange: [...draftFilters.priceRange],
-      yearRange: [...draftFilters.yearRange],
-      formats: [...draftFilters.formats],
-      speedRpm: [...(draftFilters.speedRpm ?? [])],
-      vinylSubtype: [...(draftFilters.vinylSubtype ?? [])],
-      conditions: [...draftFilters.conditions],
-      countries: [...(draftFilters.countries ?? [])],
-      genreIds: [...(draftFilters.genreIds ?? [])],
-    });
-    setPage(0);
-  }, [draftFilters]);
-
-  const handleResetFilters = useCallback(() => {
-    const defaults = resetFilters();
-    setDraftFilters(defaults);
-    setAppliedFilters(defaults);
-    setPage(0);
-  }, []);
 
   const listingItems = useMemo(() => {
     if (isSearchActive) {
@@ -156,8 +143,13 @@ export default function MainPage() {
       isFetching={isFetchingPublic || isLoadingListingSearch}
       draftFilters={draftFilters}
       onDraftFiltersChange={setDraftFilters}
-      onApplyFilters={handleApplyFilters}
-      onResetFilters={handleResetFilters}
+      onApplyFilters={applyFilters}
+      onResetFilters={clearFilters}
+      appliedFilters={appliedFilters}
+      onCommitFilters={commitFilters}
+      activeFilterCount={activeCount}
+      isFilterDirty={isDirty}
+      canResetFilters={canReset}
       sort={sort}
       onSortChange={handleSortChange}
       showSort

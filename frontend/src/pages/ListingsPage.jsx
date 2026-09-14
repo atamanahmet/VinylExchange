@@ -1,6 +1,7 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import PageContainer from "@/components/layout/PageContainer";
 import ListView from "@/components/listing/ListView";
 import ListViewHeader from "@/components/listing/ListViewHeader";
@@ -24,6 +25,9 @@ export default function ListingsPage() {
 
   const deleteListing = useListingStore((state) => state.deleteListing);
 
+  const [pendingDeleteId, setPendingDeleteId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   useEffect(() => {
     fetchMyActiveListings();
   }, [fetchMyActiveListings]);
@@ -32,9 +36,27 @@ export default function ListingsPage() {
     return mapListingsToCardItems(myListings.items, {
       user,
       navigate,
-      onDelete: deleteListing,
+      onDelete: setPendingDeleteId,
     });
-  }, [myListings.items, user, navigate, deleteListing]);
+  }, [myListings.items, user, navigate]);
+
+  const pendingDeleteTitle = useMemo(
+    () =>
+      myListingCards.find((item) => item.id === pendingDeleteId)?.title ?? "",
+    [myListingCards, pendingDeleteId],
+  );
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!pendingDeleteId) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteListing(pendingDeleteId);
+    } finally {
+      setIsDeleting(false);
+      setPendingDeleteId(null);
+    }
+  }, [deleteListing, pendingDeleteId]);
 
   const isEmpty = !isFetchingMine && myListingCards.length === 0;
 
@@ -68,6 +90,21 @@ export default function ListingsPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingDeleteId)}
+        onOpenChange={(next) => !next && setPendingDeleteId(null)}
+        title="Delete this listing?"
+        description={
+          pendingDeleteTitle
+            ? `"${pendingDeleteTitle}" will be removed permanently. This cannot be undone.`
+            : "This listing will be removed permanently. This cannot be undone."
+        }
+        confirmLabel="Delete"
+        destructive
+        isPending={isDeleting}
+        onConfirm={handleConfirmDelete}
+      />
     </PageContainer>
   );
 }

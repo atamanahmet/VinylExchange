@@ -7,10 +7,8 @@ import { useAuthStore } from "../stores/authStore";
 import { useCartStore } from "../stores/cartStore";
 import { useListingStore } from "../stores/listingStore";
 import { mapListingsToCardItems } from "../adapters/mapListingToCardItems";
-import {
-  buildListingFilterParams,
-  resetFilters,
-} from "../utils/listingFilters";
+import { useListingFilterState } from "@/hooks/useListingFilterState";
+import { buildListingFilterParams } from "../utils/listingFilters";
 
 export default function SellerProfilePage() {
   const PAGE_SIZE = 20;
@@ -21,8 +19,19 @@ export default function SellerProfilePage() {
   const [profileError, setProfileError] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [page, setPage] = useState(0);
-  const [draftFilters, setDraftFilters] = useState(() => resetFilters());
-  const [appliedFilters, setAppliedFilters] = useState(() => resetFilters());
+
+  const resetPage = useCallback(() => setPage(0), []);
+  const {
+    draftFilters,
+    setDraftFilters,
+    appliedFilters,
+    applyFilters,
+    clearFilters,
+    commitFilters,
+    activeCount,
+    isDirty,
+    canReset,
+  } = useListingFilterState({ onFiltersCommitted: resetPage });
 
   const user = useAuthStore((state) => state.user);
   const cart = useCartStore((state) => state.cart);
@@ -84,28 +93,6 @@ export default function SellerProfilePage() {
     fetchSellerListings,
   ]);
 
-  const handleApplyFilters = useCallback(() => {
-    setAppliedFilters({
-      ...draftFilters,
-      priceRange: [...draftFilters.priceRange],
-      yearRange: [...draftFilters.yearRange],
-      formats: [...draftFilters.formats],
-      speedRpm: [...(draftFilters.speedRpm ?? [])],
-      vinylSubtype: [...(draftFilters.vinylSubtype ?? [])],
-      conditions: [...draftFilters.conditions],
-      countries: [...(draftFilters.countries ?? [])],
-      genreIds: [...(draftFilters.genreIds ?? [])],
-    });
-    setPage(0);
-  }, [draftFilters]);
-
-  const handleResetFilters = useCallback(() => {
-    const defaults = resetFilters();
-    setDraftFilters(defaults);
-    setAppliedFilters(defaults);
-    setPage(0);
-  }, []);
-
   const listingItems = sellerListings.items ?? [];
 
   const cartItemByListingId = useMemo(() => {
@@ -162,8 +149,13 @@ export default function SellerProfilePage() {
       isFetching={isFetchingSeller}
       draftFilters={draftFilters}
       onDraftFiltersChange={setDraftFilters}
-      onApplyFilters={handleApplyFilters}
-      onResetFilters={handleResetFilters}
+      onApplyFilters={applyFilters}
+      onResetFilters={clearFilters}
+      appliedFilters={appliedFilters}
+      onCommitFilters={commitFilters}
+      activeFilterCount={activeCount}
+      isFilterDirty={isDirty}
+      canResetFilters={canReset}
       emptyHint="This seller has no active listings matching your filters."
     />
   );

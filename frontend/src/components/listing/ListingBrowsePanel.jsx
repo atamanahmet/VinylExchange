@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LayoutGrid, List } from "lucide-react";
 
+import ActiveFilterChips from "@/components/listing/ActiveFilterChips";
 import ListingCard from "@/components/listing/ListingCard";
 import FilterSidebar, { MobileFilterSheet } from "@/components/listing/FilterSidebar";
 import ListView from "@/components/listing/ListView";
@@ -9,9 +10,11 @@ import ListingSortSelect from "@/components/listing/ListingSortSelect";
 import SkeletonCardView from "@/components/shared/skeletons/SkeletonCardView";
 import SkeletonListView from "@/components/shared/skeletons/SkeletonListView";
 
+import { useCountryOptions } from "@/hooks/useCountryOptions";
+import { useGenreOptions } from "@/hooks/useGenreOptions";
 import { useUIStore } from "../../stores/uiStore";
 import { cn } from "@/lib/utils";
-import { countActiveFilters } from "../../utils/listingFilters";
+import { describeActiveFilters } from "../../utils/listingFilters";
 import { buildPaginationRange } from "../../utils/paginationRange";
 
 function useMinWidth(minWidth) {
@@ -45,6 +48,11 @@ export default function ListingBrowsePanel({
   onDraftFiltersChange,
   onApplyFilters,
   onResetFilters,
+  appliedFilters,
+  onCommitFilters,
+  activeFilterCount = 0,
+  isFilterDirty = false,
+  canResetFilters = false,
   sort,
   onSortChange,
   showSort = false,
@@ -58,9 +66,20 @@ export default function ListingBrowsePanel({
   const layout = useUIStore((state) => state.layout);
   const setLayout = useUIStore((state) => state.setLayout);
 
-  const activeFilterCount = useMemo(
-    () => countActiveFilters(draftFilters),
-    [draftFilters],
+  const { options: countryOptions } = useCountryOptions();
+  const { options: genreOptions } = useGenreOptions();
+
+  const activeChips = useMemo(
+    () =>
+      appliedFilters
+        ? describeActiveFilters(appliedFilters, { countryOptions, genreOptions })
+        : [],
+    [appliedFilters, countryOptions, genreOptions],
+  );
+
+  const handleRemoveChip = useCallback(
+    (chip) => onCommitFilters?.(chip.remove(appliedFilters)),
+    [appliedFilters, onCommitFilters],
   );
 
   const totalResults = pagination?.totalElements ?? items.length;
@@ -104,6 +123,9 @@ export default function ListingBrowsePanel({
             onReset={onResetFilters}
             collapsed={sidebarCollapsed}
             onCollapsedChange={setSidebarCollapsed}
+            activeCount={activeFilterCount}
+            canReset={canResetFilters}
+            canApply={isFilterDirty}
           />
 
           <main className="min-w-0 flex-1 transition-[flex-basis,width] duration-100 ease-in-out">
@@ -115,6 +137,8 @@ export default function ListingBrowsePanel({
                   onApply={onApplyFilters}
                   onReset={onResetFilters}
                   activeCount={activeFilterCount}
+                  canReset={canResetFilters}
+                  canApply={isFilterDirty}
                 />
                 <p className="text-sm text-on-surface-muted">
                   {isLoading ? "Loading..." : `${totalResults} results`}
@@ -155,6 +179,13 @@ export default function ListingBrowsePanel({
                 </div>
               </div>
             </div>
+
+            <ActiveFilterChips
+              chips={activeChips}
+              onRemove={handleRemoveChip}
+              onClear={onResetFilters}
+              className="mb-4 sm:mb-5"
+            />
 
             {!isLoading && items.length === 0 && (
               <div className="rounded-xl border border-surface-3 bg-surface-1 px-6 py-12 text-center">
