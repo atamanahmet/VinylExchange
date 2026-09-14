@@ -7,7 +7,6 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
@@ -24,7 +23,6 @@
 #root {
   margin: 0 auto;
   width: 100%;
-  text-align: center;
 }
 
 a {
@@ -37,14 +35,8 @@ a:hover {
 
 body {
   margin: 0;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
 }
 
 button {
@@ -55,22 +47,9 @@ button {
   transition: border-color 0.25s;
 }
 
-button:focus,
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: black;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+  outline: 2px solid var(--c-brand);
+  outline-offset: 2px;
 }
 
 @theme inline {
@@ -125,6 +104,7 @@ button:focus-visible {
   --color-brand-active:       var(--c-brand-active);
   --color-brand-deep:         var(--c-brand-deep);
   --color-brand-fg:           var(--c-brand-fg);
+  --color-on-brand:           var(--c-on-brand);
 
   --color-accent:             var(--c-accent);
   --color-accent-hover:       var(--c-accent-hover);
@@ -180,7 +160,7 @@ button:focus-visible {
   --popover: var(--c-surface-2);
   --popover-foreground: var(--c-on-surface);
   --primary: var(--c-brand);
-  --primary-foreground: var(--c-on-surface);
+  --primary-foreground: var(--c-on-brand);
   --secondary: var(--c-surface-3);
   --secondary-foreground: var(--c-on-surface);
   --muted: var(--c-surface-3);
@@ -189,7 +169,7 @@ button:focus-visible {
   --accent-foreground: var(--c-on-surface);
   --destructive: var(--c-danger);
   --border: var(--c-surface-4);
-  --input: var(--c-accent-muted);
+  --input: var(--c-surface-4);
   --ring: var(--c-brand-active);
   --chart-1: var(--c-brand);
   --chart-2: var(--c-accent);
@@ -207,39 +187,8 @@ button:focus-visible {
   --sidebar-ring: var(--c-brand-active);
 }
 
-.dark {
-  --background: var(--c-surface-1);
-  --foreground: var(--c-on-surface);
-  --card: var(--c-surface-2);
-  --card-foreground: var(--c-on-surface);
-  --popover: var(--c-surface-2);
-  --popover-foreground: var(--c-on-surface);
-  --primary: var(--c-brand);
-  --primary-foreground: var(--c-on-surface);
-  --secondary: var(--c-surface-3);
-  --secondary-foreground: var(--c-on-surface);
-  --muted: var(--c-surface-3);
-  --muted-foreground: var(--c-on-surface-muted);
-  --accent: var(--c-surface-3);
-  --accent-foreground: var(--c-on-surface);
-  --destructive: var(--c-danger);
-  --border: var(--c-surface-4);
-  --input: var(--c-accent-muted);
-  --ring: var(--c-brand-active);
-  --chart-1: var(--c-brand);
-  --chart-2: var(--c-accent);
-  --chart-3: var(--c-success);
-  --chart-4: var(--c-warning);
-  --chart-5: var(--c-info);
-  --sidebar: var(--c-surface-2);
-  --sidebar-foreground: var(--c-on-surface);
-  --sidebar-primary: var(--c-brand);
-  --sidebar-primary-foreground: var(--c-on-surface);
-  --sidebar-accent: var(--c-surface-3);
-  --sidebar-accent-foreground: var(--c-on-surface);
-  --sidebar-border: var(--c-surface-4);
-  --sidebar-ring: var(--c-brand-active);
-}
+/* No separate .dark block needed for the shadcn vars above: they
+   point at --c-* tokens, and colors.css flips those under .dark. */
 
 @layer base {
   * {
@@ -250,5 +199,27 @@ button:focus-visible {
   }
   html {
     @apply font-sans;
+  }
+
+  /* ── Typography scale ──────────────────────────────────────────
+     Default heading sizes and rhythm. Utility classes on a given
+     element still win (base layer loses to utilities), so pages
+     can override locally without fighting this. */
+
+  h1 {
+    @apply text-3xl font-semibold tracking-tight;
+    margin-bottom: calc(var(--spacing) * 4);
+  }
+  h2 {
+    @apply text-2xl font-semibold tracking-tight;
+    margin-bottom: calc(var(--spacing) * 3);
+  }
+  h3 {
+    @apply text-xl font-semibold;
+    margin-bottom: calc(var(--spacing) * 2);
+  }
+  h4 {
+    @apply text-lg font-medium;
+    margin-bottom: calc(var(--spacing) * 2);
   }
 }

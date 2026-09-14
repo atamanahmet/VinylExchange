@@ -4,109 +4,163 @@
    All raw color values live here. Change one value to update
    every usage site instantly.
 
+   Theme split: :root holds LIGHT values, .dark overrides with
+   DARK values. next-themes toggles the .dark class on <html>,
+   so every token (and every Tailwind utility built on it) flips
+   automatically.
+
    Tailwind tokens are registered in index.css @theme inline so
    the classes bg-brand, text-accent, bg-surface-1, etc. work
    everywhere. Prefix convention: --c-<group>[-variant]
+
+   Locked palette (see frontend-overhaul handoff):
+   primary amber-600, secondary orange-500, tertiary teal-600,
+   semantic red-600 / green-600. Neutrals separate.
    ================================================================ */
 
 :root {
 
-  /* ══ BRAND ═══════════════════════════════════════════════════
-     Primary brand colour - default: indigo.
-     Swap the hex values here to change the brand identity.      */
+  /* ══ BRAND (primary - amber) ═════════════════════════════════ */
 
-  --c-brand:          #4f43e9;  /* indigo-600 */
-  --c-brand-hover:    #432dd7;  /* indigo-700 */
-  --c-brand-active:   #372aac;  /* indigo-800 */
-  --c-brand-deep:     #17144b;  /* indigo-950 */
-  --c-brand-fg:       #7c86ff;  /* indigo-400 - text on dark bg */
+  --c-brand:          #d97706;  /* amber-600 */
+  --c-brand-hover:    #b45309;  /* amber-700 */
+  --c-brand-active:   #92400e;  /* amber-800 */
+  --c-brand-deep:     #451a03;  /* amber-950 */
+  --c-brand-fg:       #92400e;  /* amber-800 - readable brand text on light */
+  --c-on-brand:       #0a0a0a;  /* text on amber fills, both themes (6.4:1) */
 
 
-  /* ══ ACCENT ══════════════════════════════════════════════════
-     Secondary highlight colour - default: amber.
+  /* ══ ACCENT (secondary - orange) ═════════════════════════════
      Used for prices, artist names, notification badges, etc.   */
 
-  --c-accent:         #e17100;   /* amber-600 */
-  --c-accent-hover:   #bb4d00;   /* amber-700 */
-  --c-accent-dim:     #fe9a00;   /* amber-500 */
-  --c-accent-text:    #fcbb00;   /* amber-400 - readable on dark bg */
-  --c-accent-light:   #fee685;   /* amber-200 */
-  --c-accent-soft:    #fcf4c7;   /* amber-100 */
-  --c-accent-muted:   #fffbeb;   /* amber-50  - subtle form borders */
+  --c-accent:         #f97316;   /* orange-500 */
+  --c-accent-hover:   #ea580c;   /* orange-600 */
+  --c-accent-dim:     #fb923c;   /* orange-400 */
+  --c-accent-text:    #c2410c;   /* orange-700 - readable on light bg */
+  --c-accent-light:   #fed7aa;   /* orange-200 */
+  --c-accent-soft:    #ffedd5;   /* orange-100 */
+  --c-accent-muted:   #fff7ed;   /* orange-50  */
 
 
-  /* ══ SURFACES ════════════════════════════════════════════════
-     Dark-theme surface stack - deeper number = darker layer.  */
+  /* ══ SURFACES (light theme: white to gray, 1 = page bg) ═════ */
 
-  --c-surface-base:   #000000;   /* black       */
+  --c-surface-base:   #ffffff;   /* white       */
+  --c-surface-1:      #fafafa;   /* neutral-50  */
+  --c-surface-2:      #f5f5f5;   /* neutral-100 */
+  --c-surface-3:      #e5e5e5;   /* neutral-200 */
+  --c-surface-4:      #d4d4d4;   /* neutral-300 */
+  --c-surface-form:   #f1f5f9;   /* slate-100   */
+
+
+  /* ══ ON-SURFACE TEXT (dark text on light surfaces) ══════════ */
+
+  --c-on-surface:        #0a0a0a;   /* near-black    */
+  --c-on-surface-alpha:  #0a0a0ade; /* near-black 87% */
+  --c-on-surface-bright: #171717;   /* neutral-900   */
+  --c-on-surface-dim:    #404040;   /* neutral-700   */
+  --c-on-surface-muted:  #525252;   /* neutral-600   */
+  --c-on-surface-faint:  #a3a3a3;   /* neutral-400   */
+
+
+  /* ══ STATUS: SUCCESS (green-600 family) ═════════════════════ */
+
+  --c-success:        #16a34a;  /* green-600 */
+  --c-success-hover:  #15803d;  /* green-700 */
+  --c-success-fg:     #15803d;  /* green-700 - readable on light */
+
+
+  /* ══ STATUS: DANGER (red-600 family) ════════════════════════ */
+
+  --c-danger:         #dc2626;   /* red-600   */
+  --c-danger-hover:   #b91c1c;   /* red-700   */
+  --c-danger-deep:    #991b1b;   /* red-800   */
+  --c-danger-deeper:  #7f1d1d;   /* red-900   */
+  --c-danger-bright:  #ef4444;   /* red-500   */
+  --c-danger-pale:    #fecaca;   /* red-200   */
+  --c-danger-fg:      #b91c1c;   /* red-700 - readable on light */
+
+
+  /* ══ STATUS: WARNING (deep orange, shares secondary hue) ════ */
+
+  --c-warning:        #c2410c;   /* orange-700 */
+  --c-warning-hover:  #9a3412;   /* orange-800 */
+  --c-warning-fg:     #c2410c;   /* orange-700 - readable on light */
+
+
+  /* ══ STATUS: INFO (tertiary - teal, links/info badges) ══════ */
+
+  --c-info:           #0d9488;  /* teal-600 */
+  --c-info-fg:        #0f766e;  /* teal-700 - readable on light */
+
+
+  /* ══ STATUS: NOTE (teal) ════════════════════════════════════ */
+
+  --c-note-fg:        #0f766e;  /* teal-700 */
+
+
+  /* ══ STATUS: PROMO (purple) ═════════════════════════════════ */
+
+  --c-promo-fg:       #7e22ce;  /* purple-700 */
+
+
+  /* ══ STATUS: SIGNAL (cyan) ══════════════════════════════════ */
+
+  --c-signal-fg:      #0e7490;  /* cyan-700 */
+  --c-signal-fg-dark: #155e75;  /* cyan-800 */
+
+
+  /* ══ SKELETON ═══════════════════════════════════════════════ */
+
+  --c-skeleton-base:  #f0f0f0;
+  --c-skeleton-shine: #e0e0e0;
+}
+
+
+/* ================================================================
+   DARK THEME OVERRIDES
+   next-themes sets .dark on <html>. Values not overridden here
+   inherit the :root value (brand/accent/status base colors are
+   theme-independent, only surfaces and *-fg/text shades flip).
+   ================================================================ */
+
+.dark {
+
+  /* brand text needs to brighten on dark surfaces */
+  --c-brand-fg:       #fbbf24;   /* amber-400 */
+
+  /* accent text shades for dark surfaces */
+  --c-accent-text:    #fb923c;   /* orange-400 */
+  --c-accent-light:   #fed7aa;   /* orange-200 */
+  --c-accent-soft:    #7c2d12;   /* orange-900 - soft fill on dark */
+  --c-accent-muted:   #431407;   /* orange-950 - subtle borders on dark */
+
+  /* dark surface stack, near-black base (not pure #000) */
+  --c-surface-base:   #0a0a0a;   /* near-black  */
   --c-surface-1:      #171717;   /* neutral-900 */
   --c-surface-2:      #262626;   /* neutral-800 */
   --c-surface-3:      #404040;   /* neutral-700 */
   --c-surface-4:      #525252;   /* neutral-600 */
   --c-surface-form:   #354152;   /* slate-700   */
 
+  /* light text on dark surfaces */
+  --c-on-surface:        #ffffff;
+  --c-on-surface-alpha:  #ffffffde;
+  --c-on-surface-bright: #e7e7e7;   /* neutral-200 */
+  --c-on-surface-dim:    #c0c0c0;   /* neutral-300 */
+  --c-on-surface-muted:  #a0a0a0;   /* neutral-400 */
+  --c-on-surface-faint:  #737373;   /* neutral-500 */
 
-  /* ══ ON-SURFACE TEXT ═════════════════════════════════════════
-     Text colours for use on dark surfaces, lightest first.    */
+  /* status fg shades brighten on dark */
+  --c-success-fg:     #4ade80;   /* green-400  */
+  --c-danger-fg:      #f87171;   /* red-400    */
+  --c-warning-fg:     #fb923c;   /* orange-400 */
+  --c-info-fg:        #2dd4bf;   /* teal-400   */
+  --c-note-fg:        #2dd4bf;   /* teal-400   */
+  --c-promo-fg:       #c084fc;   /* purple-400 */
+  --c-signal-fg:      #22d3ee;   /* cyan-400   */
+  --c-signal-fg-dark: #06b6d4;   /* cyan-500   */
 
-  --c-on-surface:        #ffffff;   /* white         */
-  --c-on-surface-alpha:  #ffffffde; /* white 87%     */
-  --c-on-surface-bright: #e7e7e7;   /* neutral-200   */
-  --c-on-surface-dim:    #c0c0c0;   /* neutral-300   */
-  --c-on-surface-muted:  #a0a0a0;   /* neutral-400   */
-  --c-on-surface-faint:  #4c4c4c;   /* neutral-500   */
-
-
-  /* ══ STATUS: SUCCESS ══════════════════════════════════════════ */
-
-  --c-success:        #008236;  /* green-700 */
-  --c-success-hover:  #016630;  /* green-800 */
-  --c-success-fg:     #05df72;  /* green-400 */
-
-
-  /* ══ STATUS: DANGER ═══════════════════════════════════════════ */
-
-  --c-danger:         #e7000b;   /* red-600   */
-  --c-danger-hover:   #c10007;   /* red-700   */
-  --c-danger-deep:    #9f0715;   /* red-800   */
-  --c-danger-deeper:  #82181a;   /* red-900   */
-  --c-danger-bright:  #fb2c36;   /* red-500   */
-  --c-danger-pale:    #ffc9ca;   /* red-200   */
-  --c-danger-fg:      #ff6467;   /* red-400   */
-
-
-  /* ══ STATUS: WARNING ══════════════════════════════════════════ */
-
-  --c-warning:        #ca3500;   /* orange-700 */
-  --c-warning-hover:  #9f2d00;   /* orange-800 */
-  --c-warning-fg:     #ff8904;   /* orange-400 */
-
-
-  /* ══ STATUS: INFO ═════════════════════════════════════════════ */
-
-  --c-info:           #155dfc;  /* blue-600  */
-  --c-info-fg:        #51a2ff;  /* blue-400  */
-
-
-  /* ══ STATUS: NOTE (teal) ══════════════════════════════════════ */
-
-  --c-note-fg:        #00d5be;  /* teal-400  */
-
-
-  /* ══ STATUS: PROMO (purple) ════════════════════════════════════ */
-
-  --c-promo-fg:       #c27aff;  /* purple-400 */
-
-
-  /* ══ STATUS: SIGNAL (cyan) ═════════════════════════════════════ */
-
-  --c-signal-fg:      #00b8db;  /* cyan-500  */
-  --c-signal-fg-dark: #0092b8;  /* cyan-600  */
-
-
-  /* ══ SKELETON ═════════════════════════════════════════════════
-     Shimmer animation gradient for loading states.            */
-
-  --c-skeleton-base:  #f0f0f0;
-  --c-skeleton-shine: #e0e0e0;
+  /* skeleton shimmer on dark */
+  --c-skeleton-base:  #262626;
+  --c-skeleton-shine: #404040;
 }
