@@ -82,7 +82,7 @@ export default function CardImage({ src, alt }) {
       )}
 
       {isPlaceholder && !error && ready && (
-        <div className="absolute top-6 -left-8.5 z-20 -rotate-45 rounded bg-accent-dim px-7 py-0.5 text-md font-semibold tracking-wider text-surface-base shadow-lg">
+        <div className="absolute top-6 -left-8.5 z-20 -rotate-45 rounded bg-accent-dim px-7 py-0.5 text-base font-semibold tracking-wider text-surface-base shadow-lg">
           Not seller photo
         </div>
       )}

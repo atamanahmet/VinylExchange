@@ -1,3 +1,4 @@
+import PageContainer from "@/components/layout/PageContainer";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -28,8 +29,8 @@ export default function CheckoutShippingPage() {
   }, [user, cart, navigate]);
 
   return (
-    <section className="mx-auto min-h-screen max-w-7xl bg-surface-base py-5 text-on-surface antialiased">
-      <div className="px-10">
+    <PageContainer width="wide" className="antialiased">
+      <div>
         <h2 className="text-xl font-semibold text-on-surface sm:text-2xl">
           Shipping address
         </h2>
@@ -40,6 +41,6 @@ export default function CheckoutShippingPage() {
           <CheckoutShippingPanel />
         </div>
       </div>
-    </section>
+    </PageContainer>
   );
 }

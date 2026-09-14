@@ -1,11 +1,14 @@
 import { useEffect, useMemo } from "react";
-import React from "react";
-import ListingItem from "@/components/listing/ListingItem";
-import SkeletonListingItem from "@/components/listing/SkeletonListingItem";
-import { useListingStore } from "../stores/listingStore";
 import { useNavigate } from "react-router-dom";
-import { mapListingsToCardItems } from "../adapters/mapListingToCardItems";
+
+import PageContainer from "@/components/layout/PageContainer";
+import ListView from "@/components/listing/ListView";
+import ListViewHeader from "@/components/listing/ListViewHeader";
+import SkeletonListView from "@/components/shared/skeletons/SkeletonListView";
+
+import { useListingStore } from "../stores/listingStore";
 import { useAuthStore } from "../stores/authStore";
+import { mapListingsToCardItems } from "../adapters/mapListingToCardItems";
 
 export default function ListingsPage() {
   const navigate = useNavigate();
@@ -33,38 +36,38 @@ export default function ListingsPage() {
     });
   }, [myListings.items, user, navigate, deleteListing]);
 
+  const isEmpty = !isFetchingMine && myListingCards.length === 0;
+
   return (
-    <>
-      <div className="min-h-screen max-w-7xl mx-auto min-w-300 bg-surface-base text-on-surface">
-        <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-          <div className="">
-            <h2 className="text-3xl font-semibold mb-5">My listings</h2>
+    <PageContainer width="wide">
+      <h1 className="text-left text-2xl font-semibold sm:text-3xl">
+        My listings
+      </h1>
+
+      {isEmpty ? (
+        <div className="rounded-xl border border-surface-3 bg-surface-1 px-6 py-12 text-center">
+          <p className="text-lg font-medium text-on-surface">
+            No active listings
+          </p>
+          <p className="mt-2 text-sm text-on-surface-muted">
+            Listings you publish will show up here.
+          </p>
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-surface-3">
+          <ListViewHeader />
+
+          <div>
+            {isFetchingMine
+              ? Array(5)
+                  .fill(0)
+                  .map((_, i) => <SkeletonListView key={i} />)
+              : myListingCards.map((item) => (
+                  <ListView key={item.id} item={item} />
+                ))}
           </div>
-          <div className="bg-neutral-primary-soft border-b  border-default grid grid-cols-7 items-center">
-            <p>Cover</p>
-            <p>Title</p>
-            <p>Release Date</p>
-            <p>Format</p>
-            <p>Price</p>
-            <p>Created At</p>
-          </div>
-          <div className="mt-6">
-            {isFetchingMine ? (
-              Array(5)
-                .fill(0)
-                .map((_, i) => <SkeletonListingItem key={i} />)
-            ) : myListingCards.length === 0 ? (
-              <p className="text-on-surface-muted">
-                You have no active listings.
-              </p>
-            ) : (
-              myListingCards.map((item) => (
-                <ListingItem key={item.id} item={item} />
-              ))
-            )}
-          </div>
-        </main>
-      </div>
-    </>
+        </div>
+      )}
+    </PageContainer>
   );
 }

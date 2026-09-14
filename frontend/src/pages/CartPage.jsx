@@ -1,3 +1,4 @@
+import PageContainer from "@/components/layout/PageContainer";
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/authStore";
@@ -39,8 +40,8 @@ export default function CartPage() {
   };
 
   return (
-    <section className="mx-auto min-h-screen max-w-7xl bg-surface-base py-5 text-on-surface antialiased">
-      <div className="px-10">
+    <PageContainer width="wide" className="antialiased">
+      <div>
         <h2 className="text-xl font-semibold text-on-surface sm:text-2xl">
           Shopping Cart
         </h2>
@@ -157,6 +158,6 @@ export default function CartPage() {
           </div>
         </div>
       </div>
-    </section>
+    </PageContainer>
   );
 }

@@ -98,7 +98,7 @@ export default function OrderDetailPage() {
 
   if (isFetching) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-8 flex flex-col gap-4">
+      <div className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8">
         <div className="h-8 w-48 bg-surface-1 rounded animate-pulse" />
         <div className="h-64 bg-surface-1 rounded-xl animate-pulse" />
         <div className="h-40 bg-surface-1 rounded-xl animate-pulse" />
@@ -108,7 +108,7 @@ export default function OrderDetailPage() {
 
   if (!currentOrder) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-16 text-center">
+      <div className="mx-auto max-w-3xl px-4 py-12 text-center sm:px-6 sm:py-16">
         <p className="text-on-surface-muted text-sm">Order not found.</p>
         <button
           onClick={() => navigate("/orders")}
@@ -160,7 +160,7 @@ export default function OrderDetailPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
+    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
       {/* back */}
       <button
         onClick={() => navigate("/orders")}

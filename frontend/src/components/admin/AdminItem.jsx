@@ -1,6 +1,30 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
+
+import { cn } from "@/lib/utils";
+
+const ADMIN_GRID =
+  "grid grid-cols-[5rem_minmax(0,1.4fr)_minmax(0,0.7fr)_minmax(0,0.7fr)_minmax(0,0.8fr)_minmax(0,0.7fr)_9rem] items-center";
+
+export const ADMIN_HEADER_CELL = "min-w-0 px-3 py-3 text-center";
+
+export function AdminListHeader() {
+  return (
+    <div
+      className={cn(
+        ADMIN_GRID,
+        "hidden border-b border-surface-3 bg-surface-2 text-center text-xs font-medium uppercase tracking-wide text-on-surface-muted lg:grid",
+      )}
+    >
+      <p className={ADMIN_HEADER_CELL}>Cover</p>
+      <p className={ADMIN_HEADER_CELL}>Title</p>
+      <p className={ADMIN_HEADER_CELL}>Release</p>
+      <p className={ADMIN_HEADER_CELL}>Format</p>
+      <p className={ADMIN_HEADER_CELL}>Price</p>
+      <p className={ADMIN_HEADER_CELL}>Promoted</p>
+      <div className={ADMIN_HEADER_CELL} aria-hidden="true" />
+    </div>
+  );
+}
 
 export default function AdminItem({
   item,
@@ -8,122 +32,147 @@ export default function AdminItem({
   handlePromote,
   handleFreeze,
 }) {
-  const [image, setImage] = useState("");
-
   const navigate = useNavigate();
 
-  const navigateItemWithId = () => {
-    navigate(`/listing/${item.id}`);
+  const navigateItemWithId = () => navigate(`/listing/${item.id}`);
+
+  const handleImageError = (event) => {
+    event.target.src = "/placeholder.png";
   };
 
-  const navigateToEditWithId = () => {
-    navigate("/edit", { state: { id: item.id } });
-  };
+  const price = item.price?.toLocaleString("tr-TR");
+  const discountedPrice = item.discountedPrice?.toLocaleString("tr-TR");
+  const hasDiscount = item.discount > 0;
+
+  const cover = (
+    <button
+      type="button"
+      onClick={navigateItemWithId}
+      className="size-16 shrink-0 overflow-hidden rounded-md bg-surface-2"
+    >
+      <img
+        src={item.imagePaths?.[0]}
+        onError={handleImageError}
+        alt={item.title || "listing main image"}
+        className="size-full object-cover"
+      />
+    </button>
+  );
+
+  const priceCell = (
+    <div className="min-w-0">
+      <p
+        className={cn(
+          "text-sm font-semibold",
+          hasDiscount
+            ? "text-on-surface-muted line-through"
+            : "text-on-surface",
+        )}
+      >
+        {price != null ? `${price} ₺` : "—"}
+      </p>
+      {hasDiscount && discountedPrice != null && (
+        <p className="text-sm font-semibold text-success-fg">
+          {discountedPrice} ₺
+        </p>
+      )}
+    </div>
+  );
+
+  const actions = (
+    <div className="flex flex-wrap gap-2 lg:flex-col lg:flex-nowrap">
+      <button
+        type="button"
+        onClick={() => handlePromote(item.id, !item.promote)}
+        className="rounded-md bg-brand px-3 py-1.5 text-xs font-medium text-on-brand transition-colors hover:bg-brand-hover"
+      >
+        {item.promote ? "Unpromote" : "Promote"}
+      </button>
+      <button
+        type="button"
+        onClick={() => handleFreeze(item.id, !item.onHold)}
+        className="rounded-md bg-surface-3 px-3 py-1.5 text-xs font-medium text-on-surface transition-colors hover:bg-surface-4"
+      >
+        {item.onHold ? "Unfreeze" : "Freeze"}
+      </button>
+      <button
+        type="button"
+        onClick={() => onDelete(item.id)}
+        className="rounded-md bg-danger px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-danger-hover"
+      >
+        Delete
+      </button>
+    </div>
+  );
+
+  const rowTint = item.onHold ? "bg-danger/10" : "bg-surface-1";
 
   return (
     <>
-      <div
-        className={
-          item.onHold
-            ? "bg-danger" +
-              "ml-1 pb-5 gap-2  grid grid-cols-7 border-b mb-5 items-center"
-            : "ml-1 pb-5 gap-2  grid grid-cols-7 border-b mb-5 items-center"
-        }
+      <article
+        className={cn("border-b border-surface-3 p-4 lg:hidden", rowTint)}
       >
-        <button
-          onClick={() => {
-            navigateItemWithId();
-          }}
-        >
-          <img
-            src={item.imagePaths[0]}
-            onError={(e) => {
-              e.target.src = "/placeholder.png";
-            }}
-            alt="listing main image"
-            className="bg-black"
-          />
-        </button>
-        <button
-          onClick={() => {
-            navigateItemWithId();
-          }}
-        >
-          <p
-            scope="row"
-            className="px-6 py-4 font-medium text-heading flex flex-col overflow-auto "
-          >
-            {item.title}
-          </p>
-        </button>
+        <div className="flex gap-3">
+          {cover}
 
-        <p className="px-6 py-4">{item.date} </p>
-        <p className={"px-6 py-4"}>{item.format} </p>
-        {/* <p className="px-6 py-4">{item.trackCount}</p> */}
-        <div className="">
-          <p
-            className={`px-6 ${
-              item.discount > 0
-                ? "text-base font-bold text-on-surface line-through"
-                : "text-base font-bold text-on-surface"
-            }`}
-          >
-            {item.price.toLocaleString("tr-TR") + " ₺"}
-          </p>
-          <p
-            className={`px-6 ${
-              item.discount > 0
-                ? "text-base font-bold text-success-fg"
-                : "text-base font-bold text-success-fg"
-            }`}
-          >
-            {item.discount > 0
-              ? item.discountedPrice.toLocaleString("tr-TR") + " ₺"
-              : null}
-          </p>
-        </div>
-        {/* <p className="px-6 py-4">{item.price}</p> */}
-        <p
-          className={`px-6 ${
-            item.discount > 0
-              ? "text-base font-bold text-success-fg"
-              : "text-base font-bold text-success-fg"
-          }`}
-        >
-          {item.promote ? "Promoted" : "Not Promoted"}
-        </p>
-
-        <div className="px-6 py-4 text-right">
-          <div className="flex flex-col justify-center items-center -mt-5">
+          <div className="min-w-0 flex-1 space-y-1 text-left">
             <button
-              onClick={() => handlePromote(item.id, !item.promote)}
-              className="font-medium text-fg-brand hover:underline bg-brand py-2 px-2 mb-2 rounded-md  cursor-pointer"
+              type="button"
+              onClick={navigateItemWithId}
+              className="line-clamp-2 text-left font-medium text-on-surface hover:text-brand-fg"
             >
-              {item.promote ? "Unpromote" : "Promote"}
+              {item.title || "Untitled"}
             </button>
-            <button
-              onClick={() => handleFreeze(item.id, !item.onHold)}
-              className="font-medium text-on-brand hover:underline bg-brand py-2 px-2 mb-2 rounded-md  cursor-pointer"
-            >
-              {item.onHold ? "Unfreeze" : "Freeze"}
-            </button>
-            {/* <a
-              onClick={() => {
-                navigateToEditWithId();
-              }}
-              className="font-medium text-on-brand hover:underline bg-brand py-2 px-4.5 mb-2 rounded-md  cursor-pointer"
-            >
-              Edit
-            </a> */}
-            <a
-              onClick={() => onDelete(item.id)}
-              className="font-medium text-white bg-danger p-2 rounded-md hover:underline cursor-pointer"
-            >
-              Delete
-            </a>
+            <p className="text-xs text-on-surface-muted">
+              {[item.date, item.format].filter(Boolean).join(" · ") || "—"}
+            </p>
+            {priceCell}
+            <p className="text-xs text-on-surface-muted">
+              {item.promote ? "Promoted" : "Not promoted"}
+            </p>
           </div>
         </div>
-      </div>
+
+        <div className="mt-3">{actions}</div>
+      </article>
+
+      <article
+        className={cn(
+          ADMIN_GRID,
+          "hidden border-b border-surface-3 lg:grid",
+          rowTint,
+        )}
+      >
+        <div className="flex min-w-0 items-center justify-center px-3 py-3">
+          {cover}
+        </div>
+
+        <button
+          type="button"
+          onClick={navigateItemWithId}
+          className="min-w-0 px-3 py-3 text-left"
+        >
+          <p className="line-clamp-2 font-medium text-on-surface hover:text-brand-fg">
+            {item.title || "Untitled"}
+          </p>
+        </button>
+
+        <p className="min-w-0 truncate px-3 py-3 text-sm text-on-surface-dim">
+          {item.date || "—"}
+        </p>
+
+        <p className="min-w-0 truncate px-3 py-3 text-sm text-on-surface-dim">
+          {item.format || "—"}
+        </p>
+
+        <div className="min-w-0 px-3 py-3">{priceCell}</div>
+
+        <p className="min-w-0 px-3 py-3 text-sm text-on-surface-dim">
+          {item.promote ? "Promoted" : "—"}
+        </p>
+
+        <div className="min-w-0 px-3 py-3">{actions}</div>
+      </article>
     </>
   );
 }

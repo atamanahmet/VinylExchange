@@ -1,3 +1,4 @@
+import PageContainer from "@/components/layout/PageContainer";
 import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useOrderStore } from "../stores/orderStore";
@@ -19,8 +20,8 @@ export default function PaymentResultPage() {
   }, [status, setPendingOrderIds]);
 
   return (
-    <section className="max-w-7xl mx-auto min-h-screen bg-surface-1 py-5">
-      <div className="px-10 flex flex-col items-center justify-center py-20">
+    <PageContainer width="wide">
+      <div className="flex flex-col items-center justify-center py-12 sm:py-20">
         {status === "success" ? (
           <>
             <div className="text-success-fg text-6xl mb-4">✓</div>
@@ -87,6 +88,6 @@ export default function PaymentResultPage() {
           </>
         )}
       </div>
-    </section>
+    </PageContainer>
   );
 }

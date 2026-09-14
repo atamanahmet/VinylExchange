@@ -127,7 +127,7 @@ export default function Navbar() {
               </div>
               <input
                 type="search"
-                className="block w-full p-2.5 pl-10 text-sm text-on-surface border-2 rounded-base bg-surface-1 focus:ring-accent focus:border-accent placeholder:text-on-surface-muted rounded-xl"
+                className="block w-full p-2.5 pl-10 text-sm text-on-surface border-2 rounded-lg bg-surface-1 focus:ring-accent focus:border-accent placeholder:text-on-surface-muted rounded-xl"
                 placeholder="Search marketplace..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -140,7 +140,7 @@ export default function Navbar() {
             {/* mobile search */}
             <button
               onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
-              className="flex items-center justify-center md:hidden text-on-surface-dim hover:text-on-surface bg-transparent border border-transparent hover:bg-surface-2 focus:ring-2 focus:ring-surface-3 font-medium rounded-base text-sm w-10 h-10 focus:outline-none"
+              className="flex items-center justify-center md:hidden text-on-surface-dim hover:text-on-surface bg-transparent border border-transparent hover:bg-surface-2 focus:ring-2 focus:ring-surface-3 font-medium rounded-lg text-sm w-10 h-10 focus:outline-none"
               aria-label="Search"
             >
               <svg
@@ -163,7 +163,7 @@ export default function Navbar() {
               <div>
                 <button
                   onClick={setModalActive}
-                  className="hidden sm:flex items-center text-on-surface hover:text-on-surface hover:bg-accent-hover focus:ring-2 focus:ring-surface-3 font-medium rounded-base text-sm px-4 py-2.5 focus:outline-none bg-accent rounded-xl"
+                  className="hidden sm:flex items-center text-on-surface hover:text-on-surface hover:bg-accent-hover focus:ring-2 focus:ring-surface-3 font-medium rounded-lg text-sm px-4 py-2.5 focus:outline-none bg-accent rounded-xl"
                 >
                   Sign in
                 </button>
@@ -172,13 +172,13 @@ export default function Navbar() {
               <div className="flex flex-row gap-4">
                 <button
                   onClick={() => navigate("/newlisting")}
-                  className="hidden sm:flex items-center text-on-surface bg-accent rounded-xl hover:bg-accent-hover focus:ring-2 focus:ring-accent font-medium rounded-base text-sm px-4 py-2.5 focus:outline-none"
+                  className="hidden sm:flex items-center text-on-surface bg-accent rounded-xl hover:bg-accent-hover focus:ring-2 focus:ring-accent font-medium rounded-lg text-sm px-4 py-2.5 focus:outline-none"
                 >
                   New Listing
                 </button>
                 <button
                   onClick={() => navigate("/orders")}
-                  className="hidden sm:flex items-center text-on-surface bg-accent rounded-xl hover:bg-accent-hover focus:ring-2 focus:ring-accent font-medium rounded-base text-sm px-4 py-2.5 focus:outline-none"
+                  className="hidden sm:flex items-center text-on-surface bg-accent rounded-xl hover:bg-accent-hover focus:ring-2 focus:ring-accent font-medium rounded-lg text-sm px-4 py-2.5 focus:outline-none"
                 >
                   Orders
                 </button>
@@ -190,7 +190,7 @@ export default function Navbar() {
               {user != null && (
                 <button
                   onClick={() => navigate("/messaging")}
-                  className="relative flex items-center justify-center text-on-surface-dim hover:text-on-surface bg-transparent border border-transparent hover:bg-surface-2 focus:ring-2 focus:ring-surface-3 font-medium rounded-base text-sm w-10 h-10 ml-2 hover:-translate-y-0.5 ease-in-out"
+                  className="relative flex items-center justify-center text-on-surface-dim hover:text-on-surface bg-transparent border border-transparent hover:bg-surface-2 focus:ring-2 focus:ring-surface-3 font-medium rounded-lg text-sm w-10 h-10 ml-2 hover:-translate-y-0.5 ease-in-out"
                   aria-label="Messages"
                 >
                   <div className="border-2 border-surface-3 p-2 rounded-full">
@@ -219,7 +219,7 @@ export default function Navbar() {
               {user != null && (
                 <button
                   onClick={() => navigate("/cart")}
-                  className="relative flex items-center justify-center text-on-surface-dim hover:text-on-surface bg-transparent hover:bg-surface-2 focus:ring-2 focus:ring-surface-3 font-medium rounded-base text-sm w-10 h-10 focus:outline-none "
+                  className="relative flex items-center justify-center text-on-surface-dim hover:text-on-surface bg-transparent hover:bg-surface-2 focus:ring-2 focus:ring-surface-3 font-medium rounded-lg text-sm w-10 h-10 focus:outline-none "
                   aria-label="Cart"
                 >
                   <div className="border-2 border-surface-3 p-2 rounded-full">
@@ -287,7 +287,7 @@ export default function Navbar() {
 
                 {/* notification dropdown */}
                 {isNotificationMenuOpen && (
-                  <div className="absolute bg-surface-base right-0 z-40 mt-2 w-65 divide-y divide-surface-3 rounded-base shadow-lg border border-surface-3">
+                  <div className="absolute bg-surface-base right-0 z-40 mt-2 w-65 divide-y divide-surface-3 rounded-lg shadow-lg border border-surface-3">
                     <div className=" py-3">
                       <span className="block text-sm text-on-surface font-semibold">
                         Notifications
@@ -347,7 +347,7 @@ export default function Navbar() {
 
                 {/* user menu drop */}
                 {isUserMenuOpen && (
-                  <div className="absolute bg-surface-base right-0 z-40 mt-2 w-56 divide-y divide-surface-3 rounded-base shadow-lg border border-surface-3">
+                  <div className="absolute bg-surface-base right-0 z-40 mt-2 w-56 divide-y divide-surface-3 rounded-lg shadow-lg border border-surface-3">
                     <div className="px-4 py-3">
                       <span className="block text-sm text-on-surface font-semibold">
                         {user?.username || ""}
@@ -421,7 +421,7 @@ export default function Navbar() {
             {/* mmobile menu button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-on-surface-dim rounded-base lg:hidden hover:bg-surface-2 hover:text-on-surface focus:outline-none focus:ring-2 focus:ring-surface-3"
+              className="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-on-surface-dim rounded-lg lg:hidden hover:bg-surface-2 hover:text-on-surface focus:outline-none focus:ring-2 focus:ring-surface-3"
               aria-label="Open main menu"
             >
               <svg
@@ -462,7 +462,7 @@ export default function Navbar() {
               </div>
               <input
                 type="search"
-                className="block w-full p-2.5 pl-10 text-sm text-on-surface border border-surface-3 rounded-base bg-surface-1 focus:ring-accent focus:border-accent placeholder:text-on-surface-muted"
+                className="block w-full p-2.5 pl-10 text-sm text-on-surface border border-surface-3 rounded-lg bg-surface-1 focus:ring-accent focus:border-accent placeholder:text-on-surface-muted"
                 placeholder="Search products..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}

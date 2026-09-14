@@ -1,7 +1,7 @@
 import axios from "axios";
 import { useState, useEffect } from "react";
-import ListingItem from "@/components/listing/ListingItem";
-import AdminItem from "@/components/admin/AdminItem";
+import PageContainer from "@/components/layout/PageContainer";
+import AdminItem, { AdminListHeader } from "@/components/admin/AdminItem";
 
 export default function AdminDashboard() {
   const [listings, setListings] = useState([]);
@@ -67,36 +67,26 @@ export default function AdminDashboard() {
     }
   }
   return (
-    <>
-      <div className="min-h-screen min-w-300 bg-surface-base text-on-surface mt-15 rounded-3xl">
-        <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-          <div className="">
-            <h2 className="text-3xl font-semibold mb-5">All listings</h2>
-          </div>
-          <div className="bg-neutral-primary-soft border-b  border-default grid grid-cols-7 items-center">
-            <p>Cover</p>
-            <p>Title</p>
-            <p>Release Date</p>
-            <p>Format</p>
-            <p>Price</p>
-            <p>Promoted</p>
-          </div>
-          <div className="mt-6">
-            {listings &&
-              listings.map((item) => (
-                <div>
-                  <AdminItem
-                    key={item.id}
-                    item={item}
-                    onDelete={deleteListing}
-                    handlePromote={handlePromote}
-                    handleFreeze={handleFreeze}
-                  />
-                </div>
-              ))}
-          </div>
-        </main>
+    <PageContainer width="wide">
+      <h1 className="text-left text-2xl font-semibold sm:text-3xl">
+        All listings
+      </h1>
+
+      <div className="overflow-hidden rounded-xl border border-surface-3">
+        <AdminListHeader />
+
+        <div>
+          {listings?.map((item) => (
+            <AdminItem
+              key={item.id}
+              item={item}
+              onDelete={deleteListing}
+              handlePromote={handlePromote}
+              handleFreeze={handleFreeze}
+            />
+          ))}
+        </div>
       </div>
-    </>
+    </PageContainer>
   );
 }

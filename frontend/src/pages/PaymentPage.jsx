@@ -1,3 +1,4 @@
+import PageContainer from "@/components/layout/PageContainer";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCartStore } from "../stores/cartStore";
@@ -116,8 +117,8 @@ export default function PaymentPage() {
   };
 
   return (
-    <section className="max-w-7xl mx-auto min-h-screen bg-surface-1 py-5">
-      <div className="px-10">
+    <PageContainer width="wide">
+      <div>
         <h2 className="text-xl font-semibold text-on-surface sm:text-2xl mb-6">
           Complete Payment
         </h2>
@@ -152,6 +153,6 @@ export default function PaymentPage() {
           style={{ display: loading ? "none" : "block" }}
         />
       </div>
-    </section>
+    </PageContainer>
   );
 }

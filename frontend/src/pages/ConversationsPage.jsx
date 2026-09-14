@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { ChevronLeft } from "lucide-react";
+
+import { cn } from "@/lib/utils";
 import { useAuthStore } from "../stores/authStore";
 import { useMessagingStore } from "../stores/messagingStore";
 import { useUIStore } from "../stores/uiStore";
@@ -139,7 +142,7 @@ export default function ConversationsPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)] max-w-7xl mx-auto bg-black">
+    <div className="mx-auto flex h-[calc(100dvh-4rem)] max-w-7xl bg-surface-base">
       {/* delete confirm modal */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
@@ -171,8 +174,13 @@ export default function ConversationsPage() {
       )}
 
       {/* sidebar */}
-      <div className="w-2/8 bg-neutral-primary border-r border-neutral-secondary flex flex-col">
-        <header className="py-4 px-4 border-b border-neutral-secondary bg-accent-primary shrink-0">
+      <div
+        className={cn(
+          "w-full flex-col border-r border-surface-3 bg-surface-1 md:flex md:w-72 md:shrink-0 lg:w-80",
+          activeConvoId ? "hidden md:flex" : "flex",
+        )}
+      >
+        <header className="py-4 px-4 border-b border-surface-3 bg-brand shrink-0">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-semibold text-on-surface">Conversations</h2>
             <button
@@ -189,14 +197,14 @@ export default function ConversationsPage() {
             visibleConversations.map((convo) => (
               <div
                 key={convo.publicId}
-                className="group px-3 py-2 border-b border-neutral-secondary hover:bg-neutral-secondary-soft transition-colors"
+                className="group px-3 py-2 border-b border-surface-3 hover:bg-surface-2 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setActiveConvoId(convo.publicId)}
                     className="flex items-center gap-3 flex-1 min-w-0 text-left"
                   >
-                    <div className="w-12 h-12 bg-neutral-secondary-medium rounded-full shrink-0 overflow-hidden">
+                    <div className="w-12 h-12 bg-surface-3 rounded-full shrink-0 overflow-hidden">
                       <img
                         src="https://placehold.co/200x/ffa8e4/ffffff.svg?text=ʕ•́ᴥ•̀ʔ&font=Lato"
                         alt="User Avatar"
@@ -204,12 +212,12 @@ export default function ConversationsPage() {
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h2 className="text-base font-semibold text-heading truncate">
+                      <h2 className="text-base font-semibold text-on-surface truncate">
                         {user && convo.participantUsername === user.username
                           ? convo.initiatorUsername
                           : convo.participantUsername}
                       </h2>
-                      <p className="text-sm text-body truncate">
+                      <p className="text-sm text-on-surface-dim truncate">
                         {convo.lastMessagePreview}
                       </p>
                     </div>
@@ -242,25 +250,38 @@ export default function ConversationsPage() {
             ))
           ) : (
             <div className="flex items-center justify-center h-full">
-              <p className="text-body">No conversations yet</p>
+              <p className="text-on-surface-dim">No conversations yet</p>
             </div>
           )}
         </div>
       </div>
 
       {/* main chat area */}
-      <div className="flex-1 flex flex-col bg-neutral-primary">
+      <div
+        className={cn(
+          "min-w-0 flex-1 flex-col bg-surface-1",
+          activeConvoId ? "flex" : "hidden md:flex",
+        )}
+      >
         {showChat ? (
           <>
             {/* chat header — shows participant + related listing */}
-            <header className="bg-neutral-primary border-b border-neutral-secondary p-3 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
+            <header className="bg-surface-1 border-b border-surface-3 p-3 flex items-center justify-between shrink-0">
+              <div className="flex min-w-0 items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setActiveConvoId(null)}
+                  className="shrink-0 rounded-md p-1 text-on-surface-muted hover:text-on-surface md:hidden"
+                  aria-label="Back to conversations"
+                >
+                  <ChevronLeft className="size-5" />
+                </button>
                 <img
                   src="./placeholder.png"
                   alt=""
-                  className="h-10 w-10 rounded-full bg-neutral-secondary-medium object-cover"
+                  className="h-10 w-10 rounded-full bg-surface-3 object-cover"
                 />
-                <h2 className="text-lg font-semibold text-heading">
+                <h2 className="text-lg font-semibold text-on-surface">
                   {participantUsername}
                 </h2>
               </div>
@@ -323,7 +344,7 @@ export default function ConversationsPage() {
                     } rounded-2xl px-4 py-2.5 shadow-sm`}
                   >
                     {message.senderUsername !== user.username && (
-                      <p className="text-xs text-left font-semibold mb-1 text-body">
+                      <p className="text-xs text-left font-semibold mb-1 text-on-surface-dim">
                         {message.senderUsername}
                       </p>
                     )}
@@ -334,7 +355,7 @@ export default function ConversationsPage() {
                       className={`text-xs mt-1 ${
                         message.senderUsername === user.username
                           ? "text-on-surface/80 text-right"
-                          : "text-body text-left"
+                          : "text-on-surface-dim text-left"
                       }`}
                     >
                       {new Date(message.timestamp).toLocaleTimeString("tr-TR", {
@@ -348,7 +369,7 @@ export default function ConversationsPage() {
             </div>
 
             {/* input */}
-            <footer className="bg-neutral-primary border-t border-neutral-secondary p-4 shrink-0">
+            <footer className="bg-surface-1 border-t border-surface-3 p-4 shrink-0">
               <div className="flex items-end gap-2">
                 <textarea
                   placeholder="Type a message..."
@@ -356,11 +377,11 @@ export default function ConversationsPage() {
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyDown={handleKeyPress}
                   rows="1"
-                  className="flex-1 p-2.5 rounded-base border border-neutral-tertiary text-heading bg-neutral-primary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary placeholder-body resize-none min-h-[42px] max-h-32"
+                  className="flex-1 p-2.5 rounded-lg border border-surface-4 text-on-surface bg-surface-1 focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand placeholder-on-surface-muted resize-none min-h-[42px] max-h-32"
                   style={{ overflowY: "auto" }}
                 />
                 <button
-                  className="bg-brand hover:bg-brand-hover text-on-brand px-4 py-2.5 rounded-base font-medium transition-colors shrink-0"
+                  className="bg-brand hover:bg-brand-hover text-on-brand px-4 py-2.5 rounded-lg font-medium transition-colors shrink-0"
                   onClick={handleSend}
                 >
                   Send
@@ -370,7 +391,7 @@ export default function ConversationsPage() {
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-body text-lg">
+            <p className="text-on-surface-dim text-lg">
               Select a conversation to start messaging
             </p>
           </div>

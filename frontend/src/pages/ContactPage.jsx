@@ -176,7 +176,7 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-screen bg-surface-base text-on-surface">
-      <div className="w-full max-w-4xl mx-auto px-4 md:px-8 lg:px-10 py-8 text-left">
+      <div className="mx-auto w-full max-w-4xl px-4 py-4 text-left sm:px-6 sm:py-5 lg:px-8">
         <header className="mb-8">
           <h1 className="text-2xl font-semibold text-on-surface">
             {loading ? "Customer support" : pageContent?.header || "Customer support"}

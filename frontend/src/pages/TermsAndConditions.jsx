@@ -1,7 +1,9 @@
+import PageContainer from "@/components/layout/PageContainer";
+
 export default function TermsAndConditions() {
   return (
-    <div className="min-h-screen w-auto bg-surface-1 text-on-surface p-6 md:p-12 text-left">
-      <div className="max-w-4xl mx-auto  rounded-lg shadow-lg p-8">
+    <PageContainer width="form">
+      <div className="text-left">
         <h1 className="text-3xl font-bold mb-6">Terms and Conditions</h1>
 
         <p className="mb-4 text-on-surface-dim">
@@ -105,6 +107,6 @@ export default function TermsAndConditions() {
           .
         </p>
       </div>
-    </div>
+    </PageContainer>
   );
 }

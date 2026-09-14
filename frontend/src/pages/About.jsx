@@ -47,27 +47,26 @@ export default function About() {
 
   return (
     <div
-      className="relative h-237 overflow-hidden -mt-12  flex justify-center"
-      style={{ height: "calc(100vh - 64px)" }}
+      className="relative flex min-h-[calc(100dvh-4rem)] justify-center overflow-hidden"
     >
       <div className="absolute inset-0 -z-10">
         <img
           src={pageContent.backgroundImagePath}
           alt="Background"
-          className="h-230 object-cover absolute mt-7"
+          className="size-full object-cover"
         />
         <div className="absolute inset-0 bg-linear-to-r from-black/85 via-black/65 to-black/45"></div>
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-6 py-20 lg:py-32 -mt-5">
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-24">
         <div className="max-w-4xl">
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-on-surface mb-8 leading-tight">
+          <h1 className="mb-8 text-4xl font-bold leading-tight text-on-surface sm:text-5xl md:text-6xl lg:text-7xl">
             {pageContent.header}
           </h1>
 
           <div className="w-24 h-1 bg-brand mb-8"></div>
 
-          <p className="text-xl md:text-2xl text-on-surface-bright leading-relaxed mb-12 font-light">
+          <p className="mb-12 text-lg font-light leading-relaxed text-on-surface-bright sm:text-xl md:text-2xl">
             {pageContent.textContent}
           </p>
 
@@ -100,7 +99,7 @@ export default function About() {
             </a>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-15">
+          <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
             <div className="bg-on-surface/10 backdrop-blur-sm p-6 rounded-lg border border-on-surface/20">
               <div className="text-brand-fg text-3xl mb-3 flex justify-center">
                 <svg
