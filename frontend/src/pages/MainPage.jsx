@@ -1,7 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 
-import "../App.css";
-
 import ListingBrowsePanel from "@/components/listing/ListingBrowsePanel";
 
 import { useListingStore } from "../stores/listingStore";

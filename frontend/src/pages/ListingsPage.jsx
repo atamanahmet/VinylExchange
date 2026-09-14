@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from "react";
 import React from "react";
-import "../App.css";
 import ListingItem from "@/components/listing/ListingItem";
 import SkeletonListingItem from "@/components/listing/SkeletonListingItem";
 import { useListingStore } from "../stores/listingStore";

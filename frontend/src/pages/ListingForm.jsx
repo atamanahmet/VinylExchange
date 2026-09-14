@@ -35,7 +35,7 @@ import { cn } from "@/lib/utils";
 import { mbReleaseToListingMap } from "../adapters/mbReleaseToListingMap";
 import MediaInfoFields from "@/components/listing/MediaInfoFields";
 import MbReleaseFilterBar from "@/components/listing/MbReleaseFilterBar";
-import ReleaseCard from "@/components/listing/Card";
+import ReleaseCard from "@/components/listing/ListingCard";
 import ImageUploader from "@/components/listing/ImageUploader";
 import AddressFormDialog from "@/components/account/AddressFormDialog";
 import SkeletonCardView from "@/components/shared/skeletons/SkeletonCardView";

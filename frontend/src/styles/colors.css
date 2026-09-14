@@ -4,7 +4,7 @@
    All raw color values live here. Change one value to update
    every usage site instantly.
 
-   Tailwind tokens are registered in App.css @theme inline so
+   Tailwind tokens are registered in index.css @theme inline so
    the classes bg-brand, text-accent, bg-surface-1, etc. work
    everywhere. Prefix convention: --c-<group>[-variant]
    ================================================================ */

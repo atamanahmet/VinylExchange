@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
-import Card from "@/components/listing/Card";
+import ListingCard from "@/components/listing/ListingCard";
 import ListView from "@/components/listing/ListView";
 import ListViewHeader from "@/components/listing/ListViewHeader";
 import MbReleaseFilterBar from "@/components/listing/MbReleaseFilterBar";
@@ -306,7 +306,7 @@ export default function WishlistPage() {
               ? Array(8)
                   .fill(0)
                   .map((_, i) => <SkeletonCardView key={i} />)
-              : items.map((item) => <Card key={item.id} item={item} />)}
+              : items.map((item) => <ListingCard key={item.id} item={item} />)}
           </div>
         )}
       </div>
@@ -371,7 +371,7 @@ export default function WishlistPage() {
             {!isLoadingMbSearch && searchItems.length > 0 && (
               <div className={CARD_GRID_CLASS}>
                 {searchItems.map((item) => (
-                  <Card key={item.id} item={item} />
+                  <ListingCard key={item.id} item={item} />
                 ))}
               </div>
             )}

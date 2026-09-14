@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LayoutGrid, List } from "lucide-react";
 
-import Card from "@/components/listing/Card";
+import ListingCard from "@/components/listing/ListingCard";
 import FilterSidebar, { MobileFilterSheet } from "@/components/listing/FilterSidebar";
 import ListView from "@/components/listing/ListView";
 import ListViewHeader from "@/components/listing/ListViewHeader";
@@ -191,7 +191,7 @@ export default function ListingBrowsePanel({
                       .fill(0)
                       .map((_, i) => <SkeletonCardView key={i} />)
                   : items.map((item) => (
-                      <Card key={item.id} item={item} />
+                      <ListingCard key={item.id} item={item} />
                     ))}
               </div>
             )}

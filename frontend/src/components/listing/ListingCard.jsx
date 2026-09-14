@@ -31,7 +31,7 @@ function CardText({ children, className, title, accent = false, centered = false
   );
 }
 
-export default function Card({ item, onSelect, className }) {
+export default function ListingCard({ item, onSelect, className }) {
   const imageSrc = item.imageUrl || item.externalCoverUrl;
   const hasActions = Boolean(item.primaryAction || item.secondaryAction);
   const linkToListing = !item.disableLink && !onSelect;

@@ -6,8 +6,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { LoginForm } from "./login-form";
-import { SignupForm } from "./signup-form";
+import { LoginForm } from "./LoginForm";
+import { SignupForm } from "./SignupForm";
 import { useUIStore } from "@/stores/uiStore";
 
 export function AuthModal() {
