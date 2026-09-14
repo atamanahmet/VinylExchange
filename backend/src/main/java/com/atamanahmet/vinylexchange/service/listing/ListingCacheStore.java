@@ -31,4 +31,15 @@ public class ListingCacheStore {
                 .map(listingMapper::toSummaryDto)
                 .getContent();
     }
+
+    /**
+     * True number of browsable listings. The cached slice above holds at most 60,
+     * so it cannot be used as a page total. Lives in the same "listings" cache so
+     * the existing allEntries CacheEvict calls clear it too.
+     */
+    @Cacheable(value = "listings", key = "'availableCount'", cacheManager = "readCacheManager")
+    public long countAvailable() {
+        return listingRepository.countByStatusAndStockQuantityGreaterThanAndOnHoldFalse(
+                ListingStatus.AVAILABLE, 0);
+    }
 }
